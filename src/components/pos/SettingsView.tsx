@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -20,7 +20,9 @@ import {
   Banknote,
   Wallet,
   Percent,
-  Receipt
+  Receipt,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Category, Product, PaymentMethod, Fee, FeeType } from '@/types/pos';
@@ -42,6 +44,8 @@ export function SettingsView() {
     fees, setFees 
   } = usePOS();
   
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Category States
   const [newCategory, setNewCategory] = useState('');
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -52,7 +56,7 @@ export function SettingsView() {
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<Partial<Product>>({
-    name: '', price: 0, category: 'Main Course', available: true, description: '', image: 'https://picsum.photos/seed/new/400/300'
+    name: '', price: 0, category: 'Main Course', available: true, description: '', image: ''
   });
 
   // Payment Method States
@@ -68,6 +72,18 @@ export function SettingsView() {
   const [feeForm, setFeeForm] = useState<Partial<Fee>>({
     name: '', type: 'Tax', value: 0, enabled: true
   });
+
+  // --- Image Upload Handler ---
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProductForm(prev => ({ ...prev, image: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // --- Category Handlers ---
   const handleAddCategory = () => {
@@ -91,7 +107,7 @@ export function SettingsView() {
 
   // --- Product Handlers ---
   const handleOpenAddDialog = () => {
-    setEditingProduct(null); setProductForm({ name: '', price: 0, category: 'Main Course', available: true, description: '', image: 'https://picsum.photos/seed/new/400/300' });
+    setEditingProduct(null); setProductForm({ name: '', price: 0, category: 'Main Course', available: true, description: '', image: '' });
     setIsProductDialogOpen(true);
   };
   const handleOpenEditDialog = (product: Product) => {
@@ -101,7 +117,15 @@ export function SettingsView() {
     if (editingProduct) {
       setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
     } else {
-      const newProd: Product = { id: Math.random().toString(36).substr(2, 9), name: productForm.name || 'New Product', price: productForm.price || 0, category: productForm.category as Category || 'Main Course', available: productForm.available ?? true, description: productForm.description || '', image: productForm.image || 'https://picsum.photos/seed/new/400/300' };
+      const newProd: Product = { 
+        id: Math.random().toString(36).substr(2, 9), 
+        name: productForm.name || 'New Product', 
+        price: productForm.price || 0, 
+        category: productForm.category as Category || 'Main Course', 
+        available: productForm.available ?? true, 
+        description: productForm.description || '', 
+        image: productForm.image || 'https://picsum.photos/seed/default/400/300' 
+      };
       setProducts([...products, newProd]);
     }
     setIsProductDialogOpen(false);
@@ -313,12 +337,45 @@ export function SettingsView() {
         <DialogContent className="max-w-md rounded-[2.5rem] p-8">
           <DialogHeader><DialogTitle className="text-2xl font-black">{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle></DialogHeader>
           <div className="grid gap-6 py-4">
+            {/* Image Upload Section */}
+            <div className="space-y-2">
+              <Label>Product Image</Label>
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="relative h-40 w-full rounded-2xl border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 transition-all cursor-pointer overflow-hidden group flex flex-col items-center justify-center gap-2 bg-muted/5"
+              >
+                {productForm.image ? (
+                  <>
+                    <img src={productForm.image} alt="Preview" className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-sm">
+                      <Upload className="h-5 w-5 mr-2" /> Change Image
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Upload Photo</span>
+                  </>
+                )}
+              </div>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleImageUpload} 
+                className="hidden" 
+                accept="image/*"
+              />
+            </div>
+
             <div className="space-y-2"><Label>Product Name</Label><Input value={productForm.name} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="rounded-xl" /></div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Price ($)</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} className="rounded-xl" /></div>
               <div className="space-y-2"><Label>Category</Label><Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val as Category})}><SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{categories.filter(c => c !== 'All').map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent></Select></div>
             </div>
+            
             <div className="space-y-2"><Label>Description</Label><Input value={productForm.description} onChange={(e) => setProductForm({...productForm, description: e.target.value})} className="rounded-xl" /></div>
+            
             <div className="flex items-center justify-between"><Label>Available</Label><Switch checked={productForm.available} onCheckedChange={(val) => setProductForm({...productForm, available: val})} /></div>
           </div>
           <DialogFooter><Button onClick={handleSaveProduct} className="w-full h-12 rounded-xl bg-primary font-bold">{editingProduct ? 'Update Product' : 'Save Product'}</Button></DialogFooter>
