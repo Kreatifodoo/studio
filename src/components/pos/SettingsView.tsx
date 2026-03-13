@@ -105,6 +105,7 @@ export function SettingsView() {
       <html>
         <head>
           <title>Label Barcode - ${product.name}</title>
+          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
           <style>
             @page { size: 50mm 30mm; margin: 0; }
             body { 
@@ -120,47 +121,53 @@ export function SettingsView() {
               background: white;
             }
             .label { 
-              width: 46mm; 
-              height: 26mm; 
+              width: 48mm; 
+              height: 28mm; 
               display: flex; 
               flex-direction: column; 
               align-items: center; 
               justify-content: center; 
               text-align: center;
-              border: 1px solid #eee;
               box-sizing: border-box;
+              padding: 1mm;
             }
-            .store { font-size: 7px; font-weight: bold; color: #3D8AF5; margin-bottom: 2px; }
-            .name { font-size: 10px; font-weight: bold; margin-bottom: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; }
-            .barcode-box { 
-              border-top: 2px solid black; 
-              border-bottom: 2px solid black; 
-              width: 90%; 
-              height: 8mm; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center; 
-              letter-spacing: 2px; 
-              font-weight: bold; 
-              font-size: 14px; 
-              margin-bottom: 2px; 
+            .store { font-size: 8px; font-weight: bold; color: #3D8AF5; margin-bottom: 1px; text-transform: uppercase; }
+            .name { font-size: 11px; font-weight: bold; margin-bottom: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; }
+            #barcode-svg { 
+              width: 100%; 
+              max-height: 12mm;
+              margin-bottom: 2px;
             }
-            .code { font-size: 8px; font-family: monospace; }
-            .price { font-size: 11px; font-weight: bold; margin-top: 2px; color: #3D8AF5; }
+            .sku { font-size: 8px; font-family: monospace; color: #666; }
+            .price { font-size: 12px; font-weight: bold; margin-top: 1px; color: #3D8AF5; }
           </style>
         </head>
         <body>
           <div class="label">
             <div class="store">NEXTPOS DELI</div>
             <div class="name">${product.name}</div>
-            <div class="barcode-box">${product.barcode}</div>
-            <div class="code">SKU: ${product.sku}</div>
+            <svg id="barcode-svg"></svg>
+            <div class="sku">SKU: ${product.sku}</div>
             <div class="price">$${product.price.toFixed(2)}</div>
           </div>
           <script>
-            window.onload = function() { 
-              window.print(); 
-              // window.close(); 
+            window.onload = function() {
+              if (window.JsBarcode) {
+                JsBarcode("#barcode-svg", "${product.barcode}", {
+                  format: "CODE128",
+                  width: 2,
+                  height: 40,
+                  displayValue: true,
+                  fontSize: 14,
+                  margin: 0,
+                  background: "transparent"
+                });
+                
+                setTimeout(() => {
+                  window.print();
+                  // window.close(); // Optional: close window after print
+                }, 500);
+              }
             }
           </script>
         </body>
