@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView } from '@/types/pos';
+import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -31,7 +31,15 @@ interface POSContextType {
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   categories: Category[];
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
+  paymentMethods: PaymentMethod[];
+  setPaymentMethods: React.Dispatch<React.SetStateAction<PaymentMethod[]>>;
 }
+
+const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
+  { id: 'pm_1', name: 'Credit / Debit Card', icon: 'CreditCard', description: 'Visa, Mastercard, Amex', enabled: true },
+  { id: 'pm_2', name: 'Digital Wallet', icon: 'Smartphone', description: 'Apple Pay, Google Pay', enabled: true },
+  { id: 'pm_3', name: 'Cash', icon: 'Banknote', description: 'Payment at counter', enabled: true },
+];
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
@@ -45,6 +53,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   // Master Data State
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(INITIAL_PAYMENT_METHODS);
 
   const addToCart = (product: Product) => {
     if (!product.available) return;
@@ -97,7 +106,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       history, addTransaction,
       view, setView,
       products, setProducts,
-      categories, setCategories
+      categories, setCategories,
+      paymentMethods, setPaymentMethods
     }}>
       {children}
     </POSContext.Provider>

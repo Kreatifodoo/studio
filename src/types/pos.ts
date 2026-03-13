@@ -31,3 +31,11 @@ export interface Transaction {
   total: number;
   status: 'Completed' | 'Pending';
 }
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  icon: 'CreditCard' | 'Banknote' | 'Smartphone';
+  description: string;
+  enabled: boolean;
+}

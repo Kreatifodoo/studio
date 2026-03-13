@@ -14,10 +14,14 @@ import {
   Bell, 
   Plus, 
   Trash2, 
-  Pencil
+  Pencil,
+  CreditCard,
+  Smartphone,
+  Banknote,
+  Wallet
 } from 'lucide-react';
 import { usePOS } from './POSContext';
-import { Category, Product } from '@/types/pos';
+import { Category, Product, PaymentMethod } from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
@@ -29,7 +33,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function SettingsView() {
-  const { products, setProducts, categories, setCategories } = usePOS();
+  const { products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods } = usePOS();
   
   // Category States
   const [newCategory, setNewCategory] = useState('');
@@ -49,6 +53,16 @@ export function SettingsView() {
     image: 'https://picsum.photos/seed/new/400/300'
   });
 
+  // Payment Method States
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
+  const [paymentForm, setPaymentForm] = useState<Partial<PaymentMethod>>({
+    name: '',
+    icon: 'CreditCard',
+    description: '',
+    enabled: true
+  });
+
   // --- Category Handlers ---
   const handleAddCategory = () => {
     if (newCategory && !categories.includes(newCategory as Category)) {
@@ -65,17 +79,12 @@ export function SettingsView() {
 
   const handleSaveCategory = () => {
     if (!editingCategory || !categoryFormValue) return;
-    
-    // Update categories list
     const updatedCategories = categories.map(c => c === editingCategory ? categoryFormValue as Category : c);
     setCategories(updatedCategories);
-
-    // Update all products using this category
     const updatedProducts = products.map(p => 
       p.category === editingCategory ? { ...p, category: categoryFormValue as Category } : p
     );
     setProducts(updatedProducts);
-    
     setIsCategoryDialogOpen(false);
     setEditingCategory(null);
   };
@@ -83,7 +92,6 @@ export function SettingsView() {
   const handleDeleteCategory = (cat: Category) => {
     if (cat === 'All') return;
     setCategories(categories.filter(c => c !== cat));
-    // Optional: Reset products in this category to 'Main Course' or similar
   };
 
   // --- Product Handlers ---
@@ -108,11 +116,7 @@ export function SettingsView() {
 
   const handleSaveProduct = () => {
     if (editingProduct) {
-      setProducts(products.map(p => 
-        p.id === editingProduct.id 
-          ? { ...editingProduct, ...productForm } as Product 
-          : p
-      ));
+      setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
     } else {
       const newProd: Product = {
         id: Math.random().toString(36).substr(2, 9),
@@ -132,6 +136,48 @@ export function SettingsView() {
     setProducts(products.filter(p => p.id !== id));
   };
 
+  // --- Payment Method Handlers ---
+  const handleOpenAddPayment = () => {
+    setEditingPayment(null);
+    setPaymentForm({ name: '', icon: 'CreditCard', description: '', enabled: true });
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleOpenEditPayment = (pm: PaymentMethod) => {
+    setEditingPayment(pm);
+    setPaymentForm({ ...pm });
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleSavePayment = () => {
+    if (editingPayment) {
+      setPaymentMethods(paymentMethods.map(p => p.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : p));
+    } else {
+      const newPM: PaymentMethod = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: paymentForm.name || 'New Payment Method',
+        icon: paymentForm.icon as any || 'CreditCard',
+        description: paymentForm.description || '',
+        enabled: paymentForm.enabled ?? true
+      };
+      setPaymentMethods([...paymentMethods, newPM]);
+    }
+    setIsPaymentDialogOpen(false);
+  };
+
+  const handleDeletePayment = (id: string) => {
+    setPaymentMethods(paymentMethods.filter(p => p.id !== id));
+  };
+
+  const getPaymentIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'CreditCard': return <CreditCard />;
+      case 'Smartphone': return <Smartphone />;
+      case 'Banknote': return <Banknote />;
+      default: return <Wallet />;
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8 pb-12 max-w-6xl">
       <div className="flex flex-col gap-1">
@@ -140,10 +186,11 @@ export function SettingsView() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="bg-white p-1 rounded-2xl h-14 border shadow-sm mb-8">
+        <TabsList className="bg-white p-1 rounded-2xl h-14 border shadow-sm mb-8 overflow-x-auto">
           <TabsTrigger value="general" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">General</TabsTrigger>
           <TabsTrigger value="products" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Master Products</TabsTrigger>
           <TabsTrigger value="categories" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Categories</TabsTrigger>
+          <TabsTrigger value="payments" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Payment Methods</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
@@ -183,87 +230,10 @@ export function SettingsView() {
                 <CardTitle className="text-2xl font-black">Product Master</CardTitle>
                 <CardDescription>Add, edit or remove products from your menu</CardDescription>
               </div>
-              <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    onClick={handleOpenAddDialog}
-                    className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2 shadow-lg shadow-primary/20"
-                  >
-                    <Plus className="h-5 w-5" /> Add New Product
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md rounded-[2.5rem] p-8">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-black">
-                      {editingProduct ? 'Edit Product' : 'Add New Product'}
-                    </DialogTitle>
-                    <CardDescription>
-                      {editingProduct ? 'Update the details of the selected menu item' : 'Enter the details of the new menu item'}
-                    </CardDescription>
-                  </DialogHeader>
-                  <div className="grid gap-6 py-4">
-                    <div className="space-y-2">
-                      <Label>Product Name</Label>
-                      <Input 
-                        value={productForm.name} 
-                        onChange={(e) => setProductForm({...productForm, name: e.target.value})} 
-                        placeholder="e.g. Classic Burger" 
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Price ($)</Label>
-                        <Input 
-                          type="number" 
-                          value={productForm.price} 
-                          onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} 
-                          className="rounded-xl"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Category</Label>
-                        <Select 
-                          value={productForm.category} 
-                          onValueChange={(val) => setProductForm({...productForm, category: val as Category})}
-                        >
-                          <SelectTrigger className="rounded-xl">
-                            <SelectValue placeholder="Select Category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.filter(c => c !== 'All').map(cat => (
-                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Input 
-                        value={productForm.description} 
-                        onChange={(e) => setProductForm({...productForm, description: e.target.value})} 
-                        placeholder="Short description..." 
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label>Available</Label>
-                      <Switch 
-                        checked={productForm.available} 
-                        onCheckedChange={(val) => setProductForm({...productForm, available: val})}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleSaveProduct} className="w-full h-12 rounded-xl bg-primary font-bold">
-                      {editingProduct ? 'Update Product' : 'Save Product'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={handleOpenAddDialog} className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2 shadow-lg shadow-primary/20">
+                <Plus className="h-5 w-5" /> Add New Product
+              </Button>
             </div>
-
             <div className="grid grid-cols-1 gap-4">
               {products.map((product) => (
                 <div key={product.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
@@ -280,20 +250,10 @@ export function SettingsView() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleOpenEditDialog(product)}
-                      className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(product)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
                       <Pencil className="h-5 w-5" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDeleteProduct(product.id)} 
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(product.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl">
                       <Trash2 className="h-5 w-5" />
                     </Button>
                   </div>
@@ -309,45 +269,25 @@ export function SettingsView() {
               <CardTitle className="text-2xl font-black">Categories</CardTitle>
               <CardDescription>Manage food categories for your menu</CardDescription>
             </div>
-
             <div className="flex gap-4 mb-8">
-              <Input 
-                placeholder="New Category Name..." 
-                value={newCategory} 
-                onChange={(e) => setNewCategory(e.target.value)}
-                className="rounded-xl h-12 flex-1"
-              />
+              <Input placeholder="New Category Name..." value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="rounded-xl h-12 flex-1" />
               <Button onClick={handleAddCategory} className="rounded-xl bg-primary h-12 px-6 font-bold gap-2">
                 <Plus className="h-5 w-5" /> Add
               </Button>
             </div>
-
             <div className="grid grid-cols-1 gap-4">
               {categories.map((cat) => (
                 <div key={cat} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="bg-white p-3 rounded-xl text-primary font-bold shadow-sm">
-                      {cat.charAt(0)}
-                    </div>
+                    <div className="bg-white p-3 rounded-xl text-primary font-bold shadow-sm">{cat.charAt(0)}</div>
                     <span className="font-black text-lg">{cat}</span>
                   </div>
-                  
                   {cat !== 'All' && (
                     <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleOpenEditCategory(cat)}
-                        className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenEditCategory(cat)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
                         <Pencil className="h-5 w-5" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleDeleteCategory(cat)}
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(cat)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl">
                         <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
@@ -355,32 +295,148 @@ export function SettingsView() {
                 </div>
               ))}
             </div>
+          </Card>
+        </TabsContent>
 
-            {/* Edit Category Dialog */}
-            <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-              <DialogContent className="max-w-sm rounded-[2.5rem] p-8">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-black">Edit Category</DialogTitle>
-                  <CardDescription>Rename the category. This will also update all linked products.</CardDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <Label className="mb-2 block">Category Name</Label>
-                  <Input 
-                    value={categoryFormValue} 
-                    onChange={(e) => setCategoryFormValue(e.target.value)} 
-                    className="rounded-xl"
-                  />
+        <TabsContent value="payments">
+          <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <CardTitle className="text-2xl font-black">Payment Methods</CardTitle>
+                <CardDescription>Configure supported checkout payment options</CardDescription>
+              </div>
+              <Button onClick={handleOpenAddPayment} className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2 shadow-lg shadow-primary/20">
+                <Plus className="h-5 w-5" /> Add Method
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              {paymentMethods.map((pm) => (
+                <div key={pm.id} className="flex items-center justify-between p-5 bg-muted/20 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
+                  <div className="flex items-center gap-5">
+                    <div className="bg-white p-4 rounded-2xl text-primary shadow-sm">
+                      {getPaymentIcon(pm.icon)}
+                    </div>
+                    <div>
+                      <p className="font-black text-lg">{pm.name}</p>
+                      <p className="text-xs text-muted-foreground font-medium">{pm.description}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 mr-4">
+                       <span className={`text-[10px] font-black uppercase tracking-widest ${pm.enabled ? 'text-accent' : 'text-muted-foreground'}`}>
+                         {pm.enabled ? 'Active' : 'Disabled'}
+                       </span>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditPayment(pm)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
+                      <Pencil className="h-5 w-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeletePayment(pm.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl">
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
-                <DialogFooter>
-                  <Button onClick={handleSaveCategory} className="w-full h-12 rounded-xl bg-primary font-bold">
-                    Update Category
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              ))}
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Category Dialog */}
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent className="max-w-sm rounded-[2.5rem] p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">Edit Category</DialogTitle>
+            <CardDescription>Rename the category. This will also update all linked products.</CardDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label className="mb-2 block">Category Name</Label>
+            <Input value={categoryFormValue} onChange={(e) => setCategoryFormValue(e.target.value)} className="rounded-xl" />
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveCategory} className="w-full h-12 rounded-xl bg-primary font-bold">Update Category</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Product Dialog */}
+      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2">
+              <Label>Product Name</Label>
+              <Input value={productForm.name} onChange={(e) => setProductForm({...productForm, name: e.target.value})} placeholder="e.g. Classic Burger" className="rounded-xl" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Price ($)</Label>
+                <Input type="number" value={productForm.price} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} className="rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val as Category})}>
+                  <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select Category" /></SelectTrigger>
+                  <SelectContent>
+                    {categories.filter(c => c !== 'All').map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input value={productForm.description} onChange={(e) => setProductForm({...productForm, description: e.target.value})} placeholder="Short description..." className="rounded-xl" />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Available</Label>
+              <Switch checked={productForm.available} onCheckedChange={(val) => setProductForm({...productForm, available: val})} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSaveProduct} className="w-full h-12 rounded-xl bg-primary font-bold">{editingProduct ? 'Update Product' : 'Save Product'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Method Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">{editingPayment ? 'Edit Payment Method' : 'Add Payment Method'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2">
+              <Label>Method Name</Label>
+              <Input value={paymentForm.name} onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})} placeholder="e.g. Visa / Mastercard" className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>Icon</Label>
+              <Select value={paymentForm.icon} onValueChange={(val) => setPaymentForm({...paymentForm, icon: val as any})}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select Icon" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CreditCard">Credit Card</SelectItem>
+                  <SelectItem value="Smartphone">Digital Wallet</SelectItem>
+                  <SelectItem value="Banknote">Cash</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input value={paymentForm.description} onChange={(e) => setPaymentForm({...paymentForm, description: e.target.value})} placeholder="e.g. Online or In-store" className="rounded-xl" />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Enabled</Label>
+              <Switch checked={paymentForm.enabled} onCheckedChange={(val) => setPaymentForm({...paymentForm, enabled: val})} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSavePayment} className="w-full h-12 rounded-xl bg-primary font-bold">{editingPayment ? 'Update Method' : 'Save Method'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
