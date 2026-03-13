@@ -71,9 +71,9 @@ export function Sidebar() {
         {currentSession && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="p-4 rounded-2xl text-white/30 hover:bg-orange-500/10 hover:text-orange-500 transition-all duration-300 w-full flex flex-col items-center group">
+              <button className="p-4 rounded-2xl bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 w-full flex flex-col items-center group">
                 <XCircle className="h-6 w-6" />
-                <span className="text-[9px] font-bold uppercase tracking-widest mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Close</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest mt-1">End Sessi</span>
               </button>
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-[2.5rem] p-8 border-none">
@@ -91,6 +91,7 @@ export function Sidebar() {
                       value={closingCash}
                       onChange={(e) => setClosingCash(e.target.value)}
                       className="h-14 rounded-xl text-xl font-bold"
+                      autoFocus
                     />
                  </div>
               </div>

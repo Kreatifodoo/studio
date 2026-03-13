@@ -140,12 +140,13 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const addTransaction = (t: Transaction) => {
     setHistory(prev => [t, ...prev]);
-    if (currentSession) {
-      setCurrentSession(prev => prev ? {
+    setCurrentSession(prev => {
+      if (!prev) return null;
+      return {
         ...prev,
         transactionIds: [...prev.transactionIds, t.id]
-      } : null);
-    }
+      };
+    });
   };
 
   return (
