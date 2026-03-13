@@ -1,8 +1,7 @@
-
 "use client";
 
 import React, { useState } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User, Phone } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User, Phone, Package as PackageIcon } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -24,7 +23,7 @@ export function OrderPanel() {
   const { 
     cart, removeFromCart, updateQuantity, updateNote, clearCart, 
     addTransaction, fees, currentSession, customers, addCustomer,
-    selectedCustomerId, setSelectedCustomerId 
+    selectedCustomerId, setSelectedCustomerId, packages, products
   } = usePOS();
   
   const [isAIActive, setIsAIActive] = useState<string | null>(null);
@@ -159,6 +158,9 @@ export function OrderPanel() {
                       {item.priceListId && (
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Special Price</Badge>
                       )}
+                      {item.isPackage && (
+                        <Badge variant="secondary" className="bg-accent/10 text-accent border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Package</Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center bg-white rounded-2xl p-1.5 shadow-sm border">
@@ -167,6 +169,29 @@ export function OrderPanel() {
                     <button onClick={() => updateQuantity(item.id, 1)} className="p-2 hover:bg-muted rounded-xl transition-colors"><Plus className="h-4 w-4" /></button>
                   </div>
                 </div>
+
+                {/* Package Components Display */}
+                {item.isPackage && (
+                  <div className="bg-white/40 p-3 rounded-2xl border border-primary/5 mt-1">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <PackageIcon className="h-3 w-3 text-muted-foreground" />
+                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Bundle Contents:</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {packages.find(p => p.id === item.productId)?.items.map((pkgItem, pIdx) => {
+                        const productDetails = products.find(p => p.id === pkgItem.productId);
+                        return (
+                          <div key={pIdx} className="bg-white px-2 py-1 rounded-lg shadow-sm flex items-center gap-1.5 border border-muted/20">
+                            <span className="text-[9px] font-black text-primary">{pkgItem.quantity}x</span>
+                            <span className="text-[9px] font-bold text-muted-foreground truncate max-w-[80px]">
+                              {productDetails?.name || 'Item'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2">
                   <Popover>
