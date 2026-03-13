@@ -1,7 +1,6 @@
-
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePOS } from './POSContext';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +10,11 @@ import { format } from 'date-fns';
 
 export function HistoryView() {
   const { history } = usePOS();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="flex flex-col gap-8 h-full">
@@ -45,7 +49,7 @@ export function HistoryView() {
                       </div>
                       <p className="text-sm text-muted-foreground flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5" />
-                        {format(new Date(t.date), 'PPP p')}
+                        {mounted ? format(new Date(t.date), 'PPP p') : 'Loading date...'}
                       </p>
                     </div>
                   </div>

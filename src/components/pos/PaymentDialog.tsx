@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -23,6 +22,7 @@ interface PaymentDialogProps {
 export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentDialogProps) {
   const [stage, setStage] = useState<'method' | 'processing' | 'success'>('method');
   const [progress, setProgress] = useState(0);
+  const [transactionId, setTransactionId] = useState<string>('');
 
   useEffect(() => {
     if (stage === 'processing') {
@@ -30,6 +30,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
         setProgress(p => {
           if (p >= 100) {
             clearInterval(interval);
+            setTransactionId(Math.random().toString(36).toUpperCase().slice(2, 10));
             setTimeout(() => setStage('success'), 500);
             return 100;
           }
@@ -48,6 +49,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
   const reset = () => {
     setStage('method');
     setProgress(0);
+    setTransactionId('');
   };
 
   return (
@@ -105,7 +107,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
             <div>
               <h3 className="text-3xl font-black mb-2">Payment Success!</h3>
               <p className="text-muted-foreground">The transaction was completed successfully.</p>
-              <p className="text-xs mt-4 font-mono text-muted-foreground">TRANS_ID: {Math.random().toString(36).toUpperCase().slice(2, 10)}</p>
+              <p className="text-xs mt-4 font-mono text-muted-foreground">TRANS_ID: {transactionId}</p>
             </div>
             <Button onClick={onSuccess} className="w-full h-14 rounded-2xl text-lg font-bold mt-4">Print Receipt & Continue</Button>
           </div>
