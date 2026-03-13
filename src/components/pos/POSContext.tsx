@@ -44,6 +44,7 @@ interface POSContextType {
   setFees: React.Dispatch<React.SetStateAction<Fee[]>>;
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  addCustomer: (customer: Omit<Customer, 'id'>) => string;
   priceLists: PriceList[];
   setPriceLists: React.Dispatch<React.SetStateAction<PriceList[]>>;
 }
@@ -82,9 +83,9 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [priceLists, setPriceLists] = useState<PriceList[]>([]);
 
-  const getEffectivePrice = useCallback((productId: string, quantity: number) => {
+  const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
-    if (!product) return 0;
+    if (!product) return { price: 0, priceListId: undefined };
 
     const now = new Date();
     const activeList = priceLists.find(pl => 
@@ -96,10 +97,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
     if (activeList) {
       const tier = activeList.tiers.find(t => quantity >= t.minQty && quantity <= t.maxQty);
-      if (tier) return tier.price;
+      if (tier) return { price: tier.price, priceListId: activeList.id };
     }
 
-    return product.price;
+    return { price: product.price, priceListId: undefined };
   }, [products, priceLists]);
 
   const openSession = (openingCash: number) => {
@@ -140,18 +141,19 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       const existing = prev.find(item => item.productId === product.id);
       if (existing) {
         const newQty = existing.quantity + 1;
-        const newPrice = getEffectivePrice(product.id, newQty);
+        const { price: newPrice, priceListId } = getEffectivePriceInfo(product.id, newQty);
         return prev.map(item =>
-          item.productId === product.id ? { ...item, quantity: newQty, price: newPrice } : item
+          item.productId === product.id ? { ...item, quantity: newQty, price: newPrice, priceListId } : item
         );
       }
-      const initialPrice = getEffectivePrice(product.id, 1);
+      const { price: initialPrice, priceListId } = getEffectivePriceInfo(product.id, 1);
       return [...prev, {
         id: Math.random().toString(36).substr(2, 9),
         productId: product.id,
         name: product.name,
         price: initialPrice,
-        quantity: 1
+        quantity: 1,
+        priceListId
       }];
     });
   };
@@ -168,8 +170,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         
         if (product && newQty > product.onHandQty) return item;
         
-        const newPrice = getEffectivePrice(item.productId, newQty);
-        return { ...item, quantity: newQty, price: newPrice };
+        const { price: newPrice, priceListId } = getEffectivePriceInfo(item.productId, newQty);
+        return { ...item, quantity: newQty, price: newPrice, priceListId };
       }
       return item;
     }));
@@ -208,6 +210,13 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const addCustomer = (customer: Omit<Customer, 'id'>) => {
+    const id = Math.random().toString(36).substr(2, 9).toUpperCase();
+    const newCustomer: Customer = { id, ...customer };
+    setCustomers(prev => [...prev, newCustomer]);
+    return id;
+  };
+
   return (
     <POSContext.Provider value={{
       activeCategory, setActiveCategory,
@@ -221,7 +230,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       categories, setCategories,
       paymentMethods, setPaymentMethods,
       fees, setFees,
-      customers, setCustomers,
+      customers, setCustomers, addCustomer,
       priceLists, setPriceLists
     }}>
       {children}

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User, Phone } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -16,17 +16,25 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { PaymentDialog } from './PaymentDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export function OrderPanel() {
   const { 
     cart, removeFromCart, updateQuantity, updateNote, clearCart, 
-    addTransaction, fees, currentSession, customers, 
+    addTransaction, fees, currentSession, customers, addCustomer,
     selectedCustomerId, setSelectedCustomerId 
   } = usePOS();
   
   const [isAIActive, setIsAIActive] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
+  
+  // New Customer Form
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
 
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
 
@@ -74,6 +82,15 @@ export function OrderPanel() {
     setIsPaymentOpen(true);
   };
 
+  const handleAddQuickCustomer = () => {
+    if (!newCustName || !newCustPhone) return;
+    const id = addCustomer({ name: newCustName, phone: newCustPhone });
+    setSelectedCustomerId(id);
+    setIsNewCustomerOpen(false);
+    setNewCustName('');
+    setNewCustPhone('');
+  };
+
   return (
     <div className="w-[400px] h-screen fixed right-0 top-0 bg-white shadow-[0_0_50px_-12px_rgba(0,0,0,0.1)] z-40 flex flex-col">
       <div className="p-10 pb-6">
@@ -94,9 +111,18 @@ export function OrderPanel() {
 
         {/* Customer Selector */}
         <div className="bg-muted/30 p-4 rounded-[2rem] border border-transparent hover:border-primary/20 transition-all">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-white p-2 rounded-xl text-primary"><User className="h-4 w-4" /></div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Customer</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="bg-white p-2 rounded-xl text-primary"><User className="h-4 w-4" /></div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Customer</span>
+            </div>
+            <button 
+              onClick={() => setIsNewCustomerOpen(true)}
+              className="p-1.5 bg-primary/10 rounded-lg text-primary hover:bg-primary hover:text-white transition-all"
+              title="Add New Customer"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+            </button>
           </div>
           <Select 
             value={selectedCustomerId || "none"} 
@@ -128,7 +154,12 @@ export function OrderPanel() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1 pr-4">
                     <h4 className="font-black text-lg mb-1 leading-tight">{item.name}</h4>
-                    <p className="text-primary font-black">${item.price.toFixed(2)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-primary font-black">${item.price.toFixed(2)}</p>
+                      {item.priceListId && (
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Special Price</Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center bg-white rounded-2xl p-1.5 shadow-sm border">
                     <button onClick={() => updateQuantity(item.id, -1)} className="p-2 hover:bg-muted rounded-xl transition-colors"><Minus className="h-4 w-4" /></button>
@@ -225,6 +256,46 @@ export function OrderPanel() {
           <ChevronRight className="h-6 w-6 ml-auto opacity-50" />
         </Button>
       </div>
+
+      {/* Quick New Customer Dialog */}
+      <Dialog open={isNewCustomerOpen} onOpenChange={setIsNewCustomerOpen}>
+        <DialogContent className="max-w-md rounded-[2rem] p-8 border-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">Quick Add Customer</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Full Name</Label>
+              <Input 
+                value={newCustName} 
+                onChange={(e) => setNewCustName(e.target.value)}
+                placeholder="Ex: John Doe" 
+                className="h-12 rounded-xl focus-visible:ring-primary/20 border-2" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Phone Number</Label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  value={newCustPhone} 
+                  onChange={(e) => setNewCustPhone(e.target.value)}
+                  placeholder="0812..." 
+                  className="h-12 rounded-xl pl-12 focus-visible:ring-primary/20 border-2" 
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleAddQuickCustomer}
+              className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-lg shadow-primary/20"
+            >
+              Add & Select Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <PaymentDialog
         open={isPaymentOpen}

@@ -26,6 +26,7 @@ export interface OrderItem {
   price: number;
   quantity: number;
   note?: string;
+  priceListId?: string; // Track if a special price list was used
 }
 
 export interface Transaction {

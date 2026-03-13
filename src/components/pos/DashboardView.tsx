@@ -13,9 +13,11 @@ import {
   Tooltip, 
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
+  Cell
 } from 'recharts';
-import { TrendingUp, DollarSign, ShoppingBag, Users, Wallet } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingBag, Users, Wallet, Trophy, Tags } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const data = [
   { name: 'Mon', sales: 4000, orders: 240 },
@@ -28,7 +30,7 @@ const data = [
 ];
 
 export function DashboardView() {
-  const { history, products } = usePOS();
+  const { history, products, customers } = usePOS();
 
   const totalRevenue = history.reduce((acc, t) => acc + t.total, 0);
   const totalCost = history.reduce((acc, t) => {
@@ -39,6 +41,38 @@ export function DashboardView() {
   }, 0);
 
   const grossProfit = totalRevenue - totalCost;
+
+  // Calculate Top 5 Customers
+  const customerSpending = history.reduce((acc: any, t) => {
+    if (t.customerId) {
+      acc[t.customerId] = (acc[t.customerId] || 0) + t.total;
+    }
+    return acc;
+  }, {});
+
+  const topCustomers = Object.entries(customerSpending)
+    .map(([id, total]: any) => ({
+      customer: customers.find(c => c.id === id),
+      total
+    }))
+    .filter(item => !!item.customer)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  // Calculate Sales by PriceList (Special vs Normal)
+  let specialPriceTotal = 0;
+  let normalPriceTotal = 0;
+  history.forEach(t => {
+    t.items.forEach(item => {
+      if (item.priceListId) specialPriceTotal += item.price * item.quantity;
+      else normalPriceTotal += item.price * item.quantity;
+    });
+  });
+
+  const priceListData = [
+    { name: 'Regular Sales', value: normalPriceTotal, fill: '#3D8AF5' },
+    { name: 'Pricelist Sales', value: specialPriceTotal, fill: '#10b981' }
+  ];
 
   return (
     <div className="flex flex-col gap-8 pb-12">
@@ -71,7 +105,7 @@ export function DashboardView() {
         />
         <StatCard 
           title="Total Customers" 
-          value="1,205" 
+          value={customers.length.toString()} 
           trend="+8.4%" 
           icon={Users} 
           color="bg-orange-500"
@@ -79,6 +113,7 @@ export function DashboardView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Weekly Chart */}
         <Card className="rounded-[2.5rem] border-none shadow-sm p-6 bg-white">
           <CardHeader className="px-0">
             <CardTitle className="text-lg font-bold">Weekly Sales Revenue</CardTitle>
@@ -104,7 +139,71 @@ export function DashboardView() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[2.5rem] border-none shadow-sm p-6 bg-white">
+        {/* Top Customers & Pricelist Sales */}
+        <div className="grid grid-cols-1 gap-8">
+           <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+            <div className="flex items-center justify-between mb-8">
+              <CardTitle className="text-xl font-black flex items-center gap-2">
+                <Trophy className="text-orange-500 h-5 w-5" /> Top 5 Customers
+              </CardTitle>
+            </div>
+            <div className="space-y-6">
+              {topCustomers.map(({ customer, total }: any, idx) => (
+                <div key={customer.id} className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl hover:bg-muted/20 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="font-black text-muted-foreground w-4">{idx + 1}</div>
+                    <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                      <AvatarFallback className="bg-primary text-white font-bold">{customer.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-black text-sm">{customer.name}</p>
+                      <p className="text-[10px] text-muted-foreground font-bold">{customer.phone}</p>
+                    </div>
+                  </div>
+                  <p className="font-black text-primary">${total.toFixed(2)}</p>
+                </div>
+              ))}
+              {topCustomers.length === 0 && (
+                <div className="text-center py-10 opacity-30">
+                   <Users className="h-12 w-12 mx-auto mb-2" />
+                   <p className="font-bold">No customer data yet</p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="lg:col-span-1 rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
+          <CardHeader className="px-0 pt-0">
+             <CardTitle className="text-xl font-black flex items-center gap-2">
+                <Tags className="text-primary h-5 w-5" /> Pricelist Impact
+             </CardTitle>
+          </CardHeader>
+          <CardContent className="px-0 h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={priceListData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} style={{ fontSize: '10px', fontWeight: 'bold' }} />
+                <Tooltip 
+                   cursor={{fill: '#f8fafc'}}
+                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+          <div className="mt-4 p-4 bg-primary/5 rounded-2xl">
+             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Pricelist Sales Ratio</p>
+             <p className="text-2xl font-black">
+                {specialPriceTotal > 0 ? ((specialPriceTotal / (totalRevenue || 1)) * 100).toFixed(1) : 0}%
+             </p>
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm p-6 bg-white">
           <CardHeader className="px-0">
             <CardTitle className="text-lg font-bold">Orders Volume</CardTitle>
           </CardHeader>

@@ -3,14 +3,14 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Plus, Package, Tag } from 'lucide-react';
+import { Plus, Package, Tag, Layers } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 export function ProductGrid() {
-  const { activeCategory, setActiveCategory, searchQuery, addToCart, products, categories, cart } = usePOS();
+  const { activeCategory, setActiveCategory, searchQuery, addToCart, products, categories, cart, priceLists } = usePOS();
 
   const filtered = products.filter(p => {
     const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
@@ -22,9 +22,19 @@ export function ProductGrid() {
     return matchesCategory && matchesSearch;
   });
 
-  const getStockLeft = (product: Product) => {
+  const getStockLeft = (product: any) => {
     const inCart = cart.find(item => item.productId === product.id);
     return product.onHandQty - (inCart ? inCart.quantity : 0);
+  };
+
+  const getActivePriceList = (productId: string) => {
+    const now = new Date();
+    return priceLists.find(pl => 
+      pl.enabled && 
+      pl.productId === productId &&
+      new Date(pl.startDate) <= now &&
+      new Date(pl.endDate) >= now
+    );
   };
 
   return (
@@ -53,6 +63,7 @@ export function ProductGrid() {
           filtered.map((product) => {
             const stockLeft = getStockLeft(product);
             const isOutOfStock = stockLeft <= 0;
+            const activePriceList = getActivePriceList(product.id);
 
             return (
               <Card
@@ -91,11 +102,32 @@ export function ProductGrid() {
                   <div>
                     <div className="flex justify-between items-start gap-4 mb-2">
                       <h3 className="text-xl font-black group-hover:text-primary transition-colors line-clamp-1 flex-1">{product.name}</h3>
-                      <span className="text-xl font-black text-primary">${product.price.toFixed(2)}</span>
+                      <div className="text-right">
+                        <span className="text-xl font-black text-primary">${product.price.toFixed(2)}</span>
+                        {activePriceList && <p className="text-[9px] text-accent font-bold mt-1 uppercase tracking-tighter">Tiered Pricing Active</p>}
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] leading-relaxed mb-6 font-medium">
                       {product.description}
                     </p>
+
+                    {/* Price List Tiers Display */}
+                    {activePriceList && (
+                      <div className="mb-6 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Layers className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-primary">Volume Discounts</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {activePriceList.tiers.map((tier, idx) => (
+                            <div key={idx} className="bg-white px-2.5 py-1.5 rounded-xl text-[10px] font-bold border shadow-sm flex flex-col items-center min-w-[50px]">
+                              <span className="text-muted-foreground">{tier.minQty}-{tier.maxQty} qty</span>
+                              <span className="text-primary font-black">${tier.price.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                      <div className="flex flex-col gap-1">
