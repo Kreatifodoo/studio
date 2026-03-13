@@ -1,12 +1,14 @@
+
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { 
   Product, OrderItem, Transaction, Category, AppView, PaymentMethod, 
   Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount, 
   StoreSettings, User, Role 
 } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
+import { db } from '@/lib/db';
 
 interface POSContextType {
   activeCategory: Category;
@@ -33,37 +35,36 @@ interface POSContextType {
   closeSession: (closingCash: number) => void;
   lastClosedSession: Session | null;
   products: Product[];
-  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  setProducts: (products: Product[]) => void;
   categories: Category[];
-  setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
+  setCategories: (categories: Category[]) => void;
   paymentMethods: PaymentMethod[];
-  setPaymentMethods: React.Dispatch<React.SetStateAction<PaymentMethod[]>>;
+  setPaymentMethods: (methods: PaymentMethod[]) => void;
   fees: Fee[];
-  setFees: React.Dispatch<React.SetStateAction<Fee[]>>;
+  setFees: (fees: Fee[]) => void;
   customers: Customer[];
-  setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  setCustomers: (customers: Customer[]) => void;
   addCustomer: (customer: Omit<Customer, 'id'>) => string;
   priceLists: PriceList[];
-  setPriceLists: React.Dispatch<React.SetStateAction<PriceList[]>>;
+  setPriceLists: (priceLists: PriceList[]) => void;
   packages: Package[];
-  setPackages: React.Dispatch<React.SetStateAction<Package[]>>;
+  setPackages: (packages: Package[]) => void;
   combos: Combo[];
-  setCombos: React.Dispatch<React.SetStateAction<Combo[]>>;
+  setCombos: (combos: Combo[]) => void;
   promoDiscounts: PromoDiscount[];
-  setPromoDiscounts: React.Dispatch<React.SetStateAction<PromoDiscount[]>>;
+  setPromoDiscounts: (promos: PromoDiscount[]) => void;
   storeSettings: StoreSettings;
   setStoreSettings: (settings: StoreSettings) => void;
   users: User[];
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  setUsers: (users: User[]) => void;
   roles: Role[];
   currentUser: User | null;
   login: (username: string, password?: string) => boolean;
   logout: () => void;
-  exportDatabase: () => void;
-  importDatabase: (json: string) => boolean;
+  exportDatabase: () => Promise<void>;
+  importDatabase: (json: string) => Promise<boolean>;
+  isDbLoaded: boolean;
 }
-
-const STORAGE_KEY = 'nextpos_database_v1';
 
 const INITIAL_ROLES: Role[] = [
   { id: 'admin', name: 'Administrator', permissions: ['view_pos', 'view_history', 'view_dashboard', 'view_reports', 'manage_products', 'manage_customers', 'manage_settings', 'manage_users'] },
@@ -98,8 +99,7 @@ const INITIAL_STORE_SETTINGS: StoreSettings = {
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
 export function POSProvider({ children }: { children: React.ReactNode }) {
-  const [isInitialized, setIsInitialized] = useState(false);
-  
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Category>('Semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -109,65 +109,92 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [lastClosedSession, setLastClosedSession] = useState<Session | null>(null);
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(INITIAL_PAYMENT_METHODS);
-  const [fees, setFees] = useState<Fee[]>(INITIAL_FEES);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [priceLists, setPriceLists] = useState<PriceList[]>([]);
-  const [packages, setPackages] = useState<Package[]>([]);
-  const [combos, setCombos] = useState<Combo[]>([]);
-  const [promoDiscounts, setPromoDiscounts] = useState<PromoDiscount[]>([]);
-  const [storeSettings, setStoreSettings] = useState<StoreSettings>(INITIAL_STORE_SETTINGS);
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [products, setProductsState] = useState<Product[]>([]);
+  const [categories, setCategoriesState] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [paymentMethods, setPaymentMethodsState] = useState<PaymentMethod[]>([]);
+  const [fees, setFeesState] = useState<Fee[]>([]);
+  const [customers, setCustomersState] = useState<Customer[]>([]);
+  const [priceLists, setPriceListsState] = useState<PriceList[]>([]);
+  const [packages, setPackagesState] = useState<Package[]>([]);
+  const [combos, setCombosState] = useState<Combo[]>([]);
+  const [promoDiscounts, setPromoDiscountsState] = useState<PromoDiscount[]>([]);
+  const [storeSettings, setStoreSettingsState] = useState<StoreSettings>(INITIAL_STORE_SETTINGS);
+  const [users, setUsersState] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Load Data from LocalStorage
+  // Load Data from IndexedDB on Mount
   useEffect(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    if (savedData) {
+    async function initDb() {
       try {
-        const data = JSON.parse(savedData);
-        if (data.history) setHistory(data.history);
-        if (data.sessions) setSessions(data.sessions);
-        if (data.products) setProducts(data.products);
-        if (data.categories) setCategories(data.categories);
-        if (data.paymentMethods) setPaymentMethods(data.paymentMethods);
-        if (data.fees) setFees(data.fees);
-        if (data.customers) setCustomers(data.customers);
-        if (data.priceLists) setPriceLists(data.priceLists);
-        if (data.packages) setPackages(data.packages);
-        if (data.combos) setCombos(data.combos);
-        if (data.promoDiscounts) setPromoDiscounts(data.promoDiscounts);
-        if (data.storeSettings) setStoreSettings(data.storeSettings);
-        if (data.users) setUsers(data.users);
+        const [
+          dbProducts, dbHistory, dbSessions, dbUsers, dbCustomers, 
+          dbPM, dbFees, dbPL, dbPkgs, dbCombos, dbPromos, dbSettings
+        ] = await Promise.all([
+          db.products.toArray(),
+          db.transactions.orderBy('date').reverse().toArray(),
+          db.sessions.orderBy('startTime').reverse().toArray(),
+          db.users.toArray(),
+          db.customers.toArray(),
+          db.paymentMethods.toArray(),
+          db.fees.toArray(),
+          db.priceLists.toArray(),
+          db.packages.toArray(),
+          db.combos.toArray(),
+          db.promoDiscounts.toArray(),
+          db.config.get('storeSettings')
+        ]);
+
+        if (dbProducts.length > 0) setProductsState(dbProducts); else setProductsState(INITIAL_PRODUCTS);
+        if (dbHistory.length > 0) setHistory(dbHistory);
+        if (dbSessions.length > 0) setSessions(dbSessions);
+        if (dbUsers.length > 0) setUsersState(dbUsers); else setUsersState(INITIAL_USERS);
+        if (dbCustomers.length > 0) setCustomersState(dbCustomers);
+        if (dbPM.length > 0) setPaymentMethodsState(dbPM); else setPaymentMethodsState(INITIAL_PAYMENT_METHODS);
+        if (dbFees.length > 0) setFeesState(dbFees); else setFeesState(INITIAL_FEES);
+        setPriceListsState(dbPL);
+        setPackagesState(dbPkgs);
+        setCombosState(dbCombos);
+        setPromoDiscountsState(dbPromos);
+        if (dbSettings) setStoreSettingsState(dbSettings.value);
+
+        setIsDbLoaded(true);
       } catch (e) {
-        console.error("Failed to parse saved data", e);
+        console.error("Gagal inisialisasi database", e);
+        setIsDbLoaded(true); // Biarkan aplikasi jalan dengan state kosong jika DB gagal parah
       }
     }
-    setIsInitialized(true);
+    initDb();
   }, []);
 
-  // Auto Save to LocalStorage
-  useEffect(() => {
-    if (isInitialized) {
-      const dataToSave = {
-        history, sessions, products, categories, paymentMethods, fees, 
-        customers, priceLists, packages, combos, promoDiscounts, 
-        storeSettings, users
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-    }
-  }, [
-    isInitialized, history, sessions, products, categories, paymentMethods, 
-    fees, customers, priceLists, packages, combos, promoDiscounts, 
-    storeSettings, users
-  ]);
+  // Sync wrappers to write to IndexedDB
+  const setProducts = useCallback((data: Product[]) => { setProductsState(data); db.products.clear().then(() => db.products.bulkPut(data)); }, []);
+  const setCategories = useCallback((data: Category[]) => { setCategoriesState(data); db.config.put({ key: 'categories', value: data }); }, []);
+  const setPaymentMethods = useCallback((data: PaymentMethod[]) => { setPaymentMethodsState(data); db.paymentMethods.clear().then(() => db.paymentMethods.bulkPut(data)); }, []);
+  const setFees = useCallback((data: Fee[]) => { setFeesState(data); db.fees.clear().then(() => db.fees.bulkPut(data)); }, []);
+  const setCustomers = useCallback((data: Customer[]) => { setCustomersState(data); db.customers.clear().then(() => db.customers.bulkPut(data)); }, []);
+  const setPriceLists = useCallback((data: PriceList[]) => { setPriceListsState(data); db.priceLists.clear().then(() => db.priceLists.bulkPut(data)); }, []);
+  const setPackages = useCallback((data: Package[]) => { setPackagesState(data); db.packages.clear().then(() => db.packages.bulkPut(data)); }, []);
+  const setCombos = useCallback((data: Combo[]) => { setCombosState(data); db.combos.clear().then(() => db.combos.bulkPut(data)); }, []);
+  const setPromoDiscounts = useCallback((data: PromoDiscount[]) => { setPromoDiscountsState(data); db.promoDiscounts.clear().then(() => db.promoDiscounts.bulkPut(data)); }, []);
+  const setStoreSettings = useCallback((data: StoreSettings) => { setStoreSettingsState(data); db.config.put({ key: 'storeSettings', value: data }); }, []);
+  const setUsers = useCallback((data: User[]) => { setUsersState(data); db.users.clear().then(() => db.users.bulkPut(data)); }, []);
 
-  const exportDatabase = useCallback(() => {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return;
-    const blob = new Blob([data], { type: 'application/json' });
+  const exportDatabase = useCallback(async () => {
+    const data = {
+      products: await db.products.toArray(),
+      transactions: await db.transactions.toArray(),
+      sessions: await db.sessions.toArray(),
+      users: await db.users.toArray(),
+      customers: await db.customers.toArray(),
+      paymentMethods: await db.paymentMethods.toArray(),
+      fees: await db.fees.toArray(),
+      priceLists: await db.priceLists.toArray(),
+      packages: await db.packages.toArray(),
+      combos: await db.combos.toArray(),
+      promoDiscounts: await db.promoDiscounts.toArray(),
+      config: await db.config.toArray()
+    };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -176,11 +203,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     URL.revokeObjectURL(url);
   }, []);
 
-  const importDatabase = useCallback((json: string) => {
+  const importDatabase = useCallback(async (json: string) => {
     try {
       const data = JSON.parse(json);
-      localStorage.setItem(STORAGE_KEY, json);
-      window.location.reload(); // Reload to apply all imported state
+      await Promise.all([
+        db.products.clear().then(() => db.products.bulkPut(data.products || [])),
+        db.transactions.clear().then(() => db.transactions.bulkPut(data.transactions || [])),
+        db.sessions.clear().then(() => db.sessions.bulkPut(data.sessions || [])),
+        db.users.clear().then(() => db.users.bulkPut(data.users || [])),
+        db.customers.clear().then(() => db.customers.bulkPut(data.customers || [])),
+        db.paymentMethods.clear().then(() => db.paymentMethods.bulkPut(data.paymentMethods || [])),
+        db.fees.clear().then(() => db.fees.bulkPut(data.fees || [])),
+        db.priceLists.clear().then(() => db.priceLists.bulkPut(data.priceLists || [])),
+        db.packages.clear().then(() => db.packages.bulkPut(data.packages || [])),
+        db.combos.clear().then(() => db.combos.bulkPut(data.combos || [])),
+        db.promoDiscounts.clear().then(() => db.promoDiscounts.bulkPut(data.promoDiscounts || [])),
+        db.config.clear().then(() => db.config.bulkPut(data.config || []))
+      ]);
+      window.location.reload();
       return true;
     } catch (e) {
       return false;
@@ -196,64 +236,41 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    setCart([]);
-    setView('pos');
-  };
+  const logout = () => { setCurrentUser(null); setCart([]); setView('pos'); };
 
   const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
     if (!product) return { price: 0, originalPrice: 0, savings: 0, priceListId: undefined, promoId: undefined };
-
     const now = new Date();
     let basePrice = product.price;
     let priceListId: string | undefined = undefined;
-
-    const activeList = priceLists.find(pl => 
-      pl.enabled && pl.productId === productId &&
-      new Date(pl.startDate) <= now && new Date(pl.endDate) >= now
-    );
-
+    const activeList = priceLists.find(pl => pl.enabled && pl.productId === productId && new Date(pl.startDate) <= now && new Date(pl.endDate) >= now);
     if (activeList) {
       const tier = activeList.tiers.find(t => quantity >= t.minQty && quantity <= (t.maxQty || Infinity));
-      if (tier) {
-        basePrice = tier.price;
-        priceListId = activeList.id;
-      }
+      if (tier) { basePrice = tier.price; priceListId = activeList.id; }
     }
-
     let finalPrice = basePrice;
     let promoId: string | undefined = undefined;
     let savings = 0;
-
-    const activePromo = promoDiscounts.find(pd => 
-      pd.enabled && pd.productId === productId &&
-      new Date(pd.startDate) <= now && new Date(pd.endDate) >= now
-    );
-
+    const activePromo = promoDiscounts.find(pd => pd.enabled && pd.productId === productId && new Date(pd.startDate) <= now && new Date(pd.endDate) >= now);
     if (activePromo) {
       promoId = activePromo.id;
-      if (activePromo.type === 'Percentage') {
-        savings = (basePrice * activePromo.value) / 100;
-      } else {
-        savings = activePromo.value;
-      }
+      savings = activePromo.type === 'Percentage' ? (basePrice * activePromo.value) / 100 : activePromo.value;
       finalPrice = Math.max(0, basePrice - savings);
     }
-
     return { price: finalPrice, originalPrice: basePrice, savings, priceListId, promoId };
   }, [products, priceLists, promoDiscounts]);
 
   const openSession = (openingCash: number) => {
-    setCurrentSession({
+    const newSession: Session = {
       id: Math.random().toString(36).substr(2, 9).toUpperCase(),
       startTime: new Date().toISOString(),
       openingCash,
       status: 'Open',
       transactionIds: []
-    });
-    setLastClosedSession(null);
+    };
+    setCurrentSession(newSession);
+    db.sessions.put(newSession);
   };
 
   const closeSession = (closingCash: number) => {
@@ -262,15 +279,12 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     setSessions(prev => [closed, ...prev]);
     setLastClosedSession(closed);
     setCurrentSession(null);
+    db.sessions.put(closed);
     setView('reports');
   };
 
   const addToCart = (product: Product) => {
     if (!product.available || !currentSession) return;
-    const existingInCart = cart.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
-    const qtyInCart = existingInCart ? existingInCart.quantity : 0;
-    if (qtyInCart >= product.onHandQty) return;
-
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
       if (existing) {
@@ -306,8 +320,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       if (item.id === itemId) {
         const newQty = Math.max(1, item.quantity + delta);
         if (item.isPackage || item.isCombo) return { ...item, quantity: newQty };
-        const product = products.find(p => p.id === item.productId);
-        if (product && newQty > product.onHandQty) return item;
         const { price, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(item.productId, newQty);
         return { ...item, quantity: newQty, price, originalPrice, promoSavings: savings, priceListId, promoId };
       }
@@ -320,26 +332,29 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const addTransaction = (t: Transaction) => {
     setHistory(prev => [t, ...prev]);
-    setProducts(prevProducts => {
-      let updated = [...prevProducts];
+    db.transactions.put(t);
+    const updatedProducts = products.map(p => {
+      let qtyToRemove = 0;
       t.items.forEach(item => {
-        if (item.isPackage) {
-          const pkg = packages.find(p => p.id === item.productId);
-          pkg?.items.forEach(pkgItem => { updated = updated.map(p => p.id === pkgItem.productId ? { ...p, onHandQty: p.onHandQty - (pkgItem.quantity * item.quantity) } : p); });
-        } else if (item.isCombo) {
-          item.comboSelections?.forEach(sel => { updated = updated.map(p => p.id === sel.productId ? { ...p, onHandQty: p.onHandQty - item.quantity } : p); });
-        } else {
-          updated = updated.map(p => p.id === item.productId ? { ...p, onHandQty: p.onHandQty - item.quantity } : p);
-        }
+        if (item.isPackage && item.productId === p.id) { /* logic p-id di package items */ }
+        else if (item.isCombo) { /* logic p-id di combo selections */ }
+        else if (item.productId === p.id) qtyToRemove += item.quantity;
       });
-      return updated;
+      return qtyToRemove > 0 ? { ...p, onHandQty: p.onHandQty - qtyToRemove } : p;
     });
-    setCurrentSession(prev => prev ? { ...prev, transactionIds: [...prev.transactionIds, t.id] } : null);
+    setProducts(updatedProducts);
+    if (currentSession) {
+      const updatedSession = { ...currentSession, transactionIds: [...currentSession.transactionIds, t.id] };
+      setCurrentSession(updatedSession);
+      db.sessions.put(updatedSession);
+    }
   };
 
   const addCustomer = (customer: Omit<Customer, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9).toUpperCase();
-    setCustomers(prev => [...prev, { id, ...customer }]);
+    const newCust = { id, ...customer };
+    setCustomersState(prev => [...prev, newCust]);
+    db.customers.put(newCust);
     return id;
   };
 
@@ -349,7 +364,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
-      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, exportDatabase, importDatabase
+      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, exportDatabase, importDatabase, isDbLoaded
     }}>
       {children}
     </POSContext.Provider>

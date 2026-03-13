@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -15,16 +16,23 @@ import { LoginView } from '@/components/pos/LoginView';
 import { cn } from '@/lib/utils';
 
 function POSLayout() {
-  const { view, currentSession, currentUser } = usePOS();
+  const { view, currentSession, currentUser, isDbLoaded } = usePOS();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Prevent hydration issues by only rendering once client is ready
-  if (!isClient) {
-    return <div className="min-h-screen bg-[#F9FBFF]" />;
+  // Prevent hydration issues and wait for DB
+  if (!isClient || !isDbLoaded) {
+    return (
+      <div className="min-h-screen bg-[#F9FBFF] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Memuat Database...</p>
+        </div>
+      </div>
+    );
   }
 
   // Step 1: Check if user is logged in
