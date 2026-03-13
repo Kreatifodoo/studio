@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 
 export function Sidebar() {
-  const { view, setView, currentSession, closeSession, history, lastClosedSession } = usePOS();
+  const { view, setView, currentSession, closeSession, history, lastClosedSession, logout, currentUser } = usePOS();
   const [closingCash, setClosingCash] = useState('');
   const [showSummaryPreview, setShowSummaryPreview] = useState(false);
 
@@ -161,7 +161,10 @@ export function Sidebar() {
           </AlertDialog>
         )}
         
-        <button className="p-4 rounded-2xl text-white/30 hover:bg-destructive/10 hover:text-destructive transition-all duration-300 w-full flex flex-col items-center">
+        <button 
+          onClick={logout}
+          className="p-4 rounded-2xl text-white/30 hover:bg-destructive/10 hover:text-destructive transition-all duration-300 w-full flex flex-col items-center"
+        >
           <LogOut className="h-6 w-6" />
           <span className="text-[9px] font-bold uppercase tracking-widest mt-1">Keluar</span>
         </button>

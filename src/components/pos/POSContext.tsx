@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
@@ -58,7 +57,8 @@ interface POSContextType {
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
   roles: Role[];
   currentUser: User | null;
-  setCurrentUser: (user: User | null) => void;
+  login: (username: string, password?: string) => boolean;
+  logout: () => void;
 }
 
 const INITIAL_ROLES: Role[] = [
@@ -68,27 +68,27 @@ const INITIAL_ROLES: Role[] = [
 ];
 
 const INITIAL_USERS: User[] = [
-  { id: 'u1', username: 'alex', name: 'Alex Kasir', email: 'alex@nextpos.com', roleId: 'admin', status: 'Active', avatarUrl: 'https://picsum.photos/seed/alex/100/100' },
-  { id: 'u2', username: 'budi', name: 'Budi Staf', email: 'budi@nextpos.com', roleId: 'cashier', status: 'Active', avatarUrl: 'https://picsum.photos/seed/budi/100/100' },
+  { id: 'u1', username: 'admin', name: 'Admin Utama', email: 'admin@nextpos.com', roleId: 'admin', status: 'Active', avatarUrl: 'https://picsum.photos/seed/admin/100/100', password: 'password' },
+  { id: 'u2', username: 'kasir1', name: 'Budi Kasir', email: 'budi@nextpos.com', roleId: 'cashier', status: 'Active', avatarUrl: 'https://picsum.photos/seed/kasir1/100/100', password: 'password' },
 ];
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
-  { id: 'pm_1', name: 'Tunai', icon: 'Banknote', description: 'Pembayaran di kasir', enabled: true },
+  { id: 'pm_1', name: 'Tunai', icon: 'Banknote', description: 'Pembayaran tunai di laci', enabled: true },
   { id: 'pm_2', name: 'Kartu Debit / Kredit', icon: 'CreditCard', description: 'Visa, Mastercard, GPN', enabled: true },
-  { id: 'pm_3', name: 'Dompet Digital', icon: 'Smartphone', description: 'QRIS, GoPay, OVO, ShopeePay', enabled: true },
+  { id: 'pm_3', name: 'Dompet Digital (QRIS)', icon: 'Smartphone', description: 'GoPay, OVO, ShopeePay, Dana', enabled: true },
 ];
 
 const INITIAL_FEES: Fee[] = [
-  { id: 'f_1', name: 'Pajak (PPN)', type: 'Tax', value: 11, enabled: true },
-  { id: 'f_2', name: 'Biaya Layanan', type: 'Service', value: 5, enabled: true },
+  { id: 'f_1', name: 'PPN 11%', type: 'Tax', value: 11, enabled: true },
+  { id: 'f_2', name: 'Biaya Layanan', type: 'Service', value: 2, enabled: true },
 ];
 
 const INITIAL_STORE_SETTINGS: StoreSettings = {
-  name: 'NextPOS Kedai',
+  name: 'NextPOS Modern',
   currencySymbol: 'Rp',
-  address: 'Jalan Modern Avenue No. 88, Distrik Teknologi, Jakarta',
-  headerNote: 'Terima Kasih Telah Berkunjung!',
-  footerNote: 'Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan',
+  address: 'Jl. Boulevard Raya No. 45, Jakarta Selatan',
+  headerNote: 'Terima Kasih Atas Kunjungan Anda!',
+  footerNote: 'Barang yang sudah dibeli tidak dapat dikembalikan.',
   logoUrl: ''
 };
 
@@ -115,8 +115,23 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [promoDiscounts, setPromoDiscounts] = useState<PromoDiscount[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(INITIAL_STORE_SETTINGS);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [currentUser, setCurrentUser] = useState<User | null>(INITIAL_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const roles = useMemo(() => INITIAL_ROLES, []);
+
+  const login = (username: string, password?: string) => {
+    const user = users.find(u => u.username === username && (u.password === password || !password));
+    if (user && user.status === 'Active') {
+      setCurrentUser(user);
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    setCart([]);
+    setView('pos');
+  };
 
   const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
@@ -265,7 +280,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
-      users, setUsers, roles: INITIAL_ROLES, currentUser, setCurrentUser
+      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout
     }}>
       {children}
     </POSContext.Provider>

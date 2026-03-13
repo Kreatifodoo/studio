@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -12,11 +11,18 @@ import { DashboardView } from '@/components/pos/DashboardView';
 import { SettingsView } from '@/components/pos/SettingsView';
 import { OpenSessionView } from '@/components/pos/OpenSessionView';
 import { SessionReportView } from '@/components/pos/SessionReportView';
+import { LoginView } from '@/components/pos/LoginView';
 import { cn } from '@/lib/utils';
 
 function POSLayout() {
-  const { view, currentSession } = usePOS();
+  const { view, currentSession, currentUser } = usePOS();
 
+  // Step 1: Check if user is logged in
+  if (!currentUser) {
+    return <LoginView />;
+  }
+
+  // Step 2: Check if session is open for POS view
   if (!currentSession && view === 'pos') {
     return (
       <div className="flex min-h-screen bg-[#F9FBFF] font-poppins">
