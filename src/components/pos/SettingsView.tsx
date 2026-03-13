@@ -30,11 +30,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export function SettingsView() {
   const { products, setProducts, categories, setCategories } = usePOS();
+  
+  // Category States
   const [newCategory, setNewCategory] = useState('');
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryFormValue, setCategoryFormValue] = useState('');
+
+  // Product States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-
-  // Form State for Product
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
     price: 0,
@@ -44,6 +49,7 @@ export function SettingsView() {
     image: 'https://picsum.photos/seed/new/400/300'
   });
 
+  // --- Category Handlers ---
   const handleAddCategory = () => {
     if (newCategory && !categories.includes(newCategory as Category)) {
       setCategories([...categories, newCategory as Category]);
@@ -51,11 +57,36 @@ export function SettingsView() {
     }
   };
 
+  const handleOpenEditCategory = (cat: Category) => {
+    setEditingCategory(cat);
+    setCategoryFormValue(cat);
+    setIsCategoryDialogOpen(true);
+  };
+
+  const handleSaveCategory = () => {
+    if (!editingCategory || !categoryFormValue) return;
+    
+    // Update categories list
+    const updatedCategories = categories.map(c => c === editingCategory ? categoryFormValue as Category : c);
+    setCategories(updatedCategories);
+
+    // Update all products using this category
+    const updatedProducts = products.map(p => 
+      p.category === editingCategory ? { ...p, category: categoryFormValue as Category } : p
+    );
+    setProducts(updatedProducts);
+    
+    setIsCategoryDialogOpen(false);
+    setEditingCategory(null);
+  };
+
   const handleDeleteCategory = (cat: Category) => {
     if (cat === 'All') return;
     setCategories(categories.filter(c => c !== cat));
+    // Optional: Reset products in this category to 'Main Course' or similar
   };
 
+  // --- Product Handlers ---
   const handleOpenAddDialog = () => {
     setEditingProduct(null);
     setProductForm({
@@ -77,14 +108,12 @@ export function SettingsView() {
 
   const handleSaveProduct = () => {
     if (editingProduct) {
-      // Update existing product
       setProducts(products.map(p => 
         p.id === editingProduct.id 
           ? { ...editingProduct, ...productForm } as Product 
           : p
       ));
     } else {
-      // Add new product
       const newProd: Product = {
         id: Math.random().toString(36).substr(2, 9),
         name: productForm.name || 'New Product',
@@ -293,21 +322,62 @@ export function SettingsView() {
               </Button>
             </div>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {categories.map((cat) => (
-                <div key={cat} className="flex items-center gap-3 bg-muted/30 pl-6 pr-2 py-2 rounded-2xl border border-muted transition-all hover:border-primary/20">
-                  <span className="font-bold text-sm">{cat}</span>
+                <div key={cat} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white p-3 rounded-xl text-primary font-bold shadow-sm">
+                      {cat.charAt(0)}
+                    </div>
+                    <span className="font-black text-lg">{cat}</span>
+                  </div>
+                  
                   {cat !== 'All' && (
-                    <button 
-                      onClick={() => handleDeleteCategory(cat)}
-                      className="p-2 hover:bg-destructive/10 hover:text-destructive rounded-xl transition-all"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleOpenEditCategory(cat)}
+                        className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
+                      >
+                        <Pencil className="h-5 w-5" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDeleteCategory(cat)}
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               ))}
             </div>
+
+            {/* Edit Category Dialog */}
+            <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+              <DialogContent className="max-w-sm rounded-[2.5rem] p-8">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black">Edit Category</DialogTitle>
+                  <CardDescription>Rename the category. This will also update all linked products.</CardDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <Label className="mb-2 block">Category Name</Label>
+                  <Input 
+                    value={categoryFormValue} 
+                    onChange={(e) => setCategoryFormValue(e.target.value)} 
+                    className="rounded-xl"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleSaveCategory} className="w-full h-12 rounded-xl bg-primary font-bold">
+                    Update Category
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Card>
         </TabsContent>
       </Tabs>
