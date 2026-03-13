@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "item-burger",
+      "description": "Classic beef burger with lettuce and tomato",
+      "imageUrl": "https://picsum.photos/seed/burger1/400/300",
+      "imageHint": "beef burger"
+    },
+    {
+      "id": "item-pizza",
+      "description": "Fresh pepperoni pizza with melting cheese",
+      "imageUrl": "https://picsum.photos/seed/pizza1/400/300",
+      "imageHint": "pepperoni pizza"
+    },
+    {
+      "id": "item-salad",
+      "description": "Garden salad with fresh vegetables",
+      "imageUrl": "https://picsum.photos/seed/salad1/400/300",
+      "imageHint": "garden salad"
+    },
+    {
+      "id": "item-coke",
+      "description": "Cold cola in a glass bottle",
+      "imageUrl": "https://picsum.photos/seed/cola1/400/300",
+      "imageHint": "cola drink"
+    },
+    {
+      "id": "item-coffee",
+      "description": "Hot latte with foam art",
+      "imageUrl": "https://picsum.photos/seed/coffee1/400/300",
+      "imageHint": "latte coffee"
+    },
+    {
+      "id": "item-fries",
+      "description": "Crispy golden french fries",
+      "imageUrl": "https://picsum.photos/seed/fries1/400/300",
+      "imageHint": "french fries"
+    },
+    {
+      "id": "item-pasta",
+      "description": "Spaghetti carbonara with creamy sauce",
+      "imageUrl": "https://picsum.photos/seed/pasta1/400/300",
+      "imageHint": "spaghetti pasta"
+    },
+    {
+      "id": "item-cake",
+      "description": "Chocolate lava cake with icing",
+      "imageUrl": "https://picsum.photos/seed/cake1/400/300",
+      "imageHint": "chocolate cake"
+    }
+  ]
 }
