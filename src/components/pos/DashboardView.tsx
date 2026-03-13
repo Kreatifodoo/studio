@@ -16,7 +16,7 @@ import {
   Area,
   Cell
 } from 'recharts';
-import { TrendingUp, DollarSign, ShoppingBag, Users, Wallet, Trophy, Tags } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingBag, Users, Wallet, Trophy, Tags, Package as PackageIcon, BarChart3 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const data = [
@@ -30,17 +30,51 @@ const data = [
 ];
 
 export function DashboardView() {
-  const { history, products, customers } = usePOS();
+  const { history, products, customers, packages } = usePOS();
 
+  // Basic Totals
   const totalRevenue = history.reduce((acc, t) => acc + t.total, 0);
   const totalCost = history.reduce((acc, t) => {
     return acc + t.items.reduce((itemAcc, item) => {
-      const product = products.find(p => p.id === item.productId);
-      return itemAcc + (product ? product.costPrice * item.quantity : 0);
+      if (item.isPackage) {
+        const pkg = packages.find(p => p.id === item.productId);
+        const pkgCost = pkg?.items.reduce((costAcc, pkgItem) => {
+          const prod = products.find(p => p.id === pkgItem.productId);
+          return costAcc + (prod?.costPrice || 0) * pkgItem.quantity;
+        }, 0) || 0;
+        return itemAcc + (pkgCost * item.quantity);
+      } else {
+        const product = products.find(p => p.id === item.productId);
+        return itemAcc + (product ? product.costPrice * item.quantity : 0);
+      }
     }, 0);
   }, 0);
 
   const grossProfit = totalRevenue - totalCost;
+
+  // Package Performance
+  let packageRevenue = 0;
+  let packageCost = 0;
+  let packageOrders = 0;
+
+  history.forEach(t => {
+    t.items.forEach(item => {
+      if (item.isPackage) {
+        const rev = item.price * item.quantity;
+        packageRevenue += rev;
+        packageOrders += item.quantity;
+        
+        const pkg = packages.find(p => p.id === item.productId);
+        const cost = pkg?.items.reduce((cAcc, pItem) => {
+          const prod = products.find(p => p.id === pItem.productId);
+          return cAcc + (prod?.costPrice || 0) * pItem.quantity;
+        }, 0) || 0;
+        packageCost += (cost * item.quantity);
+      }
+    });
+  });
+
+  const packageProfit = packageRevenue - packageCost;
 
   // Calculate Top 5 Customers
   const customerSpending = history.reduce((acc: any, t) => {
@@ -65,13 +99,14 @@ export function DashboardView() {
   history.forEach(t => {
     t.items.forEach(item => {
       if (item.priceListId) specialPriceTotal += item.price * item.quantity;
-      else normalPriceTotal += item.price * item.quantity;
+      else if (!item.isPackage) normalPriceTotal += item.price * item.quantity;
     });
   });
 
   const priceListData = [
     { name: 'Regular Sales', value: normalPriceTotal, fill: '#3D8AF5' },
-    { name: 'Pricelist Sales', value: specialPriceTotal, fill: '#10b981' }
+    { name: 'Pricelist Sales', value: specialPriceTotal, fill: '#10b981' },
+    { name: 'Package Sales', value: packageRevenue, fill: '#8b5cf6' }
   ];
 
   return (
@@ -112,9 +147,60 @@ export function DashboardView() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Package Insight Section */}
+        <Card className="lg:col-span-1 rounded-[2.5rem] border-none shadow-sm p-8 bg-white overflow-hidden">
+          <div className="flex items-center gap-3 mb-8">
+             <div className="bg-purple-500/10 p-3 rounded-2xl text-purple-600">
+                <PackageIcon className="h-6 w-6" />
+             </div>
+             <div>
+                <CardTitle className="text-xl font-black">Package Insight</CardTitle>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Performance of Bundles</p>
+             </div>
+          </div>
+          
+          <div className="space-y-6">
+             <div className="p-5 bg-purple-50 rounded-[2rem] border border-purple-100/50">
+                <p className="text-[10px] font-black uppercase tracking-widest text-purple-400 mb-1">Package Revenue</p>
+                <p className="text-3xl font-black text-purple-700">${packageRevenue.toFixed(2)}</p>
+                <div className="mt-2 flex items-center gap-1.5">
+                   <BarChart3 className="h-3 w-3 text-purple-400" />
+                   <span className="text-[10px] font-bold text-purple-500">{packageOrders} Packages sold</span>
+                </div>
+             </div>
+
+             <div className="p-5 bg-green-50 rounded-[2rem] border border-green-100/50">
+                <p className="text-[10px] font-black uppercase tracking-widest text-green-400 mb-1">Package Gross Profit</p>
+                <p className="text-3xl font-black text-green-700">${packageProfit.toFixed(2)}</p>
+                <div className="mt-2 flex items-center gap-1.5">
+                   <TrendingUp className="h-3 w-3 text-green-400" />
+                   <span className="text-[10px] font-bold text-green-500">
+                     Margin: {packageRevenue > 0 ? ((packageProfit / packageRevenue) * 100).toFixed(1) : 0}%
+                   </span>
+                </div>
+             </div>
+          </div>
+
+          <div className="mt-8 pt-8 border-t border-dashed">
+             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">Revenue Contribution</p>
+             <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                   <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                   <span className="text-sm font-bold">Package</span>
+                </div>
+                <span className="font-black">
+                   {totalRevenue > 0 ? ((packageRevenue / totalRevenue) * 100).toFixed(1) : 0}%
+                </span>
+             </div>
+             <div className="h-2 bg-muted rounded-full mt-3 overflow-hidden">
+                <div className="h-full bg-purple-500" style={{ width: `${(packageRevenue / (totalRevenue || 1)) * 100}%` }}></div>
+             </div>
+          </div>
+        </Card>
+
         {/* Weekly Chart */}
-        <Card className="rounded-[2.5rem] border-none shadow-sm p-6 bg-white">
+        <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm p-6 bg-white">
           <CardHeader className="px-0">
             <CardTitle className="text-lg font-bold">Weekly Sales Revenue</CardTitle>
           </CardHeader>
@@ -138,47 +224,46 @@ export function DashboardView() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        {/* Top Customers & Pricelist Sales */}
-        <div className="grid grid-cols-1 gap-8">
-           <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-            <div className="flex items-center justify-between mb-8">
-              <CardTitle className="text-xl font-black flex items-center gap-2">
-                <Trophy className="text-orange-500 h-5 w-5" /> Top 5 Customers
-              </CardTitle>
-            </div>
-            <div className="space-y-6">
-              {topCustomers.map(({ customer, total }: any, idx) => (
-                <div key={customer.id} className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl hover:bg-muted/20 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="font-black text-muted-foreground w-4">{idx + 1}</div>
-                    <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                      <AvatarFallback className="bg-primary text-white font-bold">{customer.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-black text-sm">{customer.name}</p>
-                      <p className="text-[10px] text-muted-foreground font-bold">{customer.phone}</p>
-                    </div>
-                  </div>
-                  <p className="font-black text-primary">${total.toFixed(2)}</p>
-                </div>
-              ))}
-              {topCustomers.length === 0 && (
-                <div className="text-center py-10 opacity-30">
-                   <Users className="h-12 w-12 mx-auto mb-2" />
-                   <p className="font-bold">No customer data yet</p>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-1 rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Top Customers */}
+        <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+          <div className="flex items-center justify-between mb-8">
+            <CardTitle className="text-xl font-black flex items-center gap-2">
+              <Trophy className="text-orange-500 h-5 w-5" /> Top 5 Customers
+            </CardTitle>
+          </div>
+          <div className="space-y-6">
+            {topCustomers.map(({ customer, total }: any, idx) => (
+              <div key={customer.id} className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl hover:bg-muted/20 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="font-black text-muted-foreground w-4">{idx + 1}</div>
+                  <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                    <AvatarFallback className="bg-primary text-white font-bold">{customer.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-black text-sm">{customer.name}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold">{customer.phone}</p>
+                  </div>
+                </div>
+                <p className="font-black text-primary">${total.toFixed(2)}</p>
+              </div>
+            ))}
+            {topCustomers.length === 0 && (
+              <div className="text-center py-10 opacity-30">
+                 <Users className="h-12 w-12 mx-auto mb-2" />
+                 <p className="font-bold">No customer data yet</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Pricelist & Impact Chart */}
+        <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
           <CardHeader className="px-0 pt-0">
              <CardTitle className="text-xl font-black flex items-center gap-2">
-                <Tags className="text-primary h-5 w-5" /> Pricelist Impact
+                <Tags className="text-primary h-5 w-5" /> Sales Performance Mix
              </CardTitle>
           </CardHeader>
           <CardContent className="px-0 h-[300px]">
@@ -191,38 +276,47 @@ export function DashboardView() {
                    cursor={{fill: '#f8fafc'}}
                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                  {priceListData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
-          <div className="mt-4 p-4 bg-primary/5 rounded-2xl">
-             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Pricelist Sales Ratio</p>
-             <p className="text-2xl font-black">
-                {specialPriceTotal > 0 ? ((specialPriceTotal / (totalRevenue || 1)) * 100).toFixed(1) : 0}%
+          <div className="mt-4 p-4 bg-primary/5 rounded-2xl flex justify-between items-end">
+             <div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Non-Regular Sales Impact</p>
+                <p className="text-2xl font-black">
+                   {totalRevenue > 0 ? (((specialPriceTotal + packageRevenue) / totalRevenue) * 100).toFixed(1) : 0}%
+                </p>
+             </div>
+             <p className="text-[9px] font-medium text-muted-foreground max-w-[150px] text-right">
+               Contribution from Special Price Lists and Bundled Packages.
              </p>
           </div>
         </Card>
-
-        <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm p-6 bg-white">
-          <CardHeader className="px-0">
-            <CardTitle className="text-lg font-bold">Orders Volume</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px] px-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
-                <Tooltip 
-                  cursor={{fill: '#f8fafc'}}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="orders" fill="#75E6F0" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
       </div>
+
+      <Card className="rounded-[2.5rem] border-none shadow-sm p-6 bg-white">
+        <CardHeader className="px-0">
+          <CardTitle className="text-lg font-bold">Orders Volume</CardTitle>
+        </CardHeader>
+        <CardContent className="h-[300px] px-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} />
+              <YAxis axisLine={false} tickLine={false} />
+              <Tooltip 
+                cursor={{fill: '#f8fafc'}}
+                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              />
+              <Bar dataKey="orders" fill="#75E6F0" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 }
