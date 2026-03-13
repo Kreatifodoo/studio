@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -38,7 +37,10 @@ import {
   Lock,
   Eye,
   EyeOff,
-  AlertTriangle
+  AlertTriangle,
+  Database,
+  RefreshCw,
+  FileJson
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -61,7 +63,6 @@ import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import Image from 'next/image';
 
 export function SettingsView() {
   const { 
@@ -76,12 +77,14 @@ export function SettingsView() {
     promoDiscounts, setPromoDiscounts,
     storeSettings, setStoreSettings,
     users, setUsers,
-    roles, currentUser
+    roles, currentUser,
+    exportDatabase, importDatabase
   } = usePOS();
   
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const dbImportRef = useRef<HTMLInputElement>(null);
   const [importType, setImportType] = useState<'products' | 'pricelist' | 'promo' | 'package' | 'combo' | null>(null);
 
   const [activeTab, setActiveTab] = useState('general');
@@ -143,6 +146,7 @@ export function SettingsView() {
       title: "Sistem",
       items: [
         { id: 'general', icon: Store, label: 'Informasi Toko' },
+        { id: 'backup', icon: Database, label: 'Backup & Restore' },
         { id: 'users', icon: UserCog, label: 'Manajemen User' },
         { id: 'customers', icon: Users, label: 'Data Pelanggan' },
         { id: 'categories', icon: Layers, label: 'Kategori Produk' },
@@ -154,6 +158,29 @@ export function SettingsView() {
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
+  const handleBackup = () => {
+    exportDatabase();
+    toast({ title: "Backup Berhasil", description: "Database telah diekspor ke file JSON." });
+  };
+
+  const handleDbFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const json = event.target?.result as string;
+      const success = importDatabase(json);
+      if (success) {
+        toast({ title: "Restore Berhasil", description: "Database aplikasi telah diperbarui." });
+      } else {
+        toast({ variant: "destructive", title: "Restore Gagal", description: "Format file tidak valid." });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleDownloadTemplate = (type: string) => {
@@ -623,6 +650,13 @@ export function SettingsView() {
         accept="image/*" 
         onChange={handleLogoUpload}
       />
+      <input 
+        type="file" 
+        ref={dbImportRef} 
+        className="hidden" 
+        accept=".json" 
+        onChange={handleDbFileSelect}
+      />
       
       <div className="flex flex-col gap-1">
         <h2 className="text-3xl font-black">Pengaturan</h2>
@@ -736,6 +770,50 @@ export function SettingsView() {
                         className="h-12 rounded-xl border-2" 
                       />
                     </div>
+                  </div>
+                </div>
+              </SettingsSection>
+            </Card>
+          )}
+
+          {activeTab === 'backup' && (
+            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+              <SettingsSection icon={Database} title="Backup & Restore" description="Simpan dan pulihkan database aplikasi">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8">
+                  <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-primary/10 flex flex-col items-center text-center gap-6">
+                    <div className="bg-white p-6 rounded-[2rem] shadow-sm text-primary">
+                      <Download className="h-10 w-10" />
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black mb-2">Backup Database</h4>
+                      <p className="text-sm text-muted-foreground font-medium">Ekspor seluruh data aplikasi ke dalam file .json untuk cadangan.</p>
+                    </div>
+                    <Button onClick={handleBackup} className="w-full h-14 rounded-2xl bg-primary font-black text-lg gap-2">
+                      <FileJson className="h-5 w-5" /> Download Backup
+                    </Button>
+                  </div>
+
+                  <div className="p-8 bg-accent/5 rounded-[2.5rem] border-2 border-accent/10 flex flex-col items-center text-center gap-6">
+                    <div className="bg-white p-6 rounded-[2rem] shadow-sm text-accent">
+                      <RefreshCw className="h-10 w-10" />
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black mb-2">Restore Database</h4>
+                      <p className="text-sm text-muted-foreground font-medium">Pulihkan data dari file backup (.json). <span className="text-destructive font-black">Data saat ini akan diganti!</span></p>
+                    </div>
+                    <Button onClick={() => dbImportRef.current?.click()} variant="outline" className="w-full h-14 rounded-2xl border-2 font-black text-lg gap-2">
+                      <Upload className="h-5 w-5" /> Pilih File Backup
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="mt-12 p-6 bg-muted/20 rounded-3xl border flex items-start gap-4">
+                  <AlertTriangle className="h-6 w-6 text-orange-500 mt-1" />
+                  <div>
+                    <p className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-1">Penting</p>
+                    <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+                      Sistem ini menyimpan data secara lokal di perangkat ini. Lakukan backup secara berkala ke penyimpanan eksternal (seperti Google Drive atau Flashdisk) untuk mencegah kehilangan data jika perangkat Anda mengalami kerusakan atau ter-reset.
+                    </p>
                   </div>
                 </div>
               </SettingsSection>

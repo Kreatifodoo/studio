@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { 
   Product, OrderItem, Transaction, Category, AppView, PaymentMethod, 
   Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount, 
@@ -59,7 +59,11 @@ interface POSContextType {
   currentUser: User | null;
   login: (username: string, password?: string) => boolean;
   logout: () => void;
+  exportDatabase: () => void;
+  importDatabase: (json: string) => boolean;
 }
+
+const STORAGE_KEY = 'nextpos_database_v1';
 
 const INITIAL_ROLES: Role[] = [
   { id: 'admin', name: 'Administrator', permissions: ['view_pos', 'view_history', 'view_dashboard', 'view_reports', 'manage_products', 'manage_customers', 'manage_settings', 'manage_users'] },
@@ -69,7 +73,6 @@ const INITIAL_ROLES: Role[] = [
 
 const INITIAL_USERS: User[] = [
   { id: 'u1', username: 'admin', name: 'Admin Utama', email: 'admin@nextpos.com', roleId: 'admin', status: 'Active', avatarUrl: 'https://picsum.photos/seed/admin/100/100', password: 'password' },
-  { id: 'u2', username: 'kasir1', name: 'Budi Kasir', email: 'budi@nextpos.com', roleId: 'cashier', status: 'Active', avatarUrl: 'https://picsum.photos/seed/kasir1/100/100', password: 'password' },
 ];
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
@@ -84,9 +87,9 @@ const INITIAL_FEES: Fee[] = [
 ];
 
 const INITIAL_STORE_SETTINGS: StoreSettings = {
-  name: 'NextPOS Modern',
+  name: 'NextPOS Indonesia',
   currencySymbol: 'Rp',
-  address: 'Jl. Boulevard Raya No. 45, Jakarta Selatan',
+  address: 'Jl. Contoh Alamat No. 123, Jakarta',
   headerNote: 'Terima Kasih Atas Kunjungan Anda!',
   footerNote: 'Barang yang sudah dibeli tidak dapat dikembalikan.',
   logoUrl: ''
@@ -95,6 +98,8 @@ const INITIAL_STORE_SETTINGS: StoreSettings = {
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
 export function POSProvider({ children }: { children: React.ReactNode }) {
+  const [isInitialized, setIsInitialized] = useState(false);
+  
   const [activeCategory, setActiveCategory] = useState<Category>('Semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<OrderItem[]>([]);
@@ -116,7 +121,71 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(INITIAL_STORE_SETTINGS);
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const roles = useMemo(() => INITIAL_ROLES, []);
+
+  // Load Data from LocalStorage
+  useEffect(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+        if (data.history) setHistory(data.history);
+        if (data.sessions) setSessions(data.sessions);
+        if (data.products) setProducts(data.products);
+        if (data.categories) setCategories(data.categories);
+        if (data.paymentMethods) setPaymentMethods(data.paymentMethods);
+        if (data.fees) setFees(data.fees);
+        if (data.customers) setCustomers(data.customers);
+        if (data.priceLists) setPriceLists(data.priceLists);
+        if (data.packages) setPackages(data.packages);
+        if (data.combos) setCombos(data.combos);
+        if (data.promoDiscounts) setPromoDiscounts(data.promoDiscounts);
+        if (data.storeSettings) setStoreSettings(data.storeSettings);
+        if (data.users) setUsers(data.users);
+      } catch (e) {
+        console.error("Failed to parse saved data", e);
+      }
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Auto Save to LocalStorage
+  useEffect(() => {
+    if (isInitialized) {
+      const dataToSave = {
+        history, sessions, products, categories, paymentMethods, fees, 
+        customers, priceLists, packages, combos, promoDiscounts, 
+        storeSettings, users
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    }
+  }, [
+    isInitialized, history, sessions, products, categories, paymentMethods, 
+    fees, customers, priceLists, packages, combos, promoDiscounts, 
+    storeSettings, users
+  ]);
+
+  const exportDatabase = useCallback(() => {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return;
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup_pos_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const importDatabase = useCallback((json: string) => {
+    try {
+      const data = JSON.parse(json);
+      localStorage.setItem(STORAGE_KEY, json);
+      window.location.reload(); // Reload to apply all imported state
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }, []);
 
   const login = (username: string, password?: string) => {
     const user = users.find(u => u.username === username && (u.password === password || !password));
@@ -280,7 +349,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
-      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout
+      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, exportDatabase, importDatabase
     }}>
       {children}
     </POSContext.Provider>
