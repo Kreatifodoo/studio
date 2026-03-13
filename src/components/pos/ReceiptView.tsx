@@ -3,6 +3,7 @@
 import React from 'react';
 import { Transaction } from '@/types/pos';
 import { format } from 'date-fns';
+import { usePOS } from './POSContext';
 
 interface ReceiptViewProps {
   transaction: Transaction | null;
@@ -10,6 +11,8 @@ interface ReceiptViewProps {
 }
 
 export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: ReceiptViewProps) {
+  const { packages, products } = usePOS();
+  
   if (!transaction) return null;
 
   return (
@@ -54,6 +57,22 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
               <span className="flex-1 pr-2 uppercase">{item.name}</span>
               <span>x{item.quantity}</span>
             </div>
+            
+            {/* Package Components Detail */}
+            {item.isPackage && (
+              <div className="pl-2 mb-1 border-l border-black/10">
+                {packages.find(p => p.id === item.productId)?.items.map((pkgItem, pIdx) => {
+                  const productDetails = products.find(p => p.id === pkgItem.productId);
+                  return (
+                    <div key={pIdx} className="text-[9px] opacity-70 flex justify-between italic">
+                      <span>- {productDetails?.name || 'Item'}</span>
+                      <span>x{pkgItem.quantity * item.quantity}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="flex justify-between text-[10px] opacity-70 italic">
               <span>@{item.price.toFixed(2)}</span>
               <span>${(item.price * item.quantity).toFixed(2)}</span>
