@@ -266,10 +266,10 @@ export function SettingsView() {
         <DialogContent className="max-w-md rounded-[2.5rem] p-8">
           <DialogHeader><DialogTitle className="text-2xl font-black">Customer Details</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="space-y-2"><Label>Full Name</Label><Input value={customerForm.name} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} className="rounded-xl" /></div>
-            <div className="space-y-2"><Label>Phone Number</Label><Input value={customerForm.phone} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} className="rounded-xl" /></div>
-            <div className="space-y-2"><Label>Email</Label><Input value={customerForm.email} onChange={(e) => setCustomerForm({...customerForm, email: e.target.value})} className="rounded-xl" /></div>
-            <div className="space-y-2"><Label>Address</Label><Input value={customerForm.address} onChange={(e) => setCustomerForm({...customerForm, address: e.target.value})} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Full Name</Label><Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Phone Number</Label><Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Email</Label><Input value={customerForm.email || ''} onChange={(e) => setCustomerForm({...customerForm, email: e.target.value})} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Address</Label><Input value={customerForm.address || ''} onChange={(e) => setCustomerForm({...customerForm, address: e.target.value})} className="rounded-xl" /></div>
           </div>
           <DialogFooter><Button onClick={handleSaveCustomer} className="w-full h-12 rounded-xl bg-primary font-bold">Save Customer</Button></DialogFooter>
         </DialogContent>
@@ -280,7 +280,7 @@ export function SettingsView() {
         <DialogContent className="max-w-xl rounded-[2.5rem] p-8 overflow-y-auto max-h-[90vh]">
           <DialogHeader><DialogTitle className="text-2xl font-black">Price List Config</DialogTitle></DialogHeader>
           <div className="grid gap-6 py-4">
-            <div className="space-y-2"><Label>Price List Name</Label><Input value={priceListForm.name} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} placeholder="Wholesale Promo" className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Price List Name</Label><Input value={priceListForm.name || ''} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} placeholder="Wholesale Promo" className="rounded-xl" /></div>
             
             <div className="space-y-2">
               <Label>Target Product</Label>
@@ -293,8 +293,8 @@ export function SettingsView() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={priceListForm.startDate} onChange={(e) => setPriceListForm({...priceListForm, startDate: e.target.value})} className="rounded-xl" /></div>
-              <div className="space-y-2"><Label>End Date</Label><Input type="date" value={priceListForm.endDate} onChange={(e) => setPriceListForm({...priceListForm, endDate: e.target.value})} className="rounded-xl" /></div>
+              <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={priceListForm.startDate || ''} onChange={(e) => setPriceListForm({...priceListForm, startDate: e.target.value})} className="rounded-xl" /></div>
+              <div className="space-y-2"><Label>End Date</Label><Input type="date" value={priceListForm.endDate || ''} onChange={(e) => setPriceListForm({...priceListForm, endDate: e.target.value})} className="rounded-xl" /></div>
             </div>
 
             <div className="space-y-4">
@@ -307,25 +307,25 @@ export function SettingsView() {
                   <div key={idx} className="flex gap-3 items-end p-4 bg-muted/20 rounded-2xl">
                     <div className="flex-1 space-y-1">
                       <Label className="text-[10px]">Min Qty</Label>
-                      <Input type="number" value={tier.minQty} onChange={(e) => {
+                      <Input type="number" value={isNaN(tier.minQty) ? '' : tier.minQty} onChange={(e) => {
                         const newTiers = [...(priceListForm.tiers || [])];
-                        newTiers[idx].minQty = parseInt(e.target.value);
+                        newTiers[idx].minQty = e.target.value === '' ? 0 : parseInt(e.target.value);
                         setPriceListForm({...priceListForm, tiers: newTiers});
                       }} className="h-10 rounded-lg" />
                     </div>
                     <div className="flex-1 space-y-1">
                       <Label className="text-[10px]">Max Qty</Label>
-                      <Input type="number" value={tier.maxQty} onChange={(e) => {
+                      <Input type="number" value={isNaN(tier.maxQty) ? '' : tier.maxQty} onChange={(e) => {
                         const newTiers = [...(priceListForm.tiers || [])];
-                        newTiers[idx].maxQty = parseInt(e.target.value);
+                        newTiers[idx].maxQty = e.target.value === '' ? 0 : parseInt(e.target.value);
                         setPriceListForm({...priceListForm, tiers: newTiers});
                       }} className="h-10 rounded-lg" />
                     </div>
                     <div className="flex-1 space-y-1">
                       <Label className="text-[10px]">Tier Price ($)</Label>
-                      <Input type="number" value={tier.price} onChange={(e) => {
+                      <Input type="number" value={isNaN(tier.price) ? '' : tier.price} onChange={(e) => {
                         const newTiers = [...(priceListForm.tiers || [])];
-                        newTiers[idx].price = parseFloat(e.target.value);
+                        newTiers[idx].price = e.target.value === '' ? 0 : parseFloat(e.target.value);
                         setPriceListForm({...priceListForm, tiers: newTiers});
                       }} className="h-10 rounded-lg font-bold text-primary" />
                     </div>
