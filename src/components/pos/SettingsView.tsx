@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -26,10 +27,11 @@ import {
   Ticket,
   Upload,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Image as ImageIcon
 } from 'lucide-react';
 import { usePOS } from './POSContext';
-import { Product, PaymentMethod, Fee, Customer, PriceList, Package, PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount } from '@/types/pos';
+import { Product, PaymentMethod, Fee, Customer, PriceList, Package, PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount, StoreSettings } from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
@@ -43,6 +45,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import Image from 'next/image';
 
 export function SettingsView() {
   const { 
@@ -54,11 +57,13 @@ export function SettingsView() {
     priceLists, setPriceLists,
     packages, setPackages,
     combos, setCombos,
-    promoDiscounts, setPromoDiscounts
+    promoDiscounts, setPromoDiscounts,
+    storeSettings, setStoreSettings
   } = usePOS();
   
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [importType, setImportType] = useState<'products' | 'pricelist' | 'promo' | 'package' | 'combo' | null>(null);
 
   const [activeTab, setActiveTab] = useState('general');
@@ -317,6 +322,19 @@ export function SettingsView() {
     }
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setStoreSettings({ ...storeSettings, logoUrl: dataUrl });
+      toast({ title: "Logo Berhasil Diunggah" });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleOpenAddCategory = () => {
     setEditingCategory(null);
     setCategoryForm('');
@@ -533,6 +551,13 @@ export function SettingsView() {
         accept=".csv" 
         onChange={handleFileUpload}
       />
+      <input 
+        type="file" 
+        ref={logoInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        onChange={handleLogoUpload}
+      />
       
       <div className="flex flex-col gap-1">
         <h2 className="text-3xl font-black">Pengaturan</h2>
@@ -572,14 +597,80 @@ export function SettingsView() {
           {activeTab === 'general' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <SettingsSection icon={Store} title="Informasi Toko" description="Detail dasar tentang usaha Anda">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                  <div className="space-y-3">
-                    <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Nama Toko</Label>
-                    <Input placeholder="Toko Utama" defaultValue="NextPOS Kedai" className="h-12 rounded-xl focus:ring-primary/20 border-2" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Nama Toko</Label>
+                      <Input 
+                        value={storeSettings.name} 
+                        onChange={(e) => setStoreSettings({...storeSettings, name: e.target.value})}
+                        className="h-12 rounded-xl focus:ring-primary/20 border-2" 
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Alamat Toko</Label>
+                      <Textarea 
+                        value={storeSettings.address} 
+                        onChange={(e) => setStoreSettings({...storeSettings, address: e.target.value})}
+                        className="min-h-[100px] rounded-xl focus:ring-primary/20 border-2" 
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Simbol Mata Uang</Label>
+                      <Input 
+                        value={storeSettings.currencySymbol} 
+                        onChange={(e) => setStoreSettings({...storeSettings, currencySymbol: e.target.value})}
+                        className="h-12 rounded-xl focus:ring-primary/20 border-2" 
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-3">
-                    <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Simbol Mata Uang</Label>
-                    <Input defaultValue="Rp" className="h-12 rounded-xl focus:ring-primary/20 border-2" />
+
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Logo Toko (untuk Struk)</Label>
+                      <div className="flex flex-col items-center gap-4 p-6 border-2 border-dashed rounded-[2rem] bg-muted/10">
+                        {storeSettings.logoUrl ? (
+                          <div className="relative h-32 w-32 rounded-2xl overflow-hidden border bg-white shadow-sm">
+                            <img src={storeSettings.logoUrl} alt="Store Logo" className="h-full w-full object-contain" />
+                            <button 
+                              onClick={() => setStoreSettings({...storeSettings, logoUrl: ''})}
+                              className="absolute top-1 right-1 bg-destructive text-white p-1 rounded-full shadow-lg"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-32 w-32 rounded-2xl bg-white border shadow-sm text-muted-foreground">
+                            <ImageIcon className="h-10 w-10 opacity-20" />
+                          </div>
+                        )}
+                        <Button 
+                          onClick={() => logoInputRef.current?.click()}
+                          variant="outline" 
+                          className="h-10 rounded-xl font-bold gap-2"
+                        >
+                          <Upload className="h-4 w-4" /> Pilih Logo
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Header Struk (Pesan Atas)</Label>
+                      <Input 
+                        value={storeSettings.headerNote} 
+                        onChange={(e) => setStoreSettings({...storeSettings, headerNote: e.target.value})}
+                        placeholder="Contoh: Selamat Datang!" 
+                        className="h-12 rounded-xl border-2" 
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Footer Struk (Pesan Bawah)</Label>
+                      <Input 
+                        value={storeSettings.footerNote} 
+                        onChange={(e) => setStoreSettings({...storeSettings, footerNote: e.target.value})}
+                        placeholder="Contoh: Terima Kasih!" 
+                        className="h-12 rounded-xl border-2" 
+                      />
+                    </div>
                   </div>
                 </div>
               </SettingsSection>

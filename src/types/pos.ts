@@ -5,6 +5,15 @@ export type AppView = 'pos' | 'history' | 'dashboard' | 'settings' | 'reports';
 
 export type FeeType = 'Tax' | 'Service' | 'Discount';
 
+export interface StoreSettings {
+  name: string;
+  currencySymbol: string;
+  address: string;
+  headerNote?: string;
+  footerNote?: string;
+  logoUrl?: string;
+}
+
 export interface Product {
   id: string;
   sku: string;

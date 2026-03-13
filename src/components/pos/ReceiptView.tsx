@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -7,11 +8,10 @@ import { usePOS } from './POSContext';
 
 interface ReceiptViewProps {
   transaction: Transaction | null;
-  storeName?: string;
 }
 
-export function ReceiptView({ transaction, storeName = "NEXTPOS KEDAI" }: ReceiptViewProps) {
-  const { packages, products } = usePOS();
+export function ReceiptView({ transaction }: ReceiptViewProps) {
+  const { packages, products, storeSettings } = usePOS();
   
   if (!transaction) return null;
 
@@ -21,13 +21,21 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS KEDAI" }: Receip
 
   return (
     <div id="pos-receipt" className="w-[80mm] bg-white text-black p-4 font-mono text-[11px] leading-relaxed">
-      <div className="text-center mb-6 space-y-1">
+      <div className="text-center mb-6 space-y-2">
+        {storeSettings.logoUrl && (
+          <div className="flex justify-center mb-3">
+            <img src={storeSettings.logoUrl} alt="Store Logo" className="h-16 w-auto object-contain" />
+          </div>
+        )}
         <h2 className="text-base font-black uppercase tracking-tighter" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
-          {storeName}
+          {storeSettings.name}
         </h2>
-        <p className="opacity-80">Jalan Modern Avenue No. 88</p>
-        <p className="opacity-80">Distrik Teknologi, Jakarta</p>
-        <p className="opacity-80">CS: (021) 8888-2222</p>
+        {storeSettings.address && (
+          <p className="opacity-80 whitespace-pre-line">{storeSettings.address}</p>
+        )}
+        {storeSettings.headerNote && (
+          <p className="font-bold border-y border-black/10 py-1 mt-2">{storeSettings.headerNote}</p>
+        )}
       </div>
 
       <div className="border-t border-b border-black/20 py-3 mb-4 space-y-1">
@@ -144,7 +152,9 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS KEDAI" }: Receip
       <div className="text-center mt-10 pt-6 border-t border-black/20 space-y-4">
         <div className="space-y-1">
           <p className="font-bold uppercase">Terima Kasih!</p>
-          <p className="text-[10px]">Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan</p>
+          {storeSettings.footerNote && (
+            <p className="text-[10px]">{storeSettings.footerNote}</p>
+          )}
         </div>
         
         <div className="flex flex-col items-center gap-1 opacity-60">

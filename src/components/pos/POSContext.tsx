@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount } from '@/types/pos';
+import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount, StoreSettings } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -47,6 +48,8 @@ interface POSContextType {
   setCombos: React.Dispatch<React.SetStateAction<Combo[]>>;
   promoDiscounts: PromoDiscount[];
   setPromoDiscounts: React.Dispatch<React.SetStateAction<PromoDiscount[]>>;
+  storeSettings: StoreSettings;
+  setStoreSettings: (settings: StoreSettings) => void;
 }
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
@@ -59,6 +62,15 @@ const INITIAL_FEES: Fee[] = [
   { id: 'f_1', name: 'Pajak (PPN)', type: 'Tax', value: 11, enabled: true },
   { id: 'f_2', name: 'Biaya Layanan', type: 'Service', value: 5, enabled: true },
 ];
+
+const INITIAL_STORE_SETTINGS: StoreSettings = {
+  name: 'NextPOS Kedai',
+  currencySymbol: 'Rp',
+  address: 'Jalan Modern Avenue No. 88, Distrik Teknologi, Jakarta',
+  headerNote: 'Terima Kasih Telah Berkunjung!',
+  footerNote: 'Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan',
+  logoUrl: ''
+};
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
@@ -81,6 +93,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [packages, setPackages] = useState<Package[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
   const [promoDiscounts, setPromoDiscounts] = useState<PromoDiscount[]>([]);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(INITIAL_STORE_SETTINGS);
 
   const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
@@ -228,7 +241,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       activeCategory, setActiveCategory, searchQuery, setSearchQuery, cart, addToCart, addPackageToCart, addComboToCart, removeFromCart, updateQuantity, updateNote, clearCart,
       selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
-      priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts
+      priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings
     }}>
       {children}
     </POSContext.Provider>
