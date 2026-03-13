@@ -10,6 +10,7 @@ import { OrderPanel } from '@/components/pos/OrderPanel';
 import { HistoryView } from '@/components/pos/HistoryView';
 import { DashboardView } from '@/components/pos/DashboardView';
 import { SettingsView } from '@/components/pos/SettingsView';
+import { cn } from '@/lib/utils';
 
 function POSLayout() {
   const { view } = usePOS();
@@ -29,11 +30,16 @@ function POSLayout() {
     }
   };
 
+  const isPOSView = view === 'pos';
+
   return (
     <div className="flex min-h-screen bg-background text-foreground font-poppins overflow-hidden">
       <Sidebar />
       
-      <main className="flex-1 ml-24 md:ml-32 mr-[400px] p-8 min-h-screen overflow-y-auto bg-[#F9FBFF]">
+      <main className={cn(
+        "flex-1 ml-24 md:ml-32 p-8 min-h-screen overflow-y-auto bg-[#F9FBFF] transition-all duration-300 ease-in-out",
+        isPOSView ? "mr-[400px]" : "mr-0"
+      )}>
         <SearchHeader />
         
         <div className="max-w-[1400px] mx-auto">
@@ -41,7 +47,7 @@ function POSLayout() {
         </div>
       </main>
 
-      <OrderPanel />
+      {isPOSView && <OrderPanel />}
     </div>
   );
 }
