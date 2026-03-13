@@ -98,12 +98,15 @@ export function OrderPanel() {
             <div className="bg-white p-2 rounded-xl text-primary"><User className="h-4 w-4" /></div>
             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Customer</span>
           </div>
-          <Select value={selectedCustomerId || ""} onValueChange={(val) => setSelectedCustomerId(val)}>
+          <Select 
+            value={selectedCustomerId || "none"} 
+            onValueChange={(val) => setSelectedCustomerId(val === "none" ? null : val)}
+          >
             <SelectTrigger className="border-none bg-transparent shadow-none h-auto p-0 text-sm font-bold focus:ring-0">
               <SelectValue placeholder="Walk-in Customer" />
             </SelectTrigger>
             <SelectContent className="rounded-2xl">
-              <SelectItem value="">Walk-in Customer</SelectItem>
+              <SelectItem value="none">Walk-in Customer</SelectItem>
               {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
