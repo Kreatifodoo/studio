@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import { LayoutDashboard, ShoppingCart, Clock, Settings, LogOut, UtensilsCrossed, Plus } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Clock, Settings, LogOut, UtensilsCrossed } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { cn } from '@/lib/utils';
 
@@ -50,9 +50,6 @@ export function Sidebar() {
       </div>
 
       <div className="flex flex-col items-center gap-8 w-full px-3">
-        <div className="bg-white/5 p-4 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors">
-          <Plus className="text-white/60 h-6 w-6" />
-        </div>
         <button className="p-5 rounded-2xl text-white/30 hover:bg-destructive/10 hover:text-destructive transition-all duration-300 w-full flex flex-col items-center">
           <LogOut className="h-7 w-7" />
         </button>

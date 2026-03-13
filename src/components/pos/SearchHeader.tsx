@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import { Search, Bell, User, MoreVertical } from 'lucide-react';
+import { Search, Bell } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { usePOS } from './POSContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -36,7 +36,6 @@ export function SearchHeader() {
             <p className="text-sm font-black leading-tight">Alex Cashier</p>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Manager</p>
           </div>
-          <MoreVertical className="h-5 w-5 text-muted-foreground ml-2 hidden lg:block" />
         </div>
       </div>
     </header>
