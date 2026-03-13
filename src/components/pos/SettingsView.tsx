@@ -12,12 +12,9 @@ import {
   Store, 
   Printer, 
   Bell, 
-  Package, 
-  Tags, 
   Plus, 
   Trash2, 
-  Image as ImageIcon,
-  Check
+  Pencil
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Category, Product } from '@/types/pos';
@@ -35,8 +32,9 @@ export function SettingsView() {
   const { products, setProducts, categories, setCategories } = usePOS();
   const [newCategory, setNewCategory] = useState('');
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-  // Form State for new Product
+  // Form State for Product
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
     price: 0,
@@ -58,18 +56,8 @@ export function SettingsView() {
     setCategories(categories.filter(c => c !== cat));
   };
 
-  const handleAddProduct = () => {
-    const newProd: Product = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: productForm.name || 'New Product',
-      price: productForm.price || 0,
-      category: productForm.category as Category || 'Main Course',
-      available: productForm.available ?? true,
-      description: productForm.description || '',
-      image: productForm.image || 'https://picsum.photos/seed/new/400/300'
-    };
-    setProducts([...products, newProd]);
-    setIsProductDialogOpen(false);
+  const handleOpenAddDialog = () => {
+    setEditingProduct(null);
     setProductForm({
       name: '',
       price: 0,
@@ -78,6 +66,37 @@ export function SettingsView() {
       description: '',
       image: 'https://picsum.photos/seed/new/400/300'
     });
+    setIsProductDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (product: Product) => {
+    setEditingProduct(product);
+    setProductForm({ ...product });
+    setIsProductDialogOpen(true);
+  };
+
+  const handleSaveProduct = () => {
+    if (editingProduct) {
+      // Update existing product
+      setProducts(products.map(p => 
+        p.id === editingProduct.id 
+          ? { ...editingProduct, ...productForm } as Product 
+          : p
+      ));
+    } else {
+      // Add new product
+      const newProd: Product = {
+        id: Math.random().toString(36).substr(2, 9),
+        name: productForm.name || 'New Product',
+        price: productForm.price || 0,
+        category: productForm.category as Category || 'Main Course',
+        available: productForm.available ?? true,
+        description: productForm.description || '',
+        image: productForm.image || 'https://picsum.photos/seed/new/400/300'
+      };
+      setProducts([...products, newProd]);
+    }
+    setIsProductDialogOpen(false);
   };
 
   const handleDeleteProduct = (id: string) => {
@@ -137,14 +156,21 @@ export function SettingsView() {
               </div>
               <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2 shadow-lg shadow-primary/20">
+                  <Button 
+                    onClick={handleOpenAddDialog}
+                    className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2 shadow-lg shadow-primary/20"
+                  >
                     <Plus className="h-5 w-5" /> Add New Product
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md rounded-[2.5rem] p-8">
                   <DialogHeader>
-                    <DialogTitle className="text-2xl font-black">Add New Product</DialogTitle>
-                    <CardDescription>Enter the details of the new menu item</CardDescription>
+                    <DialogTitle className="text-2xl font-black">
+                      {editingProduct ? 'Edit Product' : 'Add New Product'}
+                    </DialogTitle>
+                    <CardDescription>
+                      {editingProduct ? 'Update the details of the selected menu item' : 'Enter the details of the new menu item'}
+                    </CardDescription>
                   </DialogHeader>
                   <div className="grid gap-6 py-4">
                     <div className="space-y-2">
@@ -192,9 +218,18 @@ export function SettingsView() {
                         className="rounded-xl"
                       />
                     </div>
+                    <div className="flex items-center justify-between">
+                      <Label>Available</Label>
+                      <Switch 
+                        checked={productForm.available} 
+                        onCheckedChange={(val) => setProductForm({...productForm, available: val})}
+                      />
+                    </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleAddProduct} className="w-full h-12 rounded-xl bg-primary font-bold">Save Product</Button>
+                    <Button onClick={handleSaveProduct} className="w-full h-12 rounded-xl bg-primary font-bold">
+                      {editingProduct ? 'Update Product' : 'Save Product'}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -216,7 +251,20 @@ export function SettingsView() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(product.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleOpenEditDialog(product)}
+                      className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
+                    >
+                      <Pencil className="h-5 w-5" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDeleteProduct(product.id)} 
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
+                    >
                       <Trash2 className="h-5 w-5" />
                     </Button>
                   </div>
