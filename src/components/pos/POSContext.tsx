@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList, Package } from '@/types/pos';
+import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList, Package, Combo } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -50,6 +50,8 @@ interface POSContextType {
   setPriceLists: React.Dispatch<React.SetStateAction<PriceList[]>>;
   packages: Package[];
   setPackages: React.Dispatch<React.SetStateAction<Package[]>>;
+  combos: Combo[];
+  setCombos: React.Dispatch<React.SetStateAction<Combo[]>>;
 }
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
@@ -86,6 +88,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [priceLists, setPriceLists] = useState<PriceList[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
+  const [combos, setCombos] = useState<Combo[]>([]);
 
   const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
@@ -136,18 +139,18 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const addToCart = (product: Product) => {
     if (!product.available || !currentSession) return;
     
-    const existingInCart = cart.find(item => item.productId === product.id && !item.isPackage);
+    const existingInCart = cart.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
     const qtyInCart = existingInCart ? existingInCart.quantity : 0;
     
     if (qtyInCart >= product.onHandQty) return;
 
     setCart(prev => {
-      const existing = prev.find(item => item.productId === product.id && !item.isPackage);
+      const existing = prev.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
       if (existing) {
         const newQty = existing.quantity + 1;
         const { price: newPrice, priceListId } = getEffectivePriceInfo(product.id, newQty);
         return prev.map(item =>
-          (item.productId === product.id && !item.isPackage) ? { ...item, quantity: newQty, price: newPrice, priceListId } : item
+          (item.productId === product.id && !item.isPackage && !item.isCombo) ? { ...item, quantity: newQty, price: newPrice, priceListId } : item
         );
       }
       const { price: initialPrice, priceListId } = getEffectivePriceInfo(product.id, 1);
@@ -158,7 +161,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         price: initialPrice,
         quantity: 1,
         priceListId,
-        isPackage: false
+        isPackage: false,
+        isCombo: false
       }];
     });
   };
@@ -179,7 +183,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         name: pkg.name,
         price: pkg.price,
         quantity: 1,
-        isPackage: true
+        isPackage: true,
+        isCombo: false
       }];
     });
   };
@@ -193,7 +198,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       if (item.id === itemId) {
         const newQty = Math.max(1, item.quantity + delta);
         
-        if (item.isPackage) {
+        if (item.isPackage || item.isCombo) {
           return { ...item, quantity: newQty };
         } else {
           const product = products.find(p => p.id === item.productId);
@@ -231,6 +236,18 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
               updatedProducts = updatedProducts.map(p => {
                 if (p.id === pkgItem.productId) {
                   return { ...p, onHandQty: p.onHandQty - (pkgItem.quantity * item.quantity) };
+                }
+                return p;
+              });
+            });
+          }
+        } else if (item.isCombo) {
+          // Future: decrease stock for combo selections
+          if (item.comboSelections) {
+            item.comboSelections.forEach(sel => {
+              updatedProducts = updatedProducts.map(p => {
+                if (p.id === sel.productId) {
+                  return { ...p, onHandQty: p.onHandQty - item.quantity };
                 }
                 return p;
               });
@@ -280,7 +297,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       fees, setFees,
       customers, setCustomers, addCustomer,
       priceLists, setPriceLists,
-      packages, setPackages
+      packages, setPackages,
+      combos, setCombos
     }}>
       {children}
     </POSContext.Provider>

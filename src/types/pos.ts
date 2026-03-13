@@ -34,6 +34,28 @@ export interface Package {
   items: PackageItem[];
 }
 
+export interface ComboOption {
+  productId: string;
+  extraPrice: number;
+}
+
+export interface ComboGroup {
+  id: string;
+  name: string;
+  required: boolean;
+  options: ComboOption[];
+}
+
+export interface Combo {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  basePrice: number;
+  enabled: boolean;
+  groups: ComboGroup[];
+}
+
 export interface OrderItem {
   id: string;
   productId: string;
@@ -43,6 +65,12 @@ export interface OrderItem {
   note?: string;
   priceListId?: string; // Track if a special price list was used
   isPackage?: boolean; // Flag to indicate if this is a package
+  isCombo?: boolean;
+  comboSelections?: {
+    groupId: string;
+    productId: string;
+    extraPrice: number;
+  }[];
 }
 
 export interface Transaction {

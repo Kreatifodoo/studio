@@ -33,10 +33,12 @@ import {
   Settings as SettingsIcon,
   ChevronRight,
   Search,
-  Check
+  Check,
+  CircleCheck,
+  Settings2
 } from 'lucide-react';
 import { usePOS } from './POSContext';
-import { Category, Product, PaymentMethod, Fee, FeeType, Customer, PriceList, PriceTier, Package, PackageItem } from '@/types/pos';
+import { Category, Product, PaymentMethod, Fee, FeeType, Customer, PriceList, PriceTier, Package, PackageItem, Combo, ComboGroup, ComboOption } from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
@@ -51,6 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export function SettingsView() {
   const { 
@@ -60,7 +63,8 @@ export function SettingsView() {
     fees, setFees,
     customers, setCustomers,
     priceLists, setPriceLists,
-    packages, setPackages
+    packages, setPackages,
+    combos, setCombos
   } = usePOS();
   
   const { toast } = useToast();
@@ -69,6 +73,7 @@ export function SettingsView() {
   const [activeTab, setActiveTab] = useState('general');
   const [packageSearch, setPackageSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
+  const [comboSearch, setComboSearch] = useState('');
 
   // Dialog States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
@@ -76,6 +81,7 @@ export function SettingsView() {
   const [isPriceListDialogOpen, setIsPriceListDialogOpen] = useState(false);
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
 
   // Form States
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -86,6 +92,8 @@ export function SettingsView() {
   const [priceListForm, setPriceListForm] = useState<Partial<PriceList>>({ tiers: [] });
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [packageForm, setPackageForm] = useState<Partial<Package>>({ items: [] });
+  const [editingCombo, setEditingCombo] = useState<Combo | null>(null);
+  const [comboForm, setComboForm] = useState<Partial<Combo>>({ groups: [] });
   
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState('');
@@ -128,7 +136,6 @@ export function SettingsView() {
 
     if (editingCategory) {
       setCategories(prev => prev.map(cat => cat === editingCategory ? categoryForm : cat));
-      // Update categories in products too
       setProducts(prev => prev.map(p => p.category === editingCategory ? { ...p, category: categoryForm } : p));
     } else {
       if (categories.includes(categoryForm)) {
@@ -202,6 +209,90 @@ export function SettingsView() {
     });
   };
 
+  // Combo Handlers
+  const handleOpenAddCombo = () => {
+    setEditingCombo(null);
+    setComboForm({
+      name: '',
+      sku: '',
+      description: '',
+      basePrice: '' as any,
+      enabled: true,
+      groups: []
+    });
+    setIsComboDialogOpen(true);
+  };
+
+  const handleSaveCombo = () => {
+    if (!comboForm.name || !comboForm.sku || !comboForm.basePrice) {
+      toast({ variant: "destructive", title: "Error", description: "Mohon lengkapi data wajib." });
+      return;
+    }
+    if (editingCombo) {
+      setCombos(prev => prev.map(c => c.id === editingCombo.id ? { ...editingCombo, ...comboForm } as Combo : c));
+    } else {
+      const newCombo: Combo = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...comboForm as Combo
+      };
+      setCombos(prev => [...prev, newCombo]);
+    }
+    setIsComboDialogOpen(false);
+    toast({ title: "Success", description: "Combo saved." });
+  };
+
+  const addComboGroup = () => {
+    setComboForm(prev => ({
+      ...prev,
+      groups: [
+        ...(prev.groups || []),
+        { id: Math.random().toString(36).substr(2, 5), name: '', required: true, options: [] }
+      ]
+    }));
+  };
+
+  const removeComboGroup = (gIdx: number) => {
+    setComboForm(prev => ({
+      ...prev,
+      groups: prev.groups?.filter((_, i) => i !== gIdx)
+    }));
+  };
+
+  const updateComboGroup = (gIdx: number, field: keyof ComboGroup, value: any) => {
+    setComboForm(prev => {
+      const newGroups = [...(prev.groups || [])];
+      newGroups[gIdx] = { ...newGroups[gIdx], [field]: value };
+      return { ...prev, groups: newGroups };
+    });
+  };
+
+  const addComboOption = (gIdx: number) => {
+    setComboForm(prev => {
+      const newGroups = [...(prev.groups || [])];
+      newGroups[gIdx].options = [
+        ...newGroups[gIdx].options,
+        { productId: products[0]?.id || '', extraPrice: 0 }
+      ];
+      return { ...prev, groups: newGroups };
+    });
+  };
+
+  const removeComboOption = (gIdx: number, oIdx: number) => {
+    setComboForm(prev => {
+      const newGroups = [...(prev.groups || [])];
+      newGroups[gIdx].options = newGroups[gIdx].options.filter((_, i) => i !== oIdx);
+      return { ...prev, groups: newGroups };
+    });
+  };
+
+  const updateComboOption = (gIdx: number, oIdx: number, field: keyof ComboOption, value: any) => {
+    setComboForm(prev => {
+      const newGroups = [...(prev.groups || [])];
+      newGroups[gIdx].options[oIdx] = { ...newGroups[gIdx].options[oIdx], [field]: value };
+      return { ...prev, groups: newGroups };
+    });
+  };
+
   // Price List Handlers
   const handleOpenAddPriceList = () => {
     setEditingPriceList(null);
@@ -261,6 +352,11 @@ export function SettingsView() {
   const filteredPackages = packages.filter(p => 
     p.name.toLowerCase().includes(packageSearch.toLowerCase()) || 
     p.sku.toLowerCase().includes(packageSearch.toLowerCase())
+  );
+
+  const filteredCombos = combos.filter(c => 
+    c.name.toLowerCase().includes(comboSearch.toLowerCase()) || 
+    c.sku.toLowerCase().includes(comboSearch.toLowerCase())
   );
 
   const filteredCategories = categories.filter(c => 
@@ -485,6 +581,78 @@ export function SettingsView() {
             </Card>
           )}
 
+          {activeTab === 'combo' && (
+            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                  <CardTitle className="text-2xl font-black">Master Combo</CardTitle>
+                  <CardDescription className="font-medium">Manage flexible combo sets and choices</CardDescription>
+                </div>
+                <Button onClick={handleOpenAddCombo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
+                  <Plus className="h-5 w-5" /> Tambah Combo
+                </Button>
+              </div>
+
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Cari nama combo atau SKU..." 
+                  value={comboSearch}
+                  onChange={(e) => setComboSearch(e.target.value)}
+                  className="pl-10 h-12 rounded-xl border-2 focus-visible:ring-primary/20"
+                />
+              </div>
+
+              <div className="rounded-[1.5rem] border overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="font-black">Nama Combo</TableHead>
+                      <TableHead className="font-black">SKU</TableHead>
+                      <TableHead className="font-black">Grup Pilihan</TableHead>
+                      <TableHead className="font-black">Harga Dasar</TableHead>
+                      <TableHead className="font-black">Status</TableHead>
+                      <TableHead className="text-right font-black">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCombos.map((combo) => (
+                      <TableRow key={combo.id}>
+                        <TableCell className="font-bold">{combo.name}</TableCell>
+                        <TableCell><Badge variant="outline" className="font-mono text-[10px]">{combo.sku}</Badge></TableCell>
+                        <TableCell>{combo.groups.length} Grup</TableCell>
+                        <TableCell className="font-black text-primary">${combo.basePrice.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Switch 
+                            checked={combo.enabled} 
+                            onCheckedChange={(val) => setCombos(prev => prev.map(c => c.id === combo.id ? { ...c, enabled: val } : c))} 
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => { setEditingCombo(combo); setComboForm(combo); setIsComboDialogOpen(true); }}>
+                               <Pencil className="h-4 w-4" />
+                             </Button>
+                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-destructive/50 hover:text-destructive" onClick={() => setCombos(prev => prev.filter(c => c.id !== combo.id))}>
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredCombos.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground font-medium italic">
+                          Belum ada combo yang dibuat.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          )}
+
           {activeTab === 'categories' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -568,16 +736,6 @@ export function SettingsView() {
                   </div>
                 ))}
               </div>
-            </Card>
-          )}
-
-          {activeTab === 'combo' && (
-            <Card className="rounded-[2.5rem] border-none shadow-sm p-12 bg-white h-full flex flex-col items-center justify-center text-center opacity-40">
-              <div className="bg-muted p-10 rounded-full mb-6">
-                <LayoutGrid className="h-16 w-16" />
-              </div>
-              <h3 className="text-2xl font-black mb-2">Master Combo</h3>
-              <p className="text-muted-foreground font-bold">This module is coming soon in the next update.</p>
             </Card>
           )}
 
@@ -808,6 +966,165 @@ export function SettingsView() {
             >
               Simpan Package
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Combo Dialog */}
+      <Dialog open={isComboDialogOpen} onOpenChange={setIsComboDialogOpen}>
+        <DialogContent className="max-w-4xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-3xl font-black">Combo Configuration</DialogTitle>
+            <DialogDescription className="font-medium">Build a flexible combo with multiple choice groups.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-8 py-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="space-y-2">
+                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Combo</Label>
+                 <Input 
+                   value={comboForm.name || ''} 
+                   onChange={(e) => setComboForm({...comboForm, name: e.target.value})} 
+                   placeholder="Combo Super Hemat" 
+                   className="h-12 rounded-xl border-2 focus:ring-primary/20"
+                 />
+               </div>
+               <div className="space-y-2">
+                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU Combo</Label>
+                 <Input 
+                   value={comboForm.sku || ''} 
+                   onChange={(e) => setComboForm({...comboForm, sku: e.target.value})} 
+                   placeholder="CMB-001" 
+                   className="h-12 rounded-xl border-2 font-mono"
+                 />
+               </div>
+               <div className="col-span-full space-y-2">
+                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Deskripsi</Label>
+                 <Textarea 
+                   value={comboForm.description || ''} 
+                   onChange={(e) => setComboForm({...comboForm, description: e.target.value})} 
+                   placeholder="Keterangan isi combo..." 
+                   className="min-h-[80px] rounded-xl border-2"
+                 />
+               </div>
+               <div className="space-y-2">
+                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Dasar Combo ($)</Label>
+                 <Input 
+                   type="number" 
+                   value={comboForm.basePrice === 0 || comboForm.basePrice === '' as any ? '' : comboForm.basePrice} 
+                   onChange={handleValueChange((val: any) => setComboForm({...comboForm, basePrice: val}))}
+                   className="h-14 rounded-xl border-2 font-black text-2xl text-primary"
+                 />
+               </div>
+             </div>
+
+             <Separator className="my-6" />
+
+             {/* Groups Builder */}
+             <div className="space-y-6">
+               <div className="flex justify-between items-center">
+                 <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-xl text-primary"><Settings2 className="h-4 w-4" /></div>
+                    <Label className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground">Choice Groups Builder</Label>
+                 </div>
+                 <Button onClick={addComboGroup} variant="outline" className="h-10 rounded-xl border-2 font-bold gap-2">
+                   <Plus className="h-4 w-4" /> Tambah Grup Pilihan
+                 </Button>
+               </div>
+
+               <div className="space-y-6">
+                 {comboForm.groups?.map((group, gIdx) => (
+                   <div key={group.id} className="p-6 bg-muted/10 rounded-[2rem] border-2 border-transparent hover:border-primary/5 transition-all space-y-6">
+                     <div className="flex flex-col md:flex-row gap-6 items-start">
+                        <div className="flex-1 space-y-2">
+                           <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Nama Grup (e.g. Pilih Minuman)</Label>
+                           <Input 
+                             value={group.name} 
+                             onChange={(e) => updateComboGroup(gIdx, 'name', e.target.value)}
+                             className="h-12 rounded-xl border-2 bg-white"
+                           />
+                        </div>
+                        <div className="flex items-center gap-3 pt-8">
+                           <Checkbox 
+                             id={`req-${group.id}`} 
+                             checked={group.required} 
+                             onCheckedChange={(val) => updateComboGroup(gIdx, 'required', !!val)} 
+                           />
+                           <Label htmlFor={`req-${group.id}`} className="font-bold text-sm cursor-pointer">Wajib Dipilih</Label>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removeComboGroup(gIdx)}
+                          className="h-12 w-12 text-destructive/40 hover:text-destructive mt-6"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                     </div>
+
+                     <div className="space-y-3 pl-4 border-l-2 border-primary/10">
+                        <div className="flex justify-between items-center mb-2">
+                           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Produk Opsi dlm Grup:</p>
+                           <Button 
+                             onClick={() => addComboOption(gIdx)} 
+                             variant="ghost" 
+                             size="sm" 
+                             className="h-8 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg"
+                           >
+                              <Plus className="h-3.5 w-3.5 mr-1" /> Tambah Opsi
+                           </Button>
+                        </div>
+                        
+                        {group.options.map((opt, oIdx) => (
+                          <div key={oIdx} className="flex gap-4 items-end bg-white/50 p-4 rounded-2xl border border-transparent hover:border-primary/5">
+                             <div className="flex-1 space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Produk</Label>
+                                <Select 
+                                  value={opt.productId} 
+                                  onValueChange={(val) => updateComboOption(gIdx, oIdx, 'productId', val)}
+                                >
+                                  <SelectTrigger className="h-10 rounded-lg bg-white border-2"><SelectValue /></SelectTrigger>
+                                  <SelectContent className="rounded-xl">
+                                    {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                             </div>
+                             <div className="w-28 space-y-1.5">
+                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Extra Price ($)</Label>
+                                <Input 
+                                  type="number" 
+                                  value={opt.extraPrice === 0 ? '' : opt.extraPrice} 
+                                  onChange={(e) => updateComboOption(gIdx, oIdx, 'extraPrice', e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                  className="h-10 rounded-lg bg-white border-2 font-bold"
+                                />
+                             </div>
+                             <Button 
+                               variant="ghost" 
+                               size="icon" 
+                               onClick={() => removeComboOption(gIdx, oIdx)}
+                               className="h-10 w-10 text-destructive/30 hover:text-destructive"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                          </div>
+                        ))}
+                     </div>
+                   </div>
+                 ))}
+                 {(comboForm.groups?.length || 0) === 0 && (
+                   <div className="text-center py-16 border-2 border-dashed rounded-[2rem] bg-muted/5 opacity-50">
+                      <LayoutGrid className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="font-black text-sm uppercase tracking-widest">Belum ada grup pilihan</p>
+                      <p className="text-xs font-medium">Klik tombol di atas untuk mulai membangun combo.</p>
+                   </div>
+                 )}
+               </div>
+             </div>
+          </div>
+
+          <DialogFooter className="mt-10 gap-3">
+            <Button variant="outline" onClick={() => setIsComboDialogOpen(false)} className="h-16 rounded-2xl font-black text-lg px-8 border-2">Batal</Button>
+            <Button onClick={handleSaveCombo} className="flex-1 h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Simpan Master Combo</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
