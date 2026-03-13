@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -35,6 +34,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from '@/hooks/use-toast';
 
 export function SettingsView() {
   const { 
@@ -44,6 +44,7 @@ export function SettingsView() {
     fees, setFees 
   } = usePOS();
   
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Category States
@@ -87,36 +88,78 @@ export function SettingsView() {
 
   // --- Category Handlers ---
   const handleAddCategory = () => {
-    const trimmedName = newCategoryName.trim();
-    if (trimmedName && !categories.includes(trimmedName)) {
-      setCategories([...categories, trimmedName]);
-      setNewCategoryName('');
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      toast({
+        title: "Error",
+        description: "Category name cannot be empty.",
+        variant: "destructive"
+      });
+      return;
     }
+    
+    if (categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+      toast({
+        title: "Category Exists",
+        description: `The category "${trimmed}" already exists.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCategories(prev => [...prev, trimmed]);
+    setNewCategoryName('');
+    toast({
+      title: "Category Added",
+      description: `Successfully added "${trimmed}" to your categories.`
+    });
   };
+
   const handleOpenEditCategory = (cat: Category) => {
     setEditingCategory(cat); setCategoryFormValue(cat); setIsCategoryDialogOpen(true);
   };
   const handleSaveCategory = () => {
     if (!editingCategory || !categoryFormValue) return;
-    setCategories(categories.map(c => c === editingCategory ? categoryFormValue : c));
-    setProducts(products.map(p => p.category === editingCategory ? { ...p, category: categoryFormValue } : p));
-    setIsCategoryDialogOpen(false); setEditingCategory(null);
+    setCategories(prev => prev.map(c => c === editingCategory ? categoryFormValue : c));
+    setProducts(prev => prev.map(p => p.category === editingCategory ? { ...p, category: categoryFormValue } : p));
+    setIsCategoryDialogOpen(false); 
+    setEditingCategory(null);
+    toast({
+      title: "Category Updated",
+      description: `Renamed category to "${categoryFormValue}".`
+    });
   };
   const handleDeleteCategory = (cat: Category) => {
-    if (cat === 'All') return; setCategories(categories.filter(c => c !== cat));
+    if (cat === 'All') return; 
+    setCategories(prev => prev.filter(c => c !== cat));
+    toast({
+      title: "Category Deleted",
+      description: `Successfully removed the category "${cat}".`
+    });
   };
 
   // --- Product Handlers ---
   const handleOpenAddDialog = () => {
-    setEditingProduct(null); setProductForm({ name: '', price: 0, category: categories.find(c => c !== 'All') || 'Main Course', available: true, description: '', image: '' });
+    setEditingProduct(null); 
+    setProductForm({ 
+      name: '', 
+      price: 0, 
+      category: categories.find(c => c !== 'All') || 'Main Course', 
+      available: true, 
+      description: '', 
+      image: '' 
+    });
     setIsProductDialogOpen(true);
   };
   const handleOpenEditDialog = (product: Product) => {
-    setEditingProduct(product); setProductForm({ ...product }); setIsProductDialogOpen(true);
+    setEditingProduct(product); 
+    setProductForm({ ...product }); 
+    setIsProductDialogOpen(true);
   };
   const handleSaveProduct = () => {
     if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
+      setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
+      toast({ title: "Product Updated", description: `${productForm.name} has been updated.` });
     } else {
       const newProd: Product = { 
         id: Math.random().toString(36).substr(2, 9), 
@@ -127,11 +170,15 @@ export function SettingsView() {
         description: productForm.description || '', 
         image: productForm.image || 'https://picsum.photos/seed/default/400/300' 
       };
-      setProducts([...products, newProd]);
+      setProducts(prev => [...prev, newProd]);
+      toast({ title: "Product Added", description: `${newProd.name} added to catalog.` });
     }
     setIsProductDialogOpen(false);
   };
-  const handleDeleteProduct = (id: string) => setProducts(products.filter(p => p.id !== id));
+  const handleDeleteProduct = (id: string) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+    toast({ title: "Product Deleted", description: "The product has been removed." });
+  };
 
   // --- Payment Handlers ---
   const handleOpenAddPayment = () => {
@@ -142,14 +189,18 @@ export function SettingsView() {
   };
   const handleSavePayment = () => {
     if (editingPayment) {
-      setPaymentMethods(paymentMethods.map(p => p.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : p));
+      setPaymentMethods(prev => prev.map(p => p.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : p));
     } else {
       const newPM: PaymentMethod = { id: Math.random().toString(36).substr(2, 9), name: paymentForm.name || 'New Payment Method', icon: paymentForm.icon as any || 'CreditCard', description: paymentForm.description || '', enabled: paymentForm.enabled ?? true };
-      setPaymentMethods([...paymentMethods, newPM]);
+      setPaymentMethods(prev => [...prev, newPM]);
     }
     setIsPaymentDialogOpen(false);
+    toast({ title: "Payment Saved", description: "Payment settings updated." });
   };
-  const handleDeletePayment = (id: string) => setPaymentMethods(paymentMethods.filter(p => p.id !== id));
+  const handleDeletePayment = (id: string) => {
+    setPaymentMethods(prev => prev.filter(p => p.id !== id));
+    toast({ title: "Payment Deleted", description: "Payment method removed." });
+  };
 
   // --- Fee Handlers ---
   const handleOpenAddFee = () => {
@@ -160,14 +211,18 @@ export function SettingsView() {
   };
   const handleSaveFee = () => {
     if (editingFee) {
-      setFees(fees.map(f => f.id === editingFee.id ? { ...editingFee, ...feeForm } as Fee : f));
+      setFees(prev => prev.map(f => f.id === editingFee.id ? { ...editingFee, ...feeForm } as Fee : f));
     } else {
       const newFee: Fee = { id: Math.random().toString(36).substr(2, 9), name: feeForm.name || 'New Fee', type: feeForm.type as FeeType || 'Tax', value: feeForm.value || 0, enabled: feeForm.enabled ?? true };
-      setFees([...fees, newFee]);
+      setFees(prev => [...prev, newFee]);
     }
     setIsFeeDialogOpen(false);
+    toast({ title: "Fee Configuration Saved", description: "Fees and calculation rules updated." });
   };
-  const handleDeleteFee = (id: string) => setFees(fees.filter(f => f.id !== id));
+  const handleDeleteFee = (id: string) => {
+    setFees(prev => prev.filter(f => f.id !== id));
+    toast({ title: "Fee Deleted", description: "Rule removed from calculation." });
+  };
 
   const getPaymentIcon = (iconName: string) => {
     switch (iconName) {
