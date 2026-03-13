@@ -124,30 +124,40 @@ export function SettingsView() {
   // Template Download Handler
   const handleDownloadTemplate = (type: string) => {
     let headers: string[] = [];
+    let sampleData: string[] = [];
     let fileName = `Template_${type}.csv`;
+
+    const today = new Date().toISOString().split('T')[0];
+    const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     switch (type) {
       case 'products':
         headers = ["sku", "barcode", "name", "price", "costPrice", "category", "image", "onHandQty", "description"];
+        sampleData = ["BRG-001", "12345678", "Sample Product", "10.00", "5.00", "Main Course", "https://picsum.photos/seed/1/400/300", "100", "Contoh deskripsi produk"];
         break;
       case 'pricelist':
         headers = ["name", "productSku", "startDate", "endDate", "minQty", "maxQty", "price", "enabled"];
+        sampleData = ["Harga Grosir", "BRG-001", today, nextMonth, "5", "999", "8.50", "true"];
         break;
       case 'promo':
         headers = ["name", "productSku", "type", "value", "startDate", "endDate", "enabled"];
+        sampleData = ["Promo Merdeka", "BRG-001", "Percentage", "10", today, nextMonth, "true"];
         break;
       case 'package':
         headers = ["sku", "name", "description", "price", "enabled", "items(sku1:qty1|sku2:qty2)"];
+        sampleData = ["PKG-001", "Paket Hemat", "Nasi + Ayam", "25.00", "true", "BRG-001:1|BRG-002:1"];
         break;
       case 'combo':
         headers = ["sku", "name", "description", "basePrice", "enabled", "groups(name:required:sku:extra;sku:extra|name2...)"];
+        sampleData = ["CMB-001", "Combo Puas", "Pilih menu favoritmu", "30.00", "true", "Pilih Minum:true:DR-001:0;DR-002:2.5|Pilih Side:false:SN-001:0"];
         break;
     }
 
-    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",");
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = headers.join(",") + "\n" + sampleData.join(",");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", url);
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
@@ -340,6 +350,7 @@ export function SettingsView() {
 
   // Payment Handlers
   const handleOpenAddPayment = () => {
+    setEditingCategory(null); // Not used here but state reset
     setEditingPayment(null);
     setPaymentForm({ name: '', icon: 'CreditCard', description: '', enabled: true });
     setIsPaymentDialogOpen(true);
@@ -575,11 +586,11 @@ export function SettingsView() {
               <SettingsSection icon={Store} title="Store Information" description="Basic details about your establishment">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                   <div className="space-y-3">
-                    <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Store Name</Label>
+                    <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Store Name</Label>
                     <Input placeholder="Main Store" defaultValue="Alex's Deli" className="h-12 rounded-xl focus:ring-primary/20 border-2" />
                   </div>
                   <div className="space-y-3">
-                    <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Currency Symbol</Label>
+                    <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Currency Symbol</Label>
                     <Input defaultValue="$" className="h-12 rounded-xl focus:ring-primary/20 border-2" />
                   </div>
                 </div>
