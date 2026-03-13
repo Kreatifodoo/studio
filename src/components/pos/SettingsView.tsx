@@ -32,7 +32,8 @@ import {
   LayoutGrid,
   Settings as SettingsIcon,
   ChevronRight,
-  Search
+  Search,
+  Check
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Category, Product, PaymentMethod, Fee, FeeType, Customer, PriceList, PriceTier, Package, PackageItem } from '@/types/pos';
@@ -67,12 +68,14 @@ export function SettingsView() {
   // State for active menu
   const [activeTab, setActiveTab] = useState('general');
   const [packageSearch, setPackageSearch] = useState('');
+  const [categorySearch, setCategorySearch] = useState('');
 
   // Dialog States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isPriceListDialogOpen, setIsPriceListDialogOpen] = useState(false);
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
 
   // Form States
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -83,6 +86,9 @@ export function SettingsView() {
   const [priceListForm, setPriceListForm] = useState<Partial<PriceList>>({ tiers: [] });
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [packageForm, setPackageForm] = useState<Partial<Package>>({ items: [] });
+  
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [categoryForm, setCategoryForm] = useState('');
 
   // Navigation Items
   const navGroups = [
@@ -100,12 +106,47 @@ export function SettingsView() {
       items: [
         { id: 'general', icon: Store, label: 'General' },
         { id: 'customers', icon: Users, label: 'Master Customer' },
-        { id: 'categories', icon: Layers, label: 'Categories' },
+        { id: 'categories', icon: Layers, label: 'Master Kategori' },
         { id: 'payments', icon: CreditCard, label: 'Payments' },
         { id: 'fees', icon: Percent, label: 'Fees & Discounts' },
       ]
     }
   ];
+
+  // Category Handlers
+  const handleOpenAddCategory = () => {
+    setEditingCategory(null);
+    setCategoryForm('');
+    setIsCategoryDialogOpen(true);
+  };
+
+  const handleSaveCategory = () => {
+    if (!categoryForm.trim()) {
+      toast({ variant: "destructive", title: "Error", description: "Nama kategori tidak boleh kosong." });
+      return;
+    }
+
+    if (editingCategory) {
+      setCategories(prev => prev.map(cat => cat === editingCategory ? categoryForm : cat));
+      // Update categories in products too
+      setProducts(prev => prev.map(p => p.category === editingCategory ? { ...p, category: categoryForm } : p));
+    } else {
+      if (categories.includes(categoryForm)) {
+        toast({ variant: "destructive", title: "Error", description: "Kategori sudah ada." });
+        return;
+      }
+      setCategories(prev => [...prev, categoryForm]);
+    }
+    setIsCategoryDialogOpen(false);
+    toast({ title: "Success", description: "Kategori berhasil disimpan." });
+  };
+
+  const handleDeleteCategory = (catToDelete: string) => {
+    if (catToDelete === 'All') return;
+    setCategories(prev => prev.filter(c => c !== catToDelete));
+    setIsCategoryDialogOpen(false);
+    toast({ title: "Deleted", description: "Kategori telah dihapus." });
+  };
 
   // Package Handlers
   const handleOpenAddPackage = () => {
@@ -220,6 +261,10 @@ export function SettingsView() {
   const filteredPackages = packages.filter(p => 
     p.name.toLowerCase().includes(packageSearch.toLowerCase()) || 
     p.sku.toLowerCase().includes(packageSearch.toLowerCase())
+  );
+
+  const filteredCategories = categories.filter(c => 
+    c !== 'All' && c.toLowerCase().includes(categorySearch.toLowerCase())
   );
 
   return (
@@ -440,6 +485,57 @@ export function SettingsView() {
             </Card>
           )}
 
+          {activeTab === 'categories' && (
+            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                  <CardTitle className="text-2xl font-black">Master Kategori</CardTitle>
+                  <CardDescription className="font-medium">Kelola kategori produk untuk filter POS</CardDescription>
+                </div>
+                <Button onClick={handleOpenAddCategory} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
+                  <Plus className="h-5 w-5" /> Tambah Kategori
+                </Button>
+              </div>
+
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Cari nama kategori..." 
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  className="pl-10 h-12 rounded-xl border-2 focus-visible:ring-primary/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredCategories.map((cat) => (
+                  <div key={cat} className="group flex items-center justify-between p-5 bg-muted/10 rounded-3xl border border-transparent hover:border-primary/20 transition-all hover:bg-white hover:shadow-xl hover:shadow-primary/5">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-primary/5 p-3 rounded-2xl text-primary group-hover:scale-110 transition-transform">
+                        <Layers className="h-5 w-5" />
+                      </div>
+                      <span className="font-black text-lg">{cat}</span>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" onClick={() => { setEditingCategory(cat); setCategoryForm(cat); setIsCategoryDialogOpen(true); }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-destructive/40 hover:text-destructive" onClick={() => handleDeleteCategory(cat)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {filteredCategories.length === 0 && (
+                  <div className="col-span-full py-20 text-center opacity-30">
+                    <Layers className="h-20 w-20 mx-auto mb-4" />
+                    <p className="text-xl font-black">Tidak ada kategori ditemukan</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
           {activeTab === 'customers' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <div className="flex justify-between items-center mb-8">
@@ -486,7 +582,7 @@ export function SettingsView() {
           )}
 
           {/* Placeholder contents for other tabs */}
-          {['categories', 'payments', 'fees'].includes(activeTab) && (
+          {['payments', 'fees'].includes(activeTab) && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
                <div className="flex flex-col items-center justify-center h-full py-20 opacity-30">
                   <SettingsIcon className="h-20 w-20 mb-4" />
@@ -496,6 +592,34 @@ export function SettingsView() {
           )}
         </div>
       </div>
+
+      {/* Category Dialog */}
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-3xl font-black">
+              {editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Kategori</Label>
+              <Input 
+                value={categoryForm} 
+                onChange={(e) => setCategoryForm(e.target.value)} 
+                placeholder="Contoh: Bakery, Seafood, dll"
+                className="h-12 rounded-xl border-2 focus-visible:ring-primary/20" 
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-8">
+            <Button onClick={handleSaveCategory} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20 gap-2">
+              <Check className="h-5 w-5" />
+              Simpan Kategori
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Product Dialog */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
