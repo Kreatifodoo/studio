@@ -515,7 +515,6 @@ export function SettingsView() {
           <DialogFooter><Button onClick={handleSaveProduct} className="w-full h-12 rounded-xl bg-primary font-bold">{editingProduct ? 'Update Product' : 'Save Product'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* (Rest of dialogs follow same patterns) */}
     </div>
   );
 }
