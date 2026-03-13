@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -9,9 +8,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { CheckCircle2, Loader2, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
+import { CheckCircle2, CreditCard, Banknote, Smartphone, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { usePOS } from './POSContext';
 
 interface PaymentDialogProps {
@@ -23,8 +21,7 @@ interface PaymentDialogProps {
 
 export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentDialogProps) {
   const { paymentMethods } = usePOS();
-  const [stage, setStage] = useState<'method' | 'processing' | 'success'>('method');
-  const [progress, setProgress] = useState(0);
+  const [stage, setStage] = useState<'method' | 'success'>('method');
   const [transactionId, setTransactionId] = useState<string>('');
   const [selectedMethod, setSelectedMethod] = useState<string>('');
 
@@ -32,7 +29,6 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
 
   const reset = useCallback(() => {
     setStage('method');
-    setProgress(0);
     setTransactionId('');
     setSelectedMethod('');
   }, []);
@@ -44,27 +40,10 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     }
   }, [open, reset]);
 
-  useEffect(() => {
-    if (stage === 'processing') {
-      const interval = setInterval(() => {
-        setProgress(p => {
-          if (p >= 100) {
-            clearInterval(interval);
-            setTransactionId(Math.random().toString(36).toUpperCase().slice(2, 10));
-            setTimeout(() => setStage('success'), 500);
-            return 100;
-          }
-          return p + 5;
-        });
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, [stage]);
-
   const handleStartPayment = (methodName: string) => {
     setSelectedMethod(methodName);
-    setStage('processing');
-    setProgress(0);
+    setTransactionId(Math.random().toString(36).toUpperCase().slice(2, 10));
+    setStage('success');
   };
 
   const getIcon = (iconName: string) => {
@@ -77,11 +56,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => {
-        // Prevent closing while processing
-        if (stage === 'processing') return;
-        onOpenChange(val);
-    }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-8 rounded-[2.5rem] overflow-hidden border-none shadow-2xl">
         {stage === 'method' && (
           <>
@@ -113,20 +88,6 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
           </>
         )}
 
-        {stage === 'processing' && (
-          <div className="py-12 flex flex-col items-center text-center gap-6">
-            <div className="relative">
-               <Loader2 className="h-20 w-20 text-primary animate-spin" />
-               <div className="absolute inset-0 flex items-center justify-center font-black text-xs">{progress}%</div>
-            </div>
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black mb-2">Processing Payment</DialogTitle>
-              <DialogDescription>Please wait while we confirm the transaction via {selectedMethod}...</DialogDescription>
-            </DialogHeader>
-            <Progress value={progress} className="w-full h-3 rounded-full bg-muted" />
-          </div>
-        )}
-
         {stage === 'success' && (
           <div className="py-12 flex flex-col items-center text-center gap-6">
             <div className="bg-accent/10 p-6 rounded-full">
@@ -134,7 +95,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
             </div>
             <DialogHeader>
               <DialogTitle className="text-4xl font-black mb-2 text-primary">Success!</DialogTitle>
-              <DialogDescription className="text-lg font-medium">The transaction was completed successfully.</DialogDescription>
+              <DialogDescription className="text-lg font-medium">The transaction via {selectedMethod} was completed successfully.</DialogDescription>
             </DialogHeader>
             <div className="bg-muted/30 w-full p-4 rounded-2xl">
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Transaction ID</p>
