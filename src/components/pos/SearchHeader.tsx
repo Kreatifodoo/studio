@@ -32,12 +32,12 @@ export function SearchHeader() {
           <Avatar className="h-12 w-12 border-[3px] border-primary/10 rounded-2xl">
             <AvatarImage src={currentUser?.avatarUrl} />
             <AvatarFallback className="rounded-2xl bg-primary text-white font-black">
-              {currentUser?.name.substring(0, 2).toUpperCase()}
+              {currentUser?.name?.substring(0, 2).toUpperCase() || '??'}
             </AvatarFallback>
           </Avatar>
           <div className="text-left hidden lg:block">
-            <p className="text-sm font-black leading-tight">{currentUser?.name}</p>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{currentRole?.name}</p>
+            <p className="text-sm font-black leading-tight">{currentUser?.name || 'User'}</p>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{currentRole?.name || 'Staff'}</p>
           </div>
         </div>
       </div>

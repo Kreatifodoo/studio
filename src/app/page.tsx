@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { POSProvider, usePOS } from '@/components/pos/POSContext';
 import { Sidebar } from '@/components/pos/Sidebar';
 import { SearchHeader } from '@/components/pos/SearchHeader';
@@ -16,6 +16,16 @@ import { cn } from '@/lib/utils';
 
 function POSLayout() {
   const { view, currentSession, currentUser } = usePOS();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Prevent hydration issues by only rendering once client is ready
+  if (!isClient) {
+    return <div className="min-h-screen bg-[#F9FBFF]" />;
+  }
 
   // Step 1: Check if user is logged in
   if (!currentUser) {

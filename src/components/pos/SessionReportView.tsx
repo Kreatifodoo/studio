@@ -18,7 +18,8 @@ export function SessionReportView() {
   const { lastClosedSession, sessions, history, customers } = usePOS();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   
-  const sessionToView = lastClosedSession || sessions[0];
+  // Safety check: prioritize last closed, then current sessions list
+  const sessionToView = lastClosedSession || (sessions.length > 0 ? sessions[0] : null);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -62,18 +63,20 @@ export function SessionReportView() {
   };
 
   const handlePrintSummary = () => {
+    if (!sessionToView) return;
     setIsPreviewOpen(true);
     setTimeout(() => {
       window.print();
     }, 500);
   };
 
+  // If no session found at all, show empty state instead of crashing
   if (!sessionToView) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] text-center opacity-30">
         <FileText className="h-24 w-24 mb-6" />
         <h2 className="text-3xl font-black">Laporan Belum Tersedia</h2>
-        <p className="text-xl">Tutup sesi kasir untuk melihat laporan pertama Anda.</p>
+        <p className="text-xl">Selesaikan transaksi dan tutup sesi kasir untuk melihat laporan pertama Anda.</p>
       </div>
     );
   }
