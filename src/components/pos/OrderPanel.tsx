@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { useState } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User, Phone, Package as PackageIcon } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User, Phone, Package as PackageIcon, LayoutGrid } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -23,7 +24,7 @@ export function OrderPanel() {
   const { 
     cart, removeFromCart, updateQuantity, updateNote, clearCart, 
     addTransaction, fees, currentSession, customers, addCustomer,
-    selectedCustomerId, setSelectedCustomerId, packages, products
+    selectedCustomerId, setSelectedCustomerId, packages, products, combos
   } = usePOS();
   
   const [isAIActive, setIsAIActive] = useState<string | null>(null);
@@ -161,6 +162,9 @@ export function OrderPanel() {
                       {item.isPackage && (
                         <Badge variant="secondary" className="bg-accent/10 text-accent border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Package</Badge>
                       )}
+                      {item.isCombo && (
+                        <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Combo</Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center bg-white rounded-2xl p-1.5 shadow-sm border">
@@ -186,6 +190,31 @@ export function OrderPanel() {
                             <span className="text-[9px] font-bold text-muted-foreground truncate max-w-[80px]">
                               {productDetails?.name || 'Item'}
                             </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Combo Selections Display */}
+                {item.isCombo && item.comboSelections && (
+                  <div className="bg-white/40 p-3 rounded-2xl border border-primary/5 mt-1">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <LayoutGrid className="h-3 w-3 text-muted-foreground" />
+                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Combo Choices:</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.comboSelections.map((sel, sIdx) => {
+                        const productDetails = products.find(p => p.id === sel.productId);
+                        return (
+                          <div key={sIdx} className="bg-white px-2 py-1 rounded-lg shadow-sm flex items-center gap-1.5 border border-muted/20">
+                            <span className="text-[9px] font-bold text-muted-foreground truncate max-w-[120px]">
+                              {productDetails?.name || 'Choice'}
+                            </span>
+                            {sel.extraPrice > 0 && (
+                              <span className="text-[8px] font-black text-primary">+$ {sel.extraPrice.toFixed(2)}</span>
+                            )}
                           </div>
                         );
                       })}

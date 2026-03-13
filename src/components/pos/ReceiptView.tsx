@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -67,6 +68,21 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
                     <div key={pIdx} className="text-[9px] opacity-70 flex justify-between italic">
                       <span>- {productDetails?.name || 'Item'}</span>
                       <span>x{pkgItem.quantity * item.quantity}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Combo Selections Detail */}
+            {item.isCombo && item.comboSelections && (
+              <div className="pl-2 mb-1 border-l border-black/10">
+                {item.comboSelections.map((sel, sIdx) => {
+                  const productDetails = products.find(p => p.id === sel.productId);
+                  return (
+                    <div key={sIdx} className="text-[9px] opacity-70 flex justify-between italic">
+                      <span>- {productDetails?.name || 'Choice'}</span>
+                      {sel.extraPrice > 0 && <span>+${sel.extraPrice.toFixed(2)}</span>}
                     </div>
                   );
                 })}

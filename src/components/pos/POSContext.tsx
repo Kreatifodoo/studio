@@ -18,6 +18,7 @@ interface POSContextType {
   cart: OrderItem[];
   addToCart: (product: Product) => void;
   addPackageToCart: (pkg: Package) => void;
+  addComboToCart: (combo: Combo, selections: OrderItem['comboSelections']) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, delta: number) => void;
   updateNote: (itemId: string, note: string) => void;
@@ -189,6 +190,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const addComboToCart = (combo: Combo, selections: OrderItem['comboSelections']) => {
+    if (!combo.enabled || !currentSession) return;
+
+    const extraTotal = (selections || []).reduce((acc, s) => acc + s.extraPrice, 0);
+    const finalPrice = combo.basePrice + extraTotal;
+
+    setCart(prev => [...prev, {
+      id: Math.random().toString(36).substr(2, 9),
+      productId: combo.id,
+      name: combo.name,
+      price: finalPrice,
+      quantity: 1,
+      isPackage: false,
+      isCombo: true,
+      comboSelections: selections
+    }]);
+  };
+
   const removeFromCart = (itemId: string) => {
     setCart(prev => prev.filter(item => item.id !== itemId));
   };
@@ -242,7 +261,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
             });
           }
         } else if (item.isCombo) {
-          // Future: decrease stock for combo selections
           if (item.comboSelections) {
             item.comboSelections.forEach(sel => {
               updatedProducts = updatedProducts.map(p => {
@@ -286,7 +304,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     <POSContext.Provider value={{
       activeCategory, setActiveCategory,
       searchQuery, setSearchQuery,
-      cart, addToCart, addPackageToCart, removeFromCart, updateQuantity, updateNote, clearCart,
+      cart, addToCart, addPackageToCart, addComboToCart, removeFromCart, updateQuantity, updateNote, clearCart,
       selectedCustomerId, setSelectedCustomerId,
       history, addTransaction,
       currentSession, sessions, openSession, closeSession, lastClosedSession,
