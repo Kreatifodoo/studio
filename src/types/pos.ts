@@ -1,5 +1,5 @@
 
-export type Category = 'All' | 'Main Course' | 'Drinks' | 'Snacks' | 'Desserts';
+export type Category = string;
 
 export type AppView = 'pos' | 'history' | 'dashboard' | 'settings' | 'reports';
 

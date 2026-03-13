@@ -47,7 +47,7 @@ export function SettingsView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Category States
-  const [newCategory, setNewCategory] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryFormValue, setCategoryFormValue] = useState('');
@@ -87,9 +87,10 @@ export function SettingsView() {
 
   // --- Category Handlers ---
   const handleAddCategory = () => {
-    if (newCategory && !categories.includes(newCategory as Category)) {
-      setCategories([...categories, newCategory as Category]);
-      setNewCategory('');
+    const trimmedName = newCategoryName.trim();
+    if (trimmedName && !categories.includes(trimmedName)) {
+      setCategories([...categories, trimmedName]);
+      setNewCategoryName('');
     }
   };
   const handleOpenEditCategory = (cat: Category) => {
@@ -97,8 +98,8 @@ export function SettingsView() {
   };
   const handleSaveCategory = () => {
     if (!editingCategory || !categoryFormValue) return;
-    setCategories(categories.map(c => c === editingCategory ? categoryFormValue as Category : c));
-    setProducts(products.map(p => p.category === editingCategory ? { ...p, category: categoryFormValue as Category } : p));
+    setCategories(categories.map(c => c === editingCategory ? categoryFormValue : c));
+    setProducts(products.map(p => p.category === editingCategory ? { ...p, category: categoryFormValue } : p));
     setIsCategoryDialogOpen(false); setEditingCategory(null);
   };
   const handleDeleteCategory = (cat: Category) => {
@@ -107,7 +108,7 @@ export function SettingsView() {
 
   // --- Product Handlers ---
   const handleOpenAddDialog = () => {
-    setEditingProduct(null); setProductForm({ name: '', price: 0, category: 'Main Course', available: true, description: '', image: '' });
+    setEditingProduct(null); setProductForm({ name: '', price: 0, category: categories.find(c => c !== 'All') || 'Main Course', available: true, description: '', image: '' });
     setIsProductDialogOpen(true);
   };
   const handleOpenEditDialog = (product: Product) => {
@@ -121,7 +122,7 @@ export function SettingsView() {
         id: Math.random().toString(36).substr(2, 9), 
         name: productForm.name || 'New Product', 
         price: productForm.price || 0, 
-        category: productForm.category as Category || 'Main Course', 
+        category: productForm.category || categories.find(c => c !== 'All') || 'Main Course', 
         available: productForm.available ?? true, 
         description: productForm.description || '', 
         image: productForm.image || 'https://picsum.photos/seed/default/400/300' 
@@ -252,8 +253,15 @@ export function SettingsView() {
           <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
             <div className="mb-8"><CardTitle className="text-2xl font-black">Categories</CardTitle><CardDescription>Manage food categories for your menu</CardDescription></div>
             <div className="flex gap-4 mb-8">
-              <Input placeholder="New Category Name..." value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="rounded-xl h-12 flex-1" />
-              <Button onClick={handleAddCategory} className="rounded-xl bg-primary h-12 px-6 font-bold gap-2"><Plus className="h-5 w-5" /> Add</Button>
+              <Input 
+                placeholder="New Category Name..." 
+                value={newCategoryName} 
+                onChange={(e) => setNewCategoryName(e.target.value)} 
+                className="rounded-xl h-12 flex-1" 
+              />
+              <Button onClick={handleAddCategory} className="rounded-xl bg-primary h-12 px-6 font-bold gap-2">
+                <Plus className="h-5 w-5" /> Add
+              </Button>
             </div>
             <div className="grid grid-cols-1 gap-4">
               {categories.map((cat) => (
@@ -371,7 +379,7 @@ export function SettingsView() {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Price ($)</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} className="rounded-xl" /></div>
-              <div className="space-y-2"><Label>Category</Label><Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val as Category})}><SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{categories.filter(c => c !== 'All').map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent></Select></div>
+              <div className="space-y-2"><Label>Category</Label><Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}><SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{categories.filter(c => c !== 'All').map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent></Select></div>
             </div>
             
             <div className="space-y-2"><Label>Description</Label><Input value={productForm.description} onChange={(e) => setProductForm({...productForm, description: e.target.value})} className="rounded-xl" /></div>
