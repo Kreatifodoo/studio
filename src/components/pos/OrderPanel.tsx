@@ -24,19 +24,41 @@ export function OrderPanel() {
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   
-  // Dynamic Fee Calculation
+  // Sequential Fee Calculation Logic:
+  // 1. Start with Subtotal
+  // 2. Apply Discounts
+  // 3. Apply Service Charges (on subtotal after discounts)
+  // 4. Apply Tax (on total after service charges)
+  
   const enabledFees = fees.filter(f => f.enabled);
   
-  const calculatedFees = enabledFees.map(fee => {
+  let runningTotal = subtotal;
+  
+  // 1. Calculate Discounts
+  const discounts = enabledFees.filter(f => f.type === 'Discount').map(fee => {
     const amount = (subtotal * fee.value) / 100;
-    return {
-      ...fee,
-      amount: fee.type === 'Discount' ? -amount : amount
-    };
+    return { ...fee, amount: -amount };
   });
+  const totalDiscounts = discounts.reduce((acc, f) => acc + f.amount, 0);
+  runningTotal += totalDiscounts;
 
-  const totalFeesAmount = calculatedFees.reduce((acc, f) => acc + f.amount, 0);
-  const total = subtotal + totalFeesAmount;
+  // 2. Calculate Service Charges (usually based on subtotal after discount)
+  const serviceCharges = enabledFees.filter(f => f.type === 'Service').map(fee => {
+    const amount = (runningTotal * fee.value) / 100;
+    return { ...fee, amount };
+  });
+  const totalService = serviceCharges.reduce((acc, f) => acc + f.amount, 0);
+  runningTotal += totalService;
+
+  // 3. Calculate Tax (usually based on subtotal + service)
+  const taxes = enabledFees.filter(f => f.type === 'Tax').map(fee => {
+    const amount = (runningTotal * fee.value) / 100;
+    return { ...fee, amount };
+  });
+  const totalTax = taxes.reduce((acc, f) => acc + f.amount, 0);
+  
+  const allCalculatedFees = [...discounts, ...serviceCharges, ...taxes];
+  const total = runningTotal + totalTax;
 
   const handleAISuggestions = async (itemId: string, itemName: string) => {
     setIsAIActive(itemId);
@@ -156,11 +178,11 @@ export function OrderPanel() {
             <span>${subtotal.toFixed(2)}</span>
           </div>
           
-          {calculatedFees.map(fee => (
+          {allCalculatedFees.map(fee => (
             <div key={fee.id} className="flex justify-between items-center text-sm font-bold">
               <span className="text-muted-foreground">{fee.name} ({fee.value}%)</span>
               <span className={fee.type === 'Discount' ? 'text-accent' : ''}>
-                {fee.type === 'Discount' ? '-' : ''}${Math.abs(fee.amount).toFixed(2)}
+                {fee.amount < 0 ? '-' : ''}${Math.abs(fee.amount).toFixed(2)}
               </span>
             </div>
           ))}
@@ -194,7 +216,7 @@ export function OrderPanel() {
             date: new Date().toISOString(),
             items: [...cart],
             subtotal,
-            tax: calculatedFees.find(f => f.type === 'Tax')?.amount || 0,
+            tax: totalTax,
             total,
             status: 'Completed'
           });
