@@ -3,22 +3,34 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, OrderItem, Transaction, Category, AppView } from '@/types/pos';
+import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
+  // Navigation & UI
   activeCategory: Category;
   setActiveCategory: (cat: Category) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  view: AppView;
+  setView: (view: AppView) => void;
+  
+  // Cart & Orders
   cart: OrderItem[];
   addToCart: (product: Product) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, delta: number) => void;
   updateNote: (itemId: string, note: string) => void;
   clearCart: () => void;
+  
+  // History
   history: Transaction[];
   addTransaction: (transaction: Transaction) => void;
-  view: AppView;
-  setView: (view: AppView) => void;
+
+  // Master Data
+  products: Product[];
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  categories: Category[];
+  setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
 }
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
@@ -29,6 +41,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [history, setHistory] = useState<Transaction[]>([]);
   const [view, setView] = useState<AppView>('pos');
+
+  // Master Data State
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
 
   const addToCart = (product: Product) => {
     if (!product.available) return;
@@ -79,7 +95,9 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       searchQuery, setSearchQuery,
       cart, addToCart, removeFromCart, updateQuantity, updateNote, clearCart,
       history, addTransaction,
-      view, setView
+      view, setView,
+      products, setProducts,
+      categories, setCategories
     }}>
       {children}
     </POSContext.Provider>
