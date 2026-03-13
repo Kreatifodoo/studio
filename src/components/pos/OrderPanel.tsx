@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -15,15 +15,22 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from '@/components/ui/badge';
 import { PaymentDialog } from './PaymentDialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function OrderPanel() {
-  const { cart, removeFromCart, updateQuantity, updateNote, clearCart, addTransaction, fees, currentSession } = usePOS();
+  const { 
+    cart, removeFromCart, updateQuantity, updateNote, clearCart, 
+    addTransaction, fees, currentSession, customers, 
+    selectedCustomerId, setSelectedCustomerId 
+  } = usePOS();
+  
   const [isAIActive, setIsAIActive] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  
   const enabledFees = fees.filter(f => f.enabled);
   
   let runningTotal = subtotal;
@@ -69,19 +76,38 @@ export function OrderPanel() {
 
   return (
     <div className="w-[400px] h-screen fixed right-0 top-0 bg-white shadow-[0_0_50px_-12px_rgba(0,0,0,0.1)] z-40 flex flex-col">
-      <div className="p-10 pb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 p-3 rounded-2xl text-primary">
-            <ShoppingBag className="h-7 w-7" />
+      <div className="p-10 pb-6">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="bg-primary/10 p-3 rounded-2xl text-primary">
+              <ShoppingBag className="h-7 w-7" />
+            </div>
+            <h2 className="text-2xl font-black">Active Order</h2>
           </div>
-          <h2 className="text-2xl font-black">Active Order</h2>
+          <button
+            onClick={clearCart}
+            className="bg-muted p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
         </div>
-        <button
-          onClick={clearCart}
-          className="bg-muted p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-        >
-          <Trash2 className="h-5 w-5" />
-        </button>
+
+        {/* Customer Selector */}
+        <div className="bg-muted/30 p-4 rounded-[2rem] border border-transparent hover:border-primary/20 transition-all">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-white p-2 rounded-xl text-primary"><User className="h-4 w-4" /></div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Customer</span>
+          </div>
+          <Select value={selectedCustomerId || ""} onValueChange={(val) => setSelectedCustomerId(val)}>
+            <SelectTrigger className="border-none bg-transparent shadow-none h-auto p-0 text-sm font-bold focus:ring-0">
+              <SelectValue placeholder="Walk-in Customer" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl">
+              <SelectItem value="">Walk-in Customer</SelectItem>
+              {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <ScrollArea className="flex-1 px-10 py-4">
@@ -211,7 +237,8 @@ export function OrderPanel() {
             total,
             status: 'Completed',
             paymentMethod: methodName,
-            paymentReference: reference
+            paymentReference: reference,
+            customerId: selectedCustomerId || undefined
           });
           clearCart();
           setIsPaymentOpen(false);

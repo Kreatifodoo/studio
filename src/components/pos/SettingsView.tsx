@@ -16,18 +16,18 @@ import {
   Trash2, 
   Pencil,
   CreditCard,
-  Smartphone,
-  Banknote,
-  Wallet,
   Percent,
   Upload,
   Image as ImageIcon,
   Eye,
   Package,
-  Barcode
+  Barcode,
+  Users,
+  Tags,
+  Calendar
 } from 'lucide-react';
 import { usePOS } from './POSContext';
-import { Category, Product, PaymentMethod, Fee, FeeType } from '@/types/pos';
+import { Category, Product, PaymentMethod, Fee, FeeType, Customer, PriceList, PriceTier } from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
@@ -46,290 +46,103 @@ export function SettingsView() {
     products, setProducts, 
     categories, setCategories, 
     paymentMethods, setPaymentMethods,
-    fees, setFees 
+    fees, setFees,
+    customers, setCustomers,
+    priceLists, setPriceLists
   } = usePOS();
   
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Category States
-  const [newCategoryName, setNewCategoryName] = useState('');
+  // Navigation & Dialog States
+  const [activeTab, setActiveTab] = useState('general');
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [isPriceListDialogOpen, setIsPriceListDialogOpen] = useState(false);
+
+  // Form States
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryFormValue, setCategoryFormValue] = useState('');
-  const [viewingCategoryProducts, setViewingCategoryProducts] = useState<Category | null>(null);
-  const [isViewProductsOpen, setIsViewProductsOpen] = useState(false);
-
-  // Product States
-  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [productForm, setProductForm] = useState<Partial<Product>>({
-    name: '', sku: '', barcode: '', price: 0, costPrice: 0, onHandQty: 0, category: 'Main Course', available: true, description: '', image: ''
-  });
+  const [productForm, setProductForm] = useState<Partial<Product>>({});
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [customerForm, setCustomerForm] = useState<Partial<Customer>>({});
+  const [editingPriceList, setEditingPriceList] = useState<PriceList | null>(null);
+  const [priceListForm, setPriceListForm] = useState<Partial<PriceList>>({ tiers: [] });
 
-  // Payment Method States
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
-  const [paymentForm, setPaymentForm] = useState<Partial<PaymentMethod>>({
-    name: '', icon: 'CreditCard', description: '', enabled: true
-  });
-
-  // Fee States
-  const [isFeeDialogOpen, setIsFeeDialogOpen] = useState(false);
-  const [editingFee, setEditingFee] = useState<Fee | null>(null);
-  const [feeForm, setFeeForm] = useState<Partial<Fee>>({
-    name: '', type: 'Tax', value: 0, enabled: true
-  });
-
-  // --- Image Upload Handler ---
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProductForm(prev => ({ ...prev, image: reader.result as string }));
-      };
+      reader.onloadend = () => setProductForm(prev => ({ ...prev, image: reader.result as string }));
       reader.readAsDataURL(file);
     }
   };
 
-  // --- Barcode Printing Handler ---
-  const handlePrintBarcode = (product: Product) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast({ title: "Pop-up Blocked", description: "Please allow pop-ups to print barcode labels.", variant: "destructive" });
-      return;
-    }
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Label Barcode - ${product.name}</title>
-          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-          <style>
-            @page { size: 50mm 30mm; margin: 0; }
-            body { 
-              margin: 0; 
-              padding: 0;
-              width: 50mm;
-              height: 30mm;
-              display: flex; 
-              flex-direction: column; 
-              align-items: center; 
-              justify-content: center; 
-              font-family: sans-serif;
-              background: white;
-            }
-            .label { 
-              width: 48mm; 
-              height: 28mm; 
-              display: flex; 
-              flex-direction: column; 
-              align-items: center; 
-              justify-content: center; 
-              text-align: center;
-              box-sizing: border-box;
-              padding: 1mm;
-            }
-            .store { font-size: 8px; font-weight: bold; color: #3D8AF5; margin-bottom: 1px; text-transform: uppercase; }
-            .name { font-size: 11px; font-weight: bold; margin-bottom: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; }
-            #barcode-svg { 
-              width: 100%; 
-              max-height: 12mm;
-              margin-bottom: 2px;
-            }
-            .sku { font-size: 8px; font-family: monospace; color: #666; }
-            .price { font-size: 12px; font-weight: bold; margin-top: 1px; color: #3D8AF5; }
-          </style>
-        </head>
-        <body>
-          <div class="label">
-            <div class="store">NEXTPOS DELI</div>
-            <div class="name">${product.name}</div>
-            <svg id="barcode-svg"></svg>
-            <div class="sku">SKU: ${product.sku}</div>
-            <div class="price">$${product.price.toFixed(2)}</div>
-          </div>
-          <script>
-            window.onload = function() {
-              if (window.JsBarcode) {
-                JsBarcode("#barcode-svg", "${product.barcode}", {
-                  format: "CODE128",
-                  width: 2,
-                  height: 40,
-                  displayValue: true,
-                  fontSize: 14,
-                  margin: 0,
-                  background: "transparent"
-                });
-                
-                setTimeout(() => {
-                  window.print();
-                  // window.close(); // Optional: close window after print
-                }, 500);
-              }
-            }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
-  // --- Category Handlers ---
-  const handleAddCategory = () => {
-    const trimmed = newCategoryName.trim();
-    if (!trimmed) {
-      toast({ title: "Error", description: "Category name cannot be empty.", variant: "destructive" });
-      return;
-    }
-    
-    if (categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
-      toast({ title: "Category Exists", description: `The category "${trimmed}" already exists.`, variant: "destructive" });
-      return;
-    }
-
-    setCategories(prev => [...prev, trimmed]);
-    setNewCategoryName('');
-    toast({ title: "Success", description: `Category "${trimmed}" added successfully.` });
-  };
-
-  const handleOpenEditCategory = (cat: Category) => {
-    setEditingCategory(cat); 
-    setCategoryFormValue(cat); 
-    setIsCategoryDialogOpen(true);
-  };
-
-  const handleSaveCategory = () => {
-    if (!editingCategory || !categoryFormValue) return;
-    
-    const newVal = categoryFormValue.trim();
-    if (categories.some(c => c !== editingCategory && c.toLowerCase() === newVal.toLowerCase())) {
-      toast({ title: "Error", description: "Category name already exists.", variant: "destructive" });
-      return;
-    }
-
-    setCategories(prev => prev.map(c => c === editingCategory ? newVal : c));
-    setProducts(prev => prev.map(p => p.category === editingCategory ? { ...p, category: newVal } : p));
-    setIsCategoryDialogOpen(false); 
-    setEditingCategory(null);
-    toast({ title: "Updated", description: `Category renamed to "${newVal}".` });
-  };
-
-  const handleDeleteCategory = (cat: Category) => {
-    if (cat === 'All') return; 
-    const hasProducts = products.some(p => p.category === cat);
-    if (hasProducts) {
-      toast({ title: "Cannot Delete Category", description: `The category "${cat}" is currently being used by products.`, variant: "destructive" });
-      return;
-    }
-    setCategories(prev => prev.filter(c => c !== cat));
-    toast({ title: "Deleted", description: `Category "${cat}" removed.` });
-  };
-
-  // --- Product Handlers ---
-  const handleOpenAddDialog = () => {
-    setEditingProduct(null); 
-    setProductForm({ 
-      name: '', sku: '', barcode: '', price: 0, costPrice: 0, onHandQty: 0,
-      category: categories.find(c => c !== 'All') || 'Main Course', 
-      available: true, description: '', image: '' 
+  // --- Price List Handlers ---
+  const handleOpenAddPriceList = () => {
+    setEditingPriceList(null);
+    setPriceListForm({ 
+      name: '', 
+      productId: products[0]?.id || '', 
+      startDate: new Date().toISOString().split('T')[0], 
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      tiers: [{ minQty: 1, maxQty: 10, price: 0 }],
+      enabled: true 
     });
-    setIsProductDialogOpen(true);
+    setIsPriceListDialogOpen(true);
   };
-  const handleOpenEditDialog = (product: Product) => {
-    setEditingProduct(product); 
-    setProductForm({ ...product }); 
-    setIsProductDialogOpen(true);
-  };
-  const handleSaveProduct = () => {
-    if (editingProduct) {
-      setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
-      toast({ title: "Product Updated", description: `${productForm.name} has been updated.` });
+
+  const handleSavePriceList = () => {
+    if (!priceListForm.name || !priceListForm.productId) return;
+    if (editingPriceList) {
+      setPriceLists(prev => prev.map(pl => pl.id === editingPriceList.id ? { ...editingPriceList, ...priceListForm } as PriceList : pl));
     } else {
-      const newProd: Product = { 
-        id: Math.random().toString(36).substr(2, 9), 
-        sku: productForm.sku || `SKU-${Date.now().toString().slice(-4)}`,
-        barcode: productForm.barcode || Date.now().toString(),
-        name: productForm.name || 'New Product', 
-        price: productForm.price || 0, 
-        costPrice: productForm.costPrice || 0,
-        onHandQty: productForm.onHandQty || 0,
-        category: productForm.category || categories.find(c => c !== 'All') || 'Main Course', 
-        available: productForm.available ?? true, 
-        description: productForm.description || '', 
-        image: productForm.image || 'https://picsum.photos/seed/default/400/300' 
+      const newList: PriceList = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...priceListForm as PriceList
       };
-      setProducts(prev => [...prev, newProd]);
-      toast({ title: "Product Added", description: `${newProd.name} added to catalog.` });
+      setPriceLists(prev => [...prev, newList]);
     }
-    setIsProductDialogOpen(false);
-  };
-  const handleDeleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-    toast({ title: "Product Deleted", description: "The product has been removed." });
+    setIsPriceListDialogOpen(false);
+    toast({ title: "Success", description: "Price list saved." });
   };
 
-  // --- Payment Handlers ---
-  const handleOpenAddPayment = () => {
-    setEditingPayment(null); setPaymentForm({ name: '', icon: 'CreditCard', description: '', enabled: true }); setIsPaymentDialogOpen(true);
+  const addPriceTier = () => {
+    setPriceListForm(prev => ({
+      ...prev,
+      tiers: [...(prev.tiers || []), { minQty: 1, maxQty: 999, price: 0 }]
+    }));
   };
-  const handleOpenEditPayment = (pm: PaymentMethod) => {
-    setEditingPayment(pm); setPaymentForm({ ...pm }); setIsPaymentDialogOpen(true);
+
+  const removePriceTier = (index: number) => {
+    setPriceListForm(prev => ({
+      ...prev,
+      tiers: prev.tiers?.filter((_, i) => i !== index)
+    }));
   };
-  const handleSavePayment = () => {
-    if (editingPayment) {
-      setPaymentMethods(prev => prev.map(p => p.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : p));
+
+  // --- Customer Handlers ---
+  const handleOpenAddCustomer = () => {
+    setEditingCustomer(null);
+    setCustomerForm({ name: '', phone: '', email: '', address: '' });
+    setIsCustomerDialogOpen(true);
+  };
+
+  const handleSaveCustomer = () => {
+    if (!customerForm.name || !customerForm.phone) return;
+    if (editingCustomer) {
+      setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...customerForm } as Customer : c));
     } else {
-      const newPM: PaymentMethod = { id: Math.random().toString(36).substr(2, 9), name: paymentForm.name || 'New Payment Method', icon: paymentForm.icon as any || 'CreditCard', description: paymentForm.description || '', enabled: paymentForm.enabled ?? true };
-      setPaymentMethods(prev => [...prev, newPM]);
+      const newCust: Customer = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...customerForm as Customer
+      };
+      setCustomers(prev => [...prev, newCust]);
     }
-    setIsPaymentDialogOpen(false);
-    toast({ title: "Payment Saved", description: "Payment settings updated." });
-  };
-  const handleDeletePayment = (id: string) => {
-    setPaymentMethods(prev => prev.filter(p => p.id !== id));
-    toast({ title: "Payment Deleted", description: "Payment method removed." });
-  };
-
-  // --- Fee Handlers ---
-  const handleOpenAddFee = () => {
-    setEditingFee(null); setFeeForm({ name: '', type: 'Tax', value: 0, enabled: true }); setIsFeeDialogOpen(true);
-  };
-  const handleOpenEditFee = (fee: Fee) => {
-    setEditingFee(fee); setFeeForm({ ...fee }); setIsFeeDialogOpen(true);
-  };
-  const handleSaveFee = () => {
-    if (editingFee) {
-      setFees(prev => prev.map(f => f.id === editingFee.id ? { ...editingFee, ...feeForm } as Fee : f));
-    } else {
-      const newFee: Fee = { id: Math.random().toString(36).substr(2, 9), name: feeForm.name || 'New Fee', type: feeForm.type as FeeType || 'Tax', value: feeForm.value || 0, enabled: feeForm.enabled ?? true };
-      setFees(prev => [...prev, newFee]);
-    }
-    setIsFeeDialogOpen(false);
-    toast({ title: "Fee Configuration Saved", description: "Fees and calculation rules updated." });
-  };
-  const handleDeleteFee = (id: string) => {
-    setFees(prev => prev.filter(f => f.id !== id));
-    toast({ title: "Fee Deleted", description: "Rule removed from calculation." });
-  };
-
-  const getPaymentIcon = (iconName: string) => {
-    switch (iconName) {
-      case 'CreditCard': return <CreditCard />;
-      case 'Smartphone': return <Smartphone />;
-      case 'Banknote': return <Banknote />;
-      default: return <Wallet />;
-    }
-  };
-
-  const getFeeTypeColor = (type: string) => {
-    switch (type) {
-      case 'Tax': return 'text-primary bg-primary/10';
-      case 'Service': return 'text-orange-500 bg-orange-500/10';
-      case 'Discount': return 'text-accent bg-accent/10';
-      default: return 'text-muted-foreground bg-muted';
-    }
+    setIsCustomerDialogOpen(false);
+    toast({ title: "Success", description: "Customer saved." });
   };
 
   return (
@@ -339,59 +152,51 @@ export function SettingsView() {
         <p className="text-muted-foreground">Manage your POS configuration and master data</p>
       </div>
 
-      <Tabs defaultValue="general" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-white p-1 rounded-2xl h-14 border shadow-sm mb-8 flex overflow-x-auto whitespace-nowrap">
-          <TabsTrigger value="general" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">General</TabsTrigger>
-          <TabsTrigger value="products" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Products</TabsTrigger>
-          <TabsTrigger value="categories" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Categories</TabsTrigger>
-          <TabsTrigger value="payments" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Payments</TabsTrigger>
-          <TabsTrigger value="fees" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Fees & Discounts</TabsTrigger>
+          <TabsTrigger value="general" className="rounded-xl px-8 font-bold">General</TabsTrigger>
+          <TabsTrigger value="products" className="rounded-xl px-8 font-bold">Products</TabsTrigger>
+          <TabsTrigger value="customers" className="rounded-xl px-8 font-bold">Customers</TabsTrigger>
+          <TabsTrigger value="pricelist" className="rounded-xl px-8 font-bold">Price Lists</TabsTrigger>
+          <TabsTrigger value="categories" className="rounded-xl px-8 font-bold">Categories</TabsTrigger>
+          <TabsTrigger value="payments" className="rounded-xl px-8 font-bold">Payments</TabsTrigger>
+          <TabsTrigger value="fees" className="rounded-xl px-8 font-bold">Fees & Discounts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general">
-          <div className="grid grid-cols-1 gap-8">
+           <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
             <SettingsSection icon={Store} title="Store Information" description="Basic details about your establishment">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                 <div className="space-y-2"><Label>Store Name</Label><Input placeholder="Main Store" defaultValue="Alex's Deli" className="rounded-xl" /></div>
                 <div className="space-y-2"><Label>Currency Symbol</Label><Input defaultValue="$" className="rounded-xl" /></div>
               </div>
             </SettingsSection>
-            <SettingsSection icon={Bell} title="Notifications" description="Configure alert preferences">
-              <div className="space-y-4 pt-4"><ToggleOption title="Order Alerts" description="Notify on new incoming orders" defaultChecked /><ToggleOption title="Low Stock" description="Notify when items are running out" defaultChecked /></div>
-            </SettingsSection>
-            <SettingsSection icon={Printer} title="Hardware" description="Connect and manage peripherals">
-              <div className="space-y-4 pt-4"><ToggleOption title="Auto-print Receipt" description="Print receipt automatically after payment" defaultChecked /></div>
-            </SettingsSection>
-          </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="products">
           <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
             <div className="flex justify-between items-center mb-8">
-              <div><CardTitle className="text-2xl font-black">Product Master</CardTitle><CardDescription>Add, edit or remove products from your menu</CardDescription></div>
-              <Button onClick={handleOpenAddDialog} className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add New Product</Button>
+              <div><CardTitle className="text-2xl font-black">Product Master</CardTitle><CardDescription>Add, edit or remove products</CardDescription></div>
+              <Button onClick={() => { setEditingProduct(null); setProductForm({}); setIsProductDialogOpen(true); }} className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2"><Plus /> Add Product</Button>
             </div>
             <div className="grid grid-cols-1 gap-4">
               {products.map((product) => (
                 <div key={product.id} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
                   <div className="flex items-center gap-4">
-                    <div className="relative h-14 w-14 rounded-xl overflow-hidden bg-muted"><img src={product.image} alt={product.name} className="object-cover w-full h-full" /></div>
+                    <img src={product.image} className="h-12 w-12 rounded-xl object-cover" alt={product.name} />
                     <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-black text-lg">{product.name}</p>
-                        <Badge variant="outline" className="text-[10px] font-bold px-2 py-0 h-fit border-primary/20 text-primary">{product.sku}</Badge>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-primary font-bold text-sm">${product.price.toFixed(2)}</span>
-                        <span className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 bg-white rounded-lg">{product.category}</span>
-                        <span className={`text-[10px] font-black ${product.onHandQty < 10 ? 'text-orange-500' : 'text-muted-foreground'}`}>Stock: {product.onHandQty}</span>
+                      <p className="font-black text-lg">{product.name}</p>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-primary font-bold">${product.price.toFixed(2)}</span>
+                        <Badge variant="outline" className="text-[10px]">{product.sku}</Badge>
+                        <span className="text-[10px] text-muted-foreground">Stock: {product.onHandQty}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handlePrintBarcode(product)} title="Print Label" className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"><Barcode className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(product)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"><Pencil className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(product.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => setProducts(products.filter(p => p.id !== product.id))}><Trash2 className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(product); setProductForm(product); setIsProductDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
                   </div>
                 </div>
               ))}
@@ -399,62 +204,25 @@ export function SettingsView() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="categories">
-          <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
-            <div className="mb-8"><CardTitle className="text-2xl font-black">Categories</CardTitle><CardDescription>Manage food categories for your menu</CardDescription></div>
-            <div className="flex gap-4 mb-8">
-              <Input 
-                placeholder="New Category Name..." 
-                value={newCategoryName} 
-                onChange={(e) => setNewCategoryName(e.target.value)} 
-                className="rounded-xl h-12 flex-1 border-2 focus:border-primary" 
-              />
-              <Button onClick={handleAddCategory} className="rounded-xl bg-primary h-12 px-8 font-bold gap-2 active:scale-95 transition-all">
-                <Plus className="h-5 w-5" /> Add
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              {categories.map((cat) => (
-                <div key={cat} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-white p-3 rounded-xl text-primary font-bold shadow-sm">{cat.charAt(0)}</div>
-                    <span className="font-black text-lg">{cat}</span>
-                    <Badge variant="outline" className="rounded-lg bg-white border-none text-[10px] font-bold text-muted-foreground">
-                       {products.filter(p => p.category === cat).length} Products
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => { setViewingCategoryProducts(cat); setIsViewProductsOpen(true); }} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"><Eye className="h-5 w-5" /></Button>
-                    {cat !== 'All' && (
-                      <>
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditCategory(cat)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"><Pencil className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(cat)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="payments">
+        <TabsContent value="customers">
           <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
             <div className="flex justify-between items-center mb-8">
-              <div><CardTitle className="text-2xl font-black">Payment Methods</CardTitle><CardDescription>Configure supported checkout payment options</CardDescription></div>
-              <Button onClick={handleOpenAddPayment} className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Method</Button>
+              <div><CardTitle className="text-2xl font-black">Customer Master</CardTitle><CardDescription>Track sales by customer</CardDescription></div>
+              <Button onClick={handleOpenAddCustomer} className="rounded-2xl bg-primary font-bold h-12 gap-2"><Plus /> Add Customer</Button>
             </div>
             <div className="grid grid-cols-1 gap-4">
-              {paymentMethods.map((pm) => (
-                <div key={pm.id} className="flex items-center justify-between p-5 bg-muted/20 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
+              {customers.map((c) => (
+                <div key={c.id} className="flex items-center justify-between p-5 bg-muted/20 rounded-[2rem]">
                   <div className="flex items-center gap-5">
-                    <div className="bg-white p-4 rounded-2xl text-primary shadow-sm">{getPaymentIcon(pm.icon)}</div>
-                    <div><p className="font-black text-lg">{pm.name}</p><p className="text-xs text-muted-foreground font-medium">{pm.description}</p></div>
+                    <div className="bg-white p-4 rounded-2xl text-primary"><Users /></div>
+                    <div>
+                      <p className="font-black text-lg">{c.name}</p>
+                      <p className="text-xs text-muted-foreground">{c.phone}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${pm.enabled ? 'text-accent' : 'text-muted-foreground'}`}>{pm.enabled ? 'Active' : 'Disabled'}</span>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditPayment(pm)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"><Pencil className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeletePayment(pm.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingCustomer(c); setCustomerForm(c); setIsCustomerDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setCustomers(customers.filter(cust => cust.id !== c.id))}><Trash2 className="h-5 w-5" /></Button>
                   </div>
                 </div>
               ))}
@@ -462,103 +230,114 @@ export function SettingsView() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="fees">
+        <TabsContent value="pricelist">
           <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
             <div className="flex justify-between items-center mb-8">
-              <div><CardTitle className="text-2xl font-black">Fees & Discounts</CardTitle><CardDescription>Manage taxes, service fees, and auto-discounts</CardDescription></div>
-              <Button onClick={handleOpenAddFee} className="rounded-2xl bg-primary hover:bg-primary/90 font-bold px-6 h-12 gap-2 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Fee</Button>
+              <div><CardTitle className="text-2xl font-black">Price Lists</CardTitle><CardDescription>Set tiered pricing based on quantity and dates</CardDescription></div>
+              <Button onClick={handleOpenAddPriceList} className="rounded-2xl bg-primary font-bold h-12 gap-2"><Plus /> Create Price List</Button>
             </div>
             <div className="grid grid-cols-1 gap-4">
-              {fees.map((fee) => (
-                <div key={fee.id} className="flex items-center justify-between p-5 bg-muted/20 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
-                  <div className="flex items-center gap-5">
-                    <div className={`p-4 rounded-2xl shadow-sm ${getFeeTypeColor(fee.type)}`}><Percent className="h-6 w-6" /></div>
-                    <div><p className="font-black text-lg">{fee.name}</p><p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">{fee.type} • {fee.value}%</p></div>
+              {priceLists.map((pl) => {
+                const product = products.find(p => p.id === pl.productId);
+                return (
+                  <div key={pl.id} className="flex items-center justify-between p-5 bg-muted/20 rounded-[2rem]">
+                    <div className="flex items-center gap-5">
+                      <div className="bg-white p-4 rounded-2xl text-primary"><Tags /></div>
+                      <div>
+                        <p className="font-black text-lg">{pl.name}</p>
+                        <p className="text-xs font-bold text-muted-foreground">Product: {product?.name} • {pl.startDate} to {pl.endDate}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Badge variant={pl.enabled ? 'default' : 'outline'}>{pl.enabled ? 'Active' : 'Disabled'}</Badge>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingPriceList(pl); setPriceListForm(pl); setIsPriceListDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setPriceLists(priceLists.filter(p => p.id !== pl.id))}><Trash2 className="h-5 w-5" /></Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${fee.enabled ? 'text-accent' : 'text-muted-foreground'}`}>{fee.enabled ? 'Active' : 'Disabled'}</span>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditFee(fee)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"><Pencil className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteFee(fee.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Edit Category Dialog */}
-      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-        <DialogContent className="max-w-sm rounded-[2.5rem] p-8">
-          <DialogHeader><DialogTitle className="text-2xl font-black">Edit Category</DialogTitle><CardDescription>Rename the category.</CardDescription></DialogHeader>
-          <div className="py-4"><Label className="mb-2 block">Category Name</Label><Input value={categoryFormValue} onChange={(e) => setCategoryFormValue(e.target.value)} className="rounded-xl" /></div>
-          <DialogFooter><Button onClick={handleSaveCategory} className="w-full h-12 rounded-xl bg-primary font-bold">Update Category</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Products Dialog */}
-      <Dialog open={isViewProductsOpen} onOpenChange={setIsViewProductsOpen}>
+      {/* Customer Dialog */}
+      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-8">
-          <DialogHeader><DialogTitle className="text-2xl font-black flex items-center gap-3"><Package className="text-primary" /> {viewingCategoryProducts}</DialogTitle><CardDescription>Daftar produk yang terhubung dengan kategori ini.</CardDescription></DialogHeader>
-          <div className="grid gap-4 py-6 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-            {products.filter(p => p.category === viewingCategoryProducts).length > 0 ? (
-              products.filter(p => p.category === viewingCategoryProducts).map(p => (
-                <div key={p.id} className="flex items-center gap-4 p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
-                  <img src={p.image} className="w-14 h-14 rounded-xl object-cover" alt={p.name} />
-                  <div className="flex-1">
-                    <p className="font-black text-lg leading-tight">{p.name}</p>
-                    <p className="text-sm font-black text-primary mt-1">${p.price.toFixed(2)}</p>
-                  </div>
-                  <div className={`h-2.5 w-2.5 rounded-full ${p.available ? 'bg-green-500' : 'bg-destructive'}`}></div>
-                </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center"><Package className="h-16 w-16 mb-4" /><p className="font-bold">Tidak ada produk ditemukan.</p></div>
-            )}
+          <DialogHeader><DialogTitle className="text-2xl font-black">Customer Details</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2"><Label>Full Name</Label><Input value={customerForm.name} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Phone Number</Label><Input value={customerForm.phone} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Email</Label><Input value={customerForm.email} onChange={(e) => setCustomerForm({...customerForm, email: e.target.value})} className="rounded-xl" /></div>
+            <div className="space-y-2"><Label>Address</Label><Input value={customerForm.address} onChange={(e) => setCustomerForm({...customerForm, address: e.target.value})} className="rounded-xl" /></div>
           </div>
-          <DialogFooter><Button variant="secondary" onClick={() => setIsViewProductsOpen(false)} className="w-full h-12 rounded-xl font-bold">Tutup</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleSaveCustomer} className="w-full h-12 rounded-xl bg-primary font-bold">Save Customer</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Product Dialog */}
-      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle></DialogHeader>
-          <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Price List Dialog */}
+      <Dialog open={isPriceListDialogOpen} onOpenChange={setIsPriceListDialogOpen}>
+        <DialogContent className="max-w-xl rounded-[2.5rem] p-8 overflow-y-auto max-h-[90vh]">
+          <DialogHeader><DialogTitle className="text-2xl font-black">Price List Config</DialogTitle></DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2"><Label>Price List Name</Label><Input value={priceListForm.name} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} placeholder="Wholesale Promo" className="rounded-xl" /></div>
+            
             <div className="space-y-2">
-              <Label>Product Image</Label>
-              <div onClick={() => fileInputRef.current?.click()} className="relative h-40 w-full rounded-2xl border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 transition-all cursor-pointer overflow-hidden group flex flex-col items-center justify-center gap-2 bg-muted/5">
-                {productForm.image ? (
-                  <><img src={productForm.image} alt="Preview" className="h-full w-full object-cover" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-bold text-sm"><Upload className="h-5 w-5 mr-2" /> Change Image</div></>
-                ) : (
-                  <><ImageIcon className="h-8 w-8 text-muted-foreground" /><span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Upload Photo</span></>
-                )}
+              <Label>Target Product</Label>
+              <Select value={priceListForm.productId} onValueChange={(val) => setPriceListForm({...priceListForm, productId: val})}>
+                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Start Date</Label><Input type="date" value={priceListForm.startDate} onChange={(e) => setPriceListForm({...priceListForm, startDate: e.target.value})} className="rounded-xl" /></div>
+              <div className="space-y-2"><Label>End Date</Label><Input type="date" value={priceListForm.endDate} onChange={(e) => setPriceListForm({...priceListForm, endDate: e.target.value})} className="rounded-xl" /></div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label className="font-black uppercase tracking-widest text-xs">Quantity Tiers</Label>
+                <Button variant="outline" size="sm" onClick={addPriceTier} className="rounded-xl h-8 text-[10px]"><Plus className="h-3 w-3 mr-1" /> Add Tier</Button>
               </div>
-              <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+              <div className="space-y-3">
+                {priceListForm.tiers?.map((tier, idx) => (
+                  <div key={idx} className="flex gap-3 items-end p-4 bg-muted/20 rounded-2xl">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-[10px]">Min Qty</Label>
+                      <Input type="number" value={tier.minQty} onChange={(e) => {
+                        const newTiers = [...(priceListForm.tiers || [])];
+                        newTiers[idx].minQty = parseInt(e.target.value);
+                        setPriceListForm({...priceListForm, tiers: newTiers});
+                      }} className="h-10 rounded-lg" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-[10px]">Max Qty</Label>
+                      <Input type="number" value={tier.maxQty} onChange={(e) => {
+                        const newTiers = [...(priceListForm.tiers || [])];
+                        newTiers[idx].maxQty = parseInt(e.target.value);
+                        setPriceListForm({...priceListForm, tiers: newTiers});
+                      }} className="h-10 rounded-lg" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-[10px]">Tier Price ($)</Label>
+                      <Input type="number" value={tier.price} onChange={(e) => {
+                        const newTiers = [...(priceListForm.tiers || [])];
+                        newTiers[idx].price = parseFloat(e.target.value);
+                        setPriceListForm({...priceListForm, tiers: newTiers});
+                      }} className="h-10 rounded-lg font-bold text-primary" />
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => removePriceTier(idx)} className="text-destructive h-10"><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>SKU Code</Label><Input value={productForm.sku} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} placeholder="MC-001" className="rounded-xl" /></div>
-              <div className="space-y-2"><Label>Barcode</Label><Input value={productForm.barcode} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} placeholder="8880001" className="rounded-xl" /></div>
-            </div>
-
-            <div className="space-y-2"><Label>Product Name</Label><Input value={productForm.name} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="rounded-xl" /></div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Sales Price ($)</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} className="rounded-xl" /></div>
-              <div className="space-y-2"><Label>Cost Price ($)</Label><Input type="number" value={productForm.costPrice} onChange={(e) => setProductForm({...productForm, costPrice: parseFloat(e.target.value)})} className="rounded-xl" /></div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Stock On-Hand</Label><Input type="number" value={productForm.onHandQty} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value)})} className="rounded-xl" /></div>
-              <div className="space-y-2"><Label>Category</Label><Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}><SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{categories.filter(c => c !== 'All').map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent></Select></div>
-            </div>
-            
-            <div className="space-y-2"><Label>Description</Label><Input value={productForm.description} onChange={(e) => setProductForm({...productForm, description: e.target.value})} className="rounded-xl" /></div>
-            
-            <div className="flex items-center justify-between"><Label>Available</Label><Switch checked={productForm.available} onCheckedChange={(val) => setProductForm({...productForm, available: val})} /></div>
+            <div className="flex items-center justify-between"><Label>Enabled</Label><Switch checked={priceListForm.enabled} onCheckedChange={(val) => setPriceListForm({...priceListForm, enabled: val})} /></div>
           </div>
-          <DialogFooter><Button onClick={handleSaveProduct} className="w-full h-12 rounded-xl bg-primary font-bold">{editingProduct ? 'Update Product' : 'Save Product'}</Button></DialogFooter>
+          <DialogFooter><Button onClick={handleSavePriceList} className="w-full h-12 rounded-xl bg-primary font-bold">Apply Price List</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -567,14 +346,9 @@ export function SettingsView() {
 
 function SettingsSection({ icon: Icon, title, description, children }: any) {
   return (
-    <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
-      <div className="flex gap-4 mb-2"><div className="bg-primary/5 p-3 rounded-2xl text-primary h-fit"><Icon className="h-6 w-6" /></div><div><CardTitle className="text-xl font-bold">{title}</CardTitle><CardDescription>{description}</CardDescription></div></div>{children}
-    </Card>
-  );
-}
-
-function ToggleOption({ title, description, defaultChecked }: any) {
-  return (
-    <div className="flex items-center justify-between py-2"><div className="space-y-0.5"><p className="font-bold">{title}</p><p className="text-xs text-muted-foreground">{description}</p></div><Switch defaultChecked={defaultChecked} /></div>
+    <div className="space-y-6">
+      <div className="flex gap-4 mb-2"><div className="bg-primary/5 p-3 rounded-2xl text-primary h-fit"><Icon className="h-6 w-6" /></div><div><h3 className="text-xl font-bold">{title}</h3><p className="text-sm text-muted-foreground">{description}</p></div></div>
+      {children}
+    </div>
   );
 }

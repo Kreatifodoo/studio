@@ -38,6 +38,7 @@ export interface Transaction {
   status: 'Completed' | 'Pending';
   paymentMethod?: string;
   paymentReference?: string;
+  customerId?: string;
 }
 
 export interface Session {
@@ -63,5 +64,29 @@ export interface Fee {
   name: string;
   type: FeeType;
   value: number; // Percentage
+  enabled: boolean;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+}
+
+export interface PriceTier {
+  minQty: number;
+  maxQty: number;
+  price: number;
+}
+
+export interface PriceList {
+  id: string;
+  productId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  tiers: PriceTier[];
   enabled: boolean;
 }

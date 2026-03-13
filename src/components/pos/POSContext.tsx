@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session } from '@/types/pos';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -21,6 +21,8 @@ interface POSContextType {
   updateQuantity: (itemId: string, delta: number) => void;
   updateNote: (itemId: string, note: string) => void;
   clearCart: () => void;
+  selectedCustomerId: string | null;
+  setSelectedCustomerId: (id: string | null) => void;
   
   // History & Sessions
   history: Transaction[];
@@ -40,6 +42,10 @@ interface POSContextType {
   setPaymentMethods: React.Dispatch<React.SetStateAction<PaymentMethod[]>>;
   fees: Fee[];
   setFees: React.Dispatch<React.SetStateAction<Fee[]>>;
+  customers: Customer[];
+  setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  priceLists: PriceList[];
+  setPriceLists: React.Dispatch<React.SetStateAction<PriceList[]>>;
 }
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
@@ -61,6 +67,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [history, setHistory] = useState<Transaction[]>([]);
   const [view, setView] = useState<AppView>('pos');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   
   // Session State
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
@@ -72,6 +79,28 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(INITIAL_PAYMENT_METHODS);
   const [fees, setFees] = useState<Fee[]>(INITIAL_FEES);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [priceLists, setPriceLists] = useState<PriceList[]>([]);
+
+  const getEffectivePrice = useCallback((productId: string, quantity: number) => {
+    const product = products.find(p => p.id === productId);
+    if (!product) return 0;
+
+    const now = new Date();
+    const activeList = priceLists.find(pl => 
+      pl.enabled && 
+      pl.productId === productId &&
+      new Date(pl.startDate) <= now &&
+      new Date(pl.endDate) >= now
+    );
+
+    if (activeList) {
+      const tier = activeList.tiers.find(t => quantity >= t.minQty && quantity <= t.maxQty);
+      if (tier) return tier.price;
+    }
+
+    return product.price;
+  }, [products, priceLists]);
 
   const openSession = (openingCash: number) => {
     const newSession: Session = {
@@ -102,27 +131,26 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const addToCart = (product: Product) => {
     if (!product.available || !currentSession) return;
     
-    // Check current stock including what is already in cart
     const existingInCart = cart.find(item => item.productId === product.id);
     const qtyInCart = existingInCart ? existingInCart.quantity : 0;
     
-    if (qtyInCart >= product.onHandQty) {
-      // Out of stock
-      return;
-    }
+    if (qtyInCart >= product.onHandQty) return;
 
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id);
       if (existing) {
+        const newQty = existing.quantity + 1;
+        const newPrice = getEffectivePrice(product.id, newQty);
         return prev.map(item =>
-          item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.productId === product.id ? { ...item, quantity: newQty, price: newPrice } : item
         );
       }
+      const initialPrice = getEffectivePrice(product.id, 1);
       return [...prev, {
         id: Math.random().toString(36).substr(2, 9),
         productId: product.id,
         name: product.name,
-        price: product.price,
+        price: initialPrice,
         quantity: 1
       }];
     });
@@ -138,12 +166,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         const product = products.find(p => p.id === item.productId);
         const newQty = Math.max(1, item.quantity + delta);
         
-        // Check stock
-        if (product && newQty > product.onHandQty) {
-          return item;
-        }
+        if (product && newQty > product.onHandQty) return item;
         
-        return { ...item, quantity: newQty };
+        const newPrice = getEffectivePrice(item.productId, newQty);
+        return { ...item, quantity: newQty, price: newPrice };
       }
       return item;
     }));
@@ -153,13 +179,13 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     setCart(prev => prev.map(item => item.id === itemId ? { ...item, note } : item));
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    setSelectedCustomerId(null);
+  };
 
   const addTransaction = (t: Transaction) => {
-    // Add to history
     setHistory(prev => [t, ...prev]);
-    
-    // Update stock
     setProducts(prevProducts => {
       return prevProducts.map(p => {
         const orderItem = t.items.find(item => item.productId === p.id);
@@ -173,7 +199,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
-    // Update session
     setCurrentSession(prev => {
       if (!prev) return null;
       return {
@@ -188,13 +213,16 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       activeCategory, setActiveCategory,
       searchQuery, setSearchQuery,
       cart, addToCart, removeFromCart, updateQuantity, updateNote, clearCart,
+      selectedCustomerId, setSelectedCustomerId,
       history, addTransaction,
       currentSession, sessions, openSession, closeSession, lastClosedSession,
       view, setView,
       products, setProducts,
       categories, setCategories,
       paymentMethods, setPaymentMethods,
-      fees, setFees
+      fees, setFees,
+      customers, setCustomers,
+      priceLists, setPriceLists
     }}>
       {children}
     </POSContext.Provider>
