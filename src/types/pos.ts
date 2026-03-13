@@ -1,6 +1,8 @@
 
 export type Category = 'All' | 'Main Course' | 'Drinks' | 'Snacks' | 'Desserts';
 
+export type AppView = 'pos' | 'history' | 'dashboard' | 'settings';
+
 export interface Product {
   id: string;
   name: string;

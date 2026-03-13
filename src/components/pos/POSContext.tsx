@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, OrderItem, Transaction, Category } from '@/types/pos';
+import { Product, OrderItem, Transaction, Category, AppView } from '@/types/pos';
 
 interface POSContextType {
   activeCategory: Category;
@@ -17,8 +17,8 @@ interface POSContextType {
   clearCart: () => void;
   history: Transaction[];
   addTransaction: (transaction: Transaction) => void;
-  view: 'pos' | 'history';
-  setView: (view: 'pos' | 'history') => void;
+  view: AppView;
+  setView: (view: AppView) => void;
 }
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
@@ -28,9 +28,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [history, setHistory] = useState<Transaction[]>([]);
-  const [view, setView] = useState<'pos' | 'history'>('pos');
+  const [view, setView] = useState<AppView>('pos');
 
   const addToCart = (product: Product) => {
+    if (!product.available) return;
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id);
       if (existing) {
