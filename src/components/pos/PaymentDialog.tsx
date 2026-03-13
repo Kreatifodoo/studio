@@ -51,7 +51,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setSelectedMethod(methodName);
     setTransactionId(Math.random().toString(36).toUpperCase().slice(2, 10));
     
-    // Jika metode adalah Cash (berdasarkan nama atau icon Banknote)
+    // Check if method is Cash (based on name or icon Banknote)
     const isCash = methodName.toLowerCase().includes('cash') || 
                    paymentMethods.find(p => p.name === methodName)?.icon === 'Banknote';
 
@@ -174,9 +174,9 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
               <DialogDescription className="text-lg font-medium">
                 The transaction via {selectedMethod} was completed successfully.
                 {parseFloat(cashReceived) > 0 && (
-                  <div className="mt-2 text-sm text-accent font-bold">
+                  <span className="block mt-2 text-sm text-accent font-bold">
                     Change: ${change.toFixed(2)}
-                  </div>
+                  </span>
                 )}
               </DialogDescription>
             </DialogHeader>
