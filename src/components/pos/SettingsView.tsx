@@ -96,7 +96,10 @@ export function SettingsView() {
   // --- Barcode Printing Handler ---
   const handlePrintBarcode = (product: Product) => {
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      toast({ title: "Pop-up Blocked", description: "Please allow pop-ups to print barcode labels.", variant: "destructive" });
+      return;
+    }
 
     printWindow.document.write(`
       <html>
@@ -104,13 +107,46 @@ export function SettingsView() {
           <title>Label Barcode - ${product.name}</title>
           <style>
             @page { size: 50mm 30mm; margin: 0; }
-            body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; }
-            .label { width: 45mm; height: 25mm; border: 1px solid #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2mm; text-align: center; }
-            .store { font-size: 8px; font-weight: bold; margin-bottom: 2px; }
+            body { 
+              margin: 0; 
+              padding: 0;
+              width: 50mm;
+              height: 30mm;
+              display: flex; 
+              flex-direction: column; 
+              align-items: center; 
+              justify-content: center; 
+              font-family: sans-serif;
+              background: white;
+            }
+            .label { 
+              width: 46mm; 
+              height: 26mm; 
+              display: flex; 
+              flex-direction: column; 
+              align-items: center; 
+              justify-content: center; 
+              text-align: center;
+              border: 1px solid #eee;
+              box-sizing: border-box;
+            }
+            .store { font-size: 7px; font-weight: bold; color: #3D8AF5; margin-bottom: 2px; }
             .name { font-size: 10px; font-weight: bold; margin-bottom: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; }
-            .barcode-box { border-top: 2px solid black; border-bottom: 2px solid black; width: 80%; height: 8mm; display: flex; align-items: center; justify-content: center; letter-spacing: 2px; font-weight: bold; font-size: 12px; margin-bottom: 2px; }
+            .barcode-box { 
+              border-top: 2px solid black; 
+              border-bottom: 2px solid black; 
+              width: 90%; 
+              height: 8mm; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              letter-spacing: 2px; 
+              font-weight: bold; 
+              font-size: 14px; 
+              margin-bottom: 2px; 
+            }
             .code { font-size: 8px; font-family: monospace; }
-            .price { font-size: 11px; font-weight: bold; margin-top: 2px; }
+            .price { font-size: 11px; font-weight: bold; margin-top: 2px; color: #3D8AF5; }
           </style>
         </head>
         <body>
@@ -122,7 +158,10 @@ export function SettingsView() {
             <div class="price">$${product.price.toFixed(2)}</div>
           </div>
           <script>
-            window.onload = function() { window.print(); window.close(); }
+            window.onload = function() { 
+              window.print(); 
+              // window.close(); 
+            }
           </script>
         </body>
       </html>
