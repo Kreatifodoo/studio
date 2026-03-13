@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,20 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
 
   const enabledMethods = paymentMethods.filter(pm => pm.enabled);
 
+  const reset = useCallback(() => {
+    setStage('method');
+    setProgress(0);
+    setTransactionId('');
+    setSelectedMethod('');
+  }, []);
+
+  // Reset state whenever the dialog is opened
+  useEffect(() => {
+    if (open) {
+      reset();
+    }
+  }, [open, reset]);
+
   useEffect(() => {
     if (stage === 'processing') {
       const interval = setInterval(() => {
@@ -53,13 +67,6 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setProgress(0);
   };
 
-  const reset = () => {
-    setStage('method');
-    setProgress(0);
-    setTransactionId('');
-    setSelectedMethod('');
-  };
-
   const getIcon = (iconName: string) => {
     switch (iconName) {
       case 'CreditCard': return <CreditCard />;
@@ -71,8 +78,9 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
 
   return (
     <Dialog open={open} onOpenChange={(val) => {
-        if (stage !== 'processing') onOpenChange(val);
-        if (!val) setTimeout(reset, 500);
+        // Prevent closing while processing
+        if (stage === 'processing') return;
+        onOpenChange(val);
     }}>
       <DialogContent className="max-w-md p-8 rounded-[2.5rem] overflow-hidden border-none shadow-2xl">
         {stage === 'method' && (
