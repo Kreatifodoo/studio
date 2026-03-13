@@ -617,7 +617,6 @@ export function SettingsView() {
         </DialogContent>
       </Dialog>
 
-      {/* (Previous Dialogs remain unchanged for Product, Package, Combo, etc.) */}
       {/* Category Dialog */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">

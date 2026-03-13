@@ -16,6 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Combo } from '@/types/pos';
 
 export function ProductGrid() {
