@@ -1,8 +1,12 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount, StoreSettings } from '@/types/pos';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { 
+  Product, OrderItem, Transaction, Category, AppView, PaymentMethod, 
+  Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount, 
+  StoreSettings, User, Role 
+} from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -50,7 +54,23 @@ interface POSContextType {
   setPromoDiscounts: React.Dispatch<React.SetStateAction<PromoDiscount[]>>;
   storeSettings: StoreSettings;
   setStoreSettings: (settings: StoreSettings) => void;
+  users: User[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  roles: Role[];
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
 }
+
+const INITIAL_ROLES: Role[] = [
+  { id: 'admin', name: 'Administrator', permissions: ['view_pos', 'view_history', 'view_dashboard', 'view_reports', 'manage_products', 'manage_customers', 'manage_settings', 'manage_users'] },
+  { id: 'manager', name: 'Manajer', permissions: ['view_pos', 'view_history', 'view_dashboard', 'view_reports', 'manage_products', 'manage_customers'] },
+  { id: 'cashier', name: 'Kasir', permissions: ['view_pos', 'view_history'] },
+];
+
+const INITIAL_USERS: User[] = [
+  { id: 'u1', username: 'alex', name: 'Alex Kasir', email: 'alex@nextpos.com', roleId: 'admin', status: 'Active', avatarUrl: 'https://picsum.photos/seed/alex/100/100' },
+  { id: 'u2', username: 'budi', name: 'Budi Staf', email: 'budi@nextpos.com', roleId: 'cashier', status: 'Active', avatarUrl: 'https://picsum.photos/seed/budi/100/100' },
+];
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
   { id: 'pm_1', name: 'Tunai', icon: 'Banknote', description: 'Pembayaran di kasir', enabled: true },
@@ -94,6 +114,9 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [combos, setCombos] = useState<Combo[]>([]);
   const [promoDiscounts, setPromoDiscounts] = useState<PromoDiscount[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(INITIAL_STORE_SETTINGS);
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [currentUser, setCurrentUser] = useState<User | null>(INITIAL_USERS[0]);
+  const roles = useMemo(() => INITIAL_ROLES, []);
 
   const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
@@ -241,7 +264,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       activeCategory, setActiveCategory, searchQuery, setSearchQuery, cart, addToCart, addPackageToCart, addComboToCart, removeFromCart, updateQuantity, updateNote, clearCart,
       selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
-      priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings
+      priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
+      users, setUsers, roles: INITIAL_ROLES, currentUser, setCurrentUser
     }}>
       {children}
     </POSContext.Provider>

@@ -69,9 +69,9 @@ export interface OrderItem {
   id: string;
   productId: string;
   name: string;
-  price: number; // Final price after all deductions
-  originalPrice: number; // Price before promo discount
-  promoSavings: number; // Amount saved per unit
+  price: number; 
+  originalPrice: number; 
+  promoSavings: number; 
   quantity: number;
   note?: string;
   priceListId?: string;
@@ -121,7 +121,7 @@ export interface Fee {
   id: string;
   name: string;
   type: FeeType;
-  value: number; // Percentage
+  value: number; 
   enabled: boolean;
 }
 
@@ -158,4 +158,30 @@ export interface PromoDiscount {
   startDate: string;
   endDate: string;
   enabled: boolean;
+}
+
+export type Permission = 
+  | 'view_pos' 
+  | 'view_history' 
+  | 'view_dashboard' 
+  | 'view_reports' 
+  | 'manage_products' 
+  | 'manage_customers' 
+  | 'manage_settings' 
+  | 'manage_users';
+
+export interface Role {
+  id: string;
+  name: string;
+  permissions: Permission[];
+}
+
+export interface User {
+  id: string;
+  username: string;
+  name: string;
+  email?: string;
+  roleId: string;
+  status: 'Active' | 'Inactive';
+  avatarUrl?: string;
 }

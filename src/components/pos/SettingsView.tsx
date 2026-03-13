@@ -28,10 +28,19 @@ import {
   Upload,
   Download,
   FileSpreadsheet,
-  Image as ImageIcon
+  Image as ImageIcon,
+  UserCog,
+  ShieldCheck,
+  Mail,
+  User as UserIcon,
+  Shield
 } from 'lucide-react';
 import { usePOS } from './POSContext';
-import { Product, PaymentMethod, Fee, Customer, PriceList, Package, PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount, StoreSettings } from '@/types/pos';
+import { 
+  Product, PaymentMethod, Fee, Customer, PriceList, Package, 
+  PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount, 
+  StoreSettings, User, Role 
+} from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
@@ -45,6 +54,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 
 export function SettingsView() {
@@ -58,7 +68,9 @@ export function SettingsView() {
     packages, setPackages,
     combos, setCombos,
     promoDiscounts, setPromoDiscounts,
-    storeSettings, setStoreSettings
+    storeSettings, setStoreSettings,
+    users, setUsers,
+    roles
   } = usePOS();
   
   const { toast } = useToast();
@@ -80,6 +92,7 @@ export function SettingsView() {
   const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isFeeDialogOpen, setIsFeeDialogOpen] = useState(false);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<Partial<Product>>({});
@@ -99,6 +112,8 @@ export function SettingsView() {
   const [paymentForm, setPaymentForm] = useState<Partial<PaymentMethod>>({});
   const [editingFee, setEditingFee] = useState<Fee | null>(null);
   const [feeForm, setFeeForm] = useState<Partial<Fee>>({});
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userForm, setUserForm] = useState<Partial<User>>({});
 
   const navGroups = [
     {
@@ -115,6 +130,7 @@ export function SettingsView() {
       title: "Sistem",
       items: [
         { id: 'general', icon: Store, label: 'Informasi Toko' },
+        { id: 'users', icon: UserCog, label: 'Manajemen User' },
         { id: 'customers', icon: Users, label: 'Data Pelanggan' },
         { id: 'categories', icon: Layers, label: 'Kategori Produk' },
         { id: 'payments', icon: CreditCard, label: 'Metode Pembayaran' },
@@ -524,6 +540,19 @@ export function SettingsView() {
     setIsCustomerDialogOpen(false);
   };
 
+  const handleOpenAddUser = () => {
+    setEditingUser(null);
+    setUserForm({ name: '', username: '', email: '', roleId: 'cashier', status: 'Active', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100` });
+    setIsUserDialogOpen(true);
+  };
+
+  const handleSaveUser = () => {
+    if (!userForm.name || !userForm.username) return;
+    if (editingUser) setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...editingUser, ...userForm } as User : u));
+    else setUsers(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...userForm as User }]);
+    setIsUserDialogOpen(false);
+  };
+
   const handleValueChange = (setter: any) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setter(val === '' ? '' : parseFloat(val));
@@ -674,6 +703,88 @@ export function SettingsView() {
                   </div>
                 </div>
               </SettingsSection>
+            </Card>
+          )}
+
+          {activeTab === 'users' && (
+            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <CardTitle className="text-2xl font-black">Manajemen User</CardTitle>
+                  <CardDescription className="font-medium">Kelola akses staf dan hak istimewa role</CardDescription>
+                </div>
+                <Button onClick={handleOpenAddUser} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
+                  <Plus className="h-5 w-5" /> Tambah User
+                </Button>
+              </div>
+              <div className="space-y-4">
+                {users.map((user) => {
+                  const role = roles.find(r => r.id === user.roleId);
+                  return (
+                    <div key={user.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
+                      <div className="flex items-center gap-5">
+                        <Avatar className="h-14 w-14 rounded-2xl border shadow-sm">
+                          <AvatarImage src={user.avatarUrl} />
+                          <AvatarFallback className="bg-primary text-white font-black rounded-2xl">
+                            {user.name.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-black text-lg leading-tight">{user.name}</p>
+                            <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-lg px-2 py-0.5 text-[9px] font-black uppercase">
+                              {role?.name}
+                            </Badge>
+                          </div>
+                          <p className="text-xs font-bold text-muted-foreground mt-1">@{user.username} • {user.email || 'Tanpa email'}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 items-center">
+                        <Badge className={cn(
+                          "rounded-lg px-3 py-1 font-black text-[9px]", 
+                          user.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        )}>
+                          {user.status === 'Active' ? 'AKTIF' : 'NON-AKTIF'}
+                        </Badge>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}>
+                            <Pencil className="h-5 w-5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setUsers(prev => prev.filter(u => u.id !== user.id))}>
+                            <Trash2 className="h-5 w-5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Separator className="my-12" />
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/10 p-3 rounded-xl text-primary"><ShieldCheck className="h-5 w-5" /></div>
+                  <div>
+                    <h3 className="text-lg font-black">Informasi Hak Akses Role</h3>
+                    <p className="text-xs text-muted-foreground font-medium">Penjelasan akses untuk setiap tingkat jabatan</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {roles.map(role => (
+                    <div key={role.id} className="p-6 bg-muted/20 rounded-[2rem] space-y-4">
+                      <p className="font-black text-primary uppercase tracking-widest text-xs">{role.name}</p>
+                      <ul className="space-y-2">
+                        {role.permissions.map((p, idx) => (
+                          <li key={idx} className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
+                            <Check className="h-3 w-3 text-green-500" /> {p.replace('_', ' ')}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </Card>
           )}
 
@@ -926,6 +1037,74 @@ export function SettingsView() {
           )}
         </div>
       </div>
+
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent className="max-w-xl rounded-[2.5rem] p-10 border-none shadow-2xl">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-3xl font-black">{editingUser ? 'Edit User' : 'Tambah User'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="flex justify-center mb-4">
+              <Avatar className="h-24 w-24 rounded-3xl border-4 border-primary/10">
+                <AvatarImage src={userForm.avatarUrl} />
+                <AvatarFallback className="bg-primary text-white text-2xl font-black rounded-3xl">
+                  {userForm.name?.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label>
+                <div className="relative">
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input value={userForm.name || ''} onChange={(e) => setUserForm({...userForm, name: e.target.value})} className="h-12 rounded-xl border-2 pl-12" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Username</Label>
+                <Input value={userForm.username || ''} onChange={(e) => setUserForm({...userForm, username: e.target.value})} className="h-12 rounded-xl border-2" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input value={userForm.email || ''} onChange={(e) => setUserForm({...userForm, email: e.target.value})} className="h-12 rounded-xl border-2 pl-12" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Jabatan (Role)</Label>
+                <Select value={userForm.roleId} onValueChange={(val: any) => setUserForm({...userForm, roleId: val})}>
+                  <SelectTrigger className="h-12 rounded-xl border-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl">
+                    {roles.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Status Akun</Label>
+                <Select value={userForm.status} onValueChange={(val: any) => setUserForm({...userForm, status: val})}>
+                  <SelectTrigger className="h-12 rounded-xl border-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl">
+                    <SelectItem value="Active">Aktif</SelectItem>
+                    <SelectItem value="Inactive">Non-Aktif</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="mt-8">
+            <Button onClick={handleSaveUser} className="w-full h-16 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
+              Simpan Data User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
