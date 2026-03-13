@@ -93,10 +93,10 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
         {stage === 'processing' && (
           <div className="py-12 flex flex-col items-center text-center gap-6">
             <Loader2 className="h-16 w-16 text-primary animate-spin" />
-            <div>
-              <h3 className="text-2xl font-bold mb-2">Processing Payment</h3>
-              <p className="text-muted-foreground">Please wait while we confirm the transaction...</p>
-            </div>
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold mb-2">Processing Payment</DialogTitle>
+              <DialogDescription>Please wait while we confirm the transaction...</DialogDescription>
+            </DialogHeader>
             <Progress value={progress} className="w-full h-3 rounded-full" />
           </div>
         )}
@@ -104,11 +104,11 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
         {stage === 'success' && (
           <div className="py-12 flex flex-col items-center text-center gap-6">
             <CheckCircle2 className="h-20 w-20 text-accent animate-in zoom-in duration-500" />
-            <div>
-              <h3 className="text-3xl font-black mb-2">Payment Success!</h3>
-              <p className="text-muted-foreground">The transaction was completed successfully.</p>
-              <p className="text-xs mt-4 font-mono text-muted-foreground">TRANS_ID: {transactionId}</p>
-            </div>
+            <DialogHeader>
+              <DialogTitle className="text-3xl font-black mb-2">Payment Success!</DialogTitle>
+              <DialogDescription>The transaction was completed successfully.</DialogDescription>
+            </DialogHeader>
+            <p className="text-xs mt-4 font-mono text-muted-foreground">TRANS_ID: {transactionId}</p>
             <Button onClick={onSuccess} className="w-full h-14 rounded-2xl text-lg font-bold mt-4">Print Receipt & Continue</Button>
           </div>
         )}
