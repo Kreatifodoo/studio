@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -22,7 +21,7 @@ export function ProductGrid() {
   return (
     <div className="flex flex-col gap-8 h-full">
       {/* Categories Chips */}
-      <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
@@ -40,14 +39,14 @@ export function ProductGrid() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-20">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-8 pb-20">
         {filtered.map((product) => (
           <Card
             key={product.id}
             onClick={() => addToCart(product)}
-            className="group overflow-hidden rounded-3xl border-none shadow-sm hover:shadow-xl transition-all duration-500 cursor-pointer bg-white"
+            className="group overflow-hidden rounded-[2.5rem] border-none shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer bg-white"
           >
-            <div className="relative h-48 w-full overflow-hidden">
+            <div className="relative h-56 w-full overflow-hidden">
               <Image
                 src={product.image}
                 alt={product.name}
@@ -66,14 +65,14 @@ export function ProductGrid() {
                 </div>
               )}
             </div>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-bold group-hover:text-primary transition-colors line-clamp-1">{product.name}</h3>
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-xl font-bold group-hover:text-primary transition-colors line-clamp-1">{product.name}</h3>
                 <span className="text-xl font-bold text-primary">${product.price.toFixed(2)}</span>
               </div>
-              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">{product.description}</p>
-              <div className="mt-4 flex items-center gap-2">
-                 <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-lg text-xs font-semibold">
+              <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] mb-6">{product.description}</p>
+              <div className="flex items-center gap-2">
+                 <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-xl px-4 py-1 text-xs font-bold">
                     {product.category}
                  </Badge>
               </div>

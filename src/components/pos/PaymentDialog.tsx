@@ -58,6 +58,9 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
         if (!val) setTimeout(reset, 500);
     }}>
       <DialogContent className="max-w-md p-8 rounded-3xl overflow-hidden">
+        {/* Fallback title for accessibility if stages change rapidly */}
+        <DialogTitle className="sr-only">Payment Process</DialogTitle>
+        
         {stage === 'method' && (
           <>
             <DialogHeader className="mb-6">

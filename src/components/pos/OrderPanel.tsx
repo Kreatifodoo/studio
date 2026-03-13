@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -61,9 +60,11 @@ export function OrderPanel() {
 
       <ScrollArea className="flex-1 px-8 py-4">
         {cart.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center opacity-30 gap-4 mt-20">
-            <ShoppingBag className="h-20 w-20" />
-            <p className="text-lg font-medium">Your cart is empty</p>
+          <div className="h-full flex flex-col items-center justify-center opacity-30 gap-6 mt-20">
+            <div className="bg-muted p-10 rounded-full">
+               <ShoppingBag className="h-24 w-24" />
+            </div>
+            <p className="text-xl font-bold text-muted-foreground">Your cart is empty</p>
           </div>
         ) : (
           <div className="flex flex-col gap-6">
@@ -138,32 +139,32 @@ export function OrderPanel() {
       <div className="p-8 bg-background/50 border-t flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-semibold">${subtotal.toFixed(2)}</span>
+            <span className="text-muted-foreground font-medium">Subtotal</span>
+            <span className="font-bold">${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Tax (10%)</span>
-            <span className="font-semibold">${tax.toFixed(2)}</span>
+            <span className="text-muted-foreground font-medium">Tax (10%)</span>
+            <span className="font-bold">${tax.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Discount</span>
-            <span className="font-semibold text-accent">-$0.00</span>
+            <span className="text-muted-foreground font-medium">Discount</span>
+            <span className="font-bold text-accent">-$0.00</span>
           </div>
         </div>
 
-        <Separator />
+        <Separator className="my-2" />
 
         <div className="flex justify-between items-center py-2">
-          <span className="text-lg font-bold">Total Amount</span>
-          <span className="text-3xl font-black text-primary">${total.toFixed(2)}</span>
+          <span className="text-xl font-bold">Total Amount</span>
+          <span className="text-4xl font-black text-primary">${total.toFixed(2)}</span>
         </div>
 
         <Button
           onClick={finalizeOrder}
           disabled={cart.length === 0}
-          className="h-16 w-full rounded-2xl text-lg font-bold shadow-xl shadow-primary/25 bg-primary hover:bg-primary/90 transition-all active:scale-95 flex gap-3"
+          className="h-16 w-full rounded-2xl text-xl font-bold shadow-xl shadow-primary/25 bg-primary hover:bg-primary/90 transition-all active:scale-95 flex gap-3 mt-4"
         >
-          <CreditCard className="h-6 w-6" />
+          <CreditCard className="h-7 w-7" />
           Complete Order
         </Button>
       </div>
