@@ -60,11 +60,14 @@ export interface OrderItem {
   id: string;
   productId: string;
   name: string;
-  price: number;
+  price: number; // Final price after all deductions
+  originalPrice: number; // Price before promo discount
+  promoSavings: number; // Amount saved per unit
   quantity: number;
   note?: string;
-  priceListId?: string; // Track if a special price list was used
-  isPackage?: boolean; // Flag to indicate if this is a package
+  priceListId?: string;
+  promoId?: string;
+  isPackage?: boolean;
   isCombo?: boolean;
   comboSelections?: {
     groupId: string;
@@ -80,6 +83,7 @@ export interface Transaction {
   subtotal: number;
   tax: number;
   total: number;
+  totalSavings: number;
   status: 'Completed' | 'Pending';
   paymentMethod?: string;
   paymentReference?: string;
@@ -133,5 +137,16 @@ export interface PriceList {
   startDate: string;
   endDate: string;
   tiers: PriceTier[];
+  enabled: boolean;
+}
+
+export interface PromoDiscount {
+  id: string;
+  productId: string;
+  name: string;
+  type: 'Percentage' | 'FixedAmount';
+  value: number;
+  startDate: string;
+  endDate: string;
   enabled: boolean;
 }

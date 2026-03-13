@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User, Phone, Package as PackageIcon, LayoutGrid } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User, Phone, Package as PackageIcon, LayoutGrid, Tag } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -39,6 +39,8 @@ export function OrderPanel() {
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const totalPromoSavings = cart.reduce((acc, item) => acc + (item.promoSavings * item.quantity), 0);
+
   const enabledFees = fees.filter(f => f.enabled);
   
   let runningTotal = subtotal;
@@ -154,17 +156,32 @@ export function OrderPanel() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1 pr-4">
                     <h4 className="font-black text-lg mb-1 leading-tight">{item.name}</h4>
-                    <div className="flex items-center gap-2">
-                      <p className="text-primary font-black">${item.price.toFixed(2)}</p>
-                      {item.priceListId && (
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Special Price</Badge>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-primary font-black">${item.price.toFixed(2)}</p>
+                        {item.promoSavings > 0 && (
+                          <span className="text-[10px] line-through text-muted-foreground">${item.originalPrice.toFixed(2)}</span>
+                        )}
+                        {item.priceListId && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Special Price</Badge>
+                        )}
+                      </div>
+                      {item.promoSavings > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <Tag className="h-3 w-3 text-accent" />
+                          <p className="text-[10px] font-black text-accent uppercase tracking-tight">
+                            Promo: Save ${item.promoSavings.toFixed(2)}
+                          </p>
+                        </div>
                       )}
-                      {item.isPackage && (
-                        <Badge variant="secondary" className="bg-accent/10 text-accent border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Package</Badge>
-                      )}
-                      {item.isCombo && (
-                        <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Combo</Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {item.isPackage && (
+                          <Badge variant="secondary" className="bg-accent/10 text-accent border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Package</Badge>
+                        )}
+                        {item.isCombo && (
+                          <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Combo</Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center bg-white rounded-2xl p-1.5 shadow-sm border">
@@ -282,6 +299,13 @@ export function OrderPanel() {
             <span className="text-muted-foreground">Subtotal</span>
             <span>${subtotal.toFixed(2)}</span>
           </div>
+
+          {totalPromoSavings > 0 && (
+            <div className="flex justify-between items-center text-sm font-black text-accent bg-accent/5 px-4 py-2 rounded-xl">
+              <span className="flex items-center gap-2"><Tag className="h-4 w-4" /> You saved today!</span>
+              <span>-${totalPromoSavings.toFixed(2)}</span>
+            </div>
+          )}
           
           {allCalculatedFees.map(fee => (
             <div key={fee.id} className="flex justify-between items-center text-sm font-bold">
@@ -313,7 +337,7 @@ export function OrderPanel() {
 
       {/* Quick New Customer Dialog */}
       <Dialog open={isNewCustomerOpen} onOpenChange={setIsNewCustomerOpen}>
-        <DialogContent className="max-w-md rounded-[2rem] p-8 border-none shadow-2xl">
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black">Quick Add Customer</DialogTitle>
           </DialogHeader>
@@ -363,6 +387,7 @@ export function OrderPanel() {
             subtotal,
             tax: totalTax,
             total,
+            totalSavings: totalPromoSavings,
             status: 'Completed',
             paymentMethod: methodName,
             paymentReference: reference,

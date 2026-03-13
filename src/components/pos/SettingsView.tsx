@@ -22,23 +22,18 @@ import {
   Layers,
   Box,
   LayoutGrid,
-  Settings as SettingsIcon,
   ChevronRight,
-  Search,
   Check,
-  Settings2,
-  Banknote,
-  Smartphone
+  Ticket
 } from 'lucide-react';
 import { usePOS } from './POSContext';
-import { Product, PaymentMethod, Fee, FeeType, Customer, PriceList, Package, PackageItem, Combo, ComboGroup, ComboOption } from '@/types/pos';
+import { Product, PaymentMethod, Fee, Customer, PriceList, Package, PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount } from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter,
-  DialogDescription
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
@@ -56,7 +51,8 @@ export function SettingsView() {
     customers, setCustomers,
     priceLists, setPriceLists,
     packages, setPackages,
-    combos, setCombos
+    combos, setCombos,
+    promoDiscounts, setPromoDiscounts
   } = usePOS();
   
   const { toast } = useToast();
@@ -70,6 +66,7 @@ export function SettingsView() {
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isPriceListDialogOpen, setIsPriceListDialogOpen] = useState(false);
+  const [isPromoDialogOpen, setIsPromoDialogOpen] = useState(false);
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
@@ -83,6 +80,8 @@ export function SettingsView() {
   const [customerForm, setCustomerForm] = useState<Partial<Customer>>({});
   const [editingPriceList, setEditingPriceList] = useState<PriceList | null>(null);
   const [priceListForm, setPriceListForm] = useState<Partial<PriceList>>({ tiers: [] });
+  const [editingPromo, setEditingPromo] = useState<PromoDiscount | null>(null);
+  const [promoForm, setPromoForm] = useState<Partial<PromoDiscount>>({});
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [packageForm, setPackageForm] = useState<Partial<Package>>({ items: [] });
   const [editingCombo, setEditingCombo] = useState<Combo | null>(null);
@@ -100,6 +99,7 @@ export function SettingsView() {
       items: [
         { id: 'products', icon: PackageIcon, label: 'Master Produk' },
         { id: 'pricelist', icon: Tags, label: 'Master Pricelist' },
+        { id: 'promo', icon: Ticket, label: 'Master Promo Discount' },
         { id: 'package', icon: Box, label: 'Master Package' },
         { id: 'combo', icon: LayoutGrid, label: 'Master Combo' },
       ]
@@ -281,6 +281,29 @@ export function SettingsView() {
     setIsPriceListDialogOpen(false);
   };
 
+  // Promo Handlers
+  const handleOpenAddPromo = () => {
+    setEditingPromo(null);
+    setPromoForm({
+      name: '',
+      productId: products[0]?.id || '',
+      type: 'Percentage',
+      value: 0,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      enabled: true
+    });
+    setIsPromoDialogOpen(true);
+  };
+
+  const handleSavePromo = () => {
+    if (!promoForm.name || !promoForm.productId) return;
+    if (editingPromo) setPromoDiscounts(prev => prev.map(pd => pd.id === editingPromo.id ? { ...editingPromo, ...promoForm } as PromoDiscount : pd));
+    else setPromoDiscounts(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...promoForm as PromoDiscount }]);
+    setIsPromoDialogOpen(false);
+    toast({ title: "Success", description: "Promo discount saved." });
+  };
+
   // Customer Handlers
   const handleOpenAddCustomer = () => {
     setEditingCustomer(null);
@@ -406,6 +429,35 @@ export function SettingsView() {
                     <div className="flex gap-4 items-center">
                       <Badge className={cn("rounded-lg px-3 py-1 font-black text-[9px]", pl.enabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground')}>{pl.enabled ? 'ACTIVE' : 'DISABLED'}</Badge>
                       <Button variant="ghost" size="icon" onClick={() => { setEditingPriceList(pl); setPriceListForm(pl); setIsPriceListDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'promo' && (
+            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+              <div className="flex justify-between items-center mb-8">
+                <div><CardTitle className="text-2xl font-black">Master Promo Discount</CardTitle><CardDescription className="font-medium">Direct discounts per product</CardDescription></div>
+                <Button onClick={handleOpenAddPromo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Create Promo</Button>
+              </div>
+              <div className="space-y-4">
+                {promoDiscounts.map((pd) => (
+                  <div key={pd.id} className="flex items-center justify-between p-6 bg-muted/10 rounded-[2rem]">
+                    <div className="flex items-center gap-5">
+                      <div className="bg-white p-4 rounded-2xl text-primary border shadow-sm"><Ticket /></div>
+                      <div>
+                        <p className="font-black text-lg leading-tight">{pd.name}</p>
+                        <p className="text-xs font-bold text-muted-foreground mt-1">
+                          {products.find(p => p.id === pd.productId)?.name} • {pd.type === 'Percentage' ? `${pd.value}% Off` : `$${pd.value} Off`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 items-center">
+                      <Badge className={cn("rounded-lg px-3 py-1 font-black text-[9px]", pd.enabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground')}>{pd.enabled ? 'ACTIVE' : 'DISABLED'}</Badge>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingPromo(pd); setPromoForm(pd); setIsPromoDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setPromoDiscounts(promoDiscounts.filter(item => item.id !== pd.id))}><Trash2 className="h-5 w-5" /></Button>
                     </div>
                   </div>
                 ))}
@@ -655,6 +707,41 @@ export function SettingsView() {
              </div>
           </div>
           <DialogFooter className="mt-8"><Button onClick={() => { if (editingProduct) setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p)); else setProducts([...products, { id: Math.random().toString(36).substr(2, 9), ...productForm, available: true } as Product]); setIsProductDialogOpen(false); }} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Save Product</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Promo Dialog */}
+      <Dialog open={isPromoDialogOpen} onOpenChange={setIsPromoDialogOpen}>
+        <DialogContent className="max-w-xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
+          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Promo Discount Detail</DialogTitle></DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Promo Name</Label><Input value={promoForm.name || ''} onChange={(e) => setPromoForm({...promoForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+            <div className="space-y-2">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Product</Label>
+              <Select value={promoForm.productId} onValueChange={(val) => setPromoForm({...promoForm, productId: val})}>
+                <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-2xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Discount Type</Label>
+                <Select value={promoForm.type} onValueChange={(val: any) => setPromoForm({...promoForm, type: val})}>
+                  <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-2xl">
+                    <SelectItem value="Percentage">Percentage (%)</SelectItem>
+                    <SelectItem value="FixedAmount">Fixed Amount ($)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Value</Label><Input type="number" value={promoForm.value || ''} onChange={handleValueChange((val: any) => setPromoForm({...promoForm, value: val}))} className="h-12 rounded-xl border-2 font-black text-primary" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Start Date</Label><Input type="date" value={promoForm.startDate || ''} onChange={(e) => setPromoForm({...promoForm, startDate: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">End Date</Label><Input type="date" value={promoForm.endDate || ''} onChange={(e) => setPromoForm({...promoForm, endDate: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+            </div>
+          </div>
+          <DialogFooter className="mt-8"><Button onClick={handleSavePromo} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Save Promo</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

@@ -16,7 +16,7 @@ import {
   Area,
   Cell
 } from 'recharts';
-import { TrendingUp, DollarSign, ShoppingBag, Users, Wallet, Trophy, Tags, Package as PackageIcon, BarChart3, LayoutGrid } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingBag, Users, Wallet, Trophy, Tags, Package as PackageIcon, BarChart3, LayoutGrid, Ticket } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const data = [
@@ -34,6 +34,7 @@ export function DashboardView() {
 
   // Basic Totals
   const totalRevenue = history.reduce((acc, t) => acc + t.total, 0);
+  const totalPromoDiscounts = history.reduce((acc, t) => acc + (t.totalSavings || 0), 0);
   const totalCost = history.reduce((acc, t) => {
     return acc + t.items.reduce((itemAcc, item) => {
       if (item.isPackage) {
@@ -148,6 +149,13 @@ export function DashboardView() {
           color="bg-primary"
         />
         <StatCard 
+          title="Promo Discounts" 
+          value={`-$${totalPromoDiscounts.toLocaleString()}`} 
+          trend="Total Given" 
+          icon={Ticket} 
+          color="bg-accent"
+        />
+        <StatCard 
           title="Gross Profit" 
           value={`$${grossProfit.toLocaleString()}`} 
           trend="+8.2%" 
@@ -159,13 +167,6 @@ export function DashboardView() {
           value={history.length.toString()} 
           trend="+5.2%" 
           icon={ShoppingBag} 
-          color="bg-accent"
-        />
-        <StatCard 
-          title="Total Customers" 
-          value={customers.length.toString()} 
-          trend="+8.4%" 
-          icon={Users} 
           color="bg-orange-500"
         />
       </div>

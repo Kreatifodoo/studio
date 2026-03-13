@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList, Package, Combo } from '@/types/pos';
+import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -53,6 +53,8 @@ interface POSContextType {
   setPackages: React.Dispatch<React.SetStateAction<Package[]>>;
   combos: Combo[];
   setCombos: React.Dispatch<React.SetStateAction<Combo[]>>;
+  promoDiscounts: PromoDiscount[];
+  setPromoDiscounts: React.Dispatch<React.SetStateAction<PromoDiscount[]>>;
 }
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
@@ -90,12 +92,17 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [priceLists, setPriceLists] = useState<PriceList[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
+  const [promoDiscounts, setPromoDiscounts] = useState<PromoDiscount[]>([]);
 
   const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
-    if (!product) return { price: 0, priceListId: undefined };
+    if (!product) return { price: 0, originalPrice: 0, savings: 0, priceListId: undefined, promoId: undefined };
 
     const now = new Date();
+    let basePrice = product.price;
+    let priceListId: string | undefined = undefined;
+
+    // 1. Check Price List
     const activeList = priceLists.find(pl => 
       pl.enabled && 
       pl.productId === productId &&
@@ -105,11 +112,42 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
     if (activeList) {
       const tier = activeList.tiers.find(t => quantity >= t.minQty && quantity <= t.maxQty);
-      if (tier) return { price: tier.price, priceListId: activeList.id };
+      if (tier) {
+        basePrice = tier.price;
+        priceListId = activeList.id;
+      }
     }
 
-    return { price: product.price, priceListId: undefined };
-  }, [products, priceLists]);
+    // 2. Check Promo Discount
+    let finalPrice = basePrice;
+    let promoId: string | undefined = undefined;
+    let savings = 0;
+
+    const activePromo = promoDiscounts.find(pd => 
+      pd.enabled && 
+      pd.productId === productId &&
+      new Date(pd.startDate) <= now &&
+      new Date(pd.endDate) >= now
+    );
+
+    if (activePromo) {
+      promoId = activePromo.id;
+      if (activePromo.type === 'Percentage') {
+        savings = (basePrice * activePromo.value) / 100;
+      } else {
+        savings = activePromo.value;
+      }
+      finalPrice = Math.max(0, basePrice - savings);
+    }
+
+    return { 
+      price: finalPrice, 
+      originalPrice: basePrice, 
+      savings, 
+      priceListId, 
+      promoId 
+    };
+  }, [products, priceLists, promoDiscounts]);
 
   const openSession = (openingCash: number) => {
     const newSession: Session = {
@@ -149,19 +187,30 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       const existing = prev.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
       if (existing) {
         const newQty = existing.quantity + 1;
-        const { price: newPrice, priceListId } = getEffectivePriceInfo(product.id, newQty);
+        const { price: newPrice, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(product.id, newQty);
         return prev.map(item =>
-          (item.productId === product.id && !item.isPackage && !item.isCombo) ? { ...item, quantity: newQty, price: newPrice, priceListId } : item
+          (item.productId === product.id && !item.isPackage && !item.isCombo) ? { 
+            ...item, 
+            quantity: newQty, 
+            price: newPrice, 
+            originalPrice, 
+            promoSavings: savings, 
+            priceListId,
+            promoId
+          } : item
         );
       }
-      const { price: initialPrice, priceListId } = getEffectivePriceInfo(product.id, 1);
+      const { price: initialPrice, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(product.id, 1);
       return [...prev, {
         id: Math.random().toString(36).substr(2, 9),
         productId: product.id,
         name: product.name,
         price: initialPrice,
+        originalPrice,
+        promoSavings: savings,
         quantity: 1,
         priceListId,
+        promoId,
         isPackage: false,
         isCombo: false
       }];
@@ -183,6 +232,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         productId: pkg.id,
         name: pkg.name,
         price: pkg.price,
+        originalPrice: pkg.price,
+        promoSavings: 0,
         quantity: 1,
         isPackage: true,
         isCombo: false
@@ -201,6 +252,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       productId: combo.id,
       name: combo.name,
       price: finalPrice,
+      originalPrice: finalPrice,
+      promoSavings: 0,
       quantity: 1,
       isPackage: false,
       isCombo: true,
@@ -223,8 +276,16 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
           const product = products.find(p => p.id === item.productId);
           if (product && newQty > product.onHandQty) return item;
           
-          const { price: newPrice, priceListId } = getEffectivePriceInfo(item.productId, newQty);
-          return { ...item, quantity: newQty, price: newPrice, priceListId };
+          const { price: newPrice, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(item.productId, newQty);
+          return { 
+            ...item, 
+            quantity: newQty, 
+            price: newPrice, 
+            originalPrice, 
+            promoSavings: savings, 
+            priceListId,
+            promoId
+          };
         }
       }
       return item;
@@ -316,7 +377,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       customers, setCustomers, addCustomer,
       priceLists, setPriceLists,
       packages, setPackages,
-      combos, setCombos
+      combos, setCombos,
+      promoDiscounts, setPromoDiscounts
     }}>
       {children}
     </POSContext.Provider>
