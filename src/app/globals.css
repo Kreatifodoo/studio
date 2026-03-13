@@ -55,11 +55,12 @@
     visibility: hidden !important;
   }
   
-  #pos-receipt, #pos-receipt * {
+  #pos-receipt, #pos-receipt *,
+  #session-summary-receipt, #session-summary-receipt * {
     visibility: visible !important;
   }
   
-  #pos-receipt {
+  #pos-receipt, #session-summary-receipt {
     position: fixed !important;
     left: 0 !important;
     top: 0 !important;

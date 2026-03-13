@@ -17,10 +17,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 
 export function Sidebar() {
-  const { view, setView, currentSession, closeSession, history } = usePOS();
+  const { view, setView, currentSession, closeSession, history, lastClosedSession } = usePOS();
   const [closingCash, setClosingCash] = useState('');
+  const [showSummaryPreview, setShowSummaryPreview] = useState(false);
 
   const expectedCash = useMemo(() => {
     if (!currentSession) return 0;
@@ -45,6 +48,16 @@ export function Sidebar() {
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
+  const handleCloseSession = () => {
+    closeSession(currentClosingAmount);
+    setClosingCash('');
+    setShowSummaryPreview(true);
+    // Otomatis cetak setelah state diupdate
+    setTimeout(() => {
+      window.print();
+    }, 800);
   };
 
   return (
@@ -138,13 +151,10 @@ export function Sidebar() {
                 <AlertDialogCancel className="rounded-2xl h-14 font-bold border-2">Tetap Buka</AlertDialogCancel>
                 <AlertDialogAction 
                   disabled={!isBalanced}
-                  onClick={() => {
-                    closeSession(currentClosingAmount);
-                    setClosingCash('');
-                  }}
+                  onClick={handleCloseSession}
                   className="rounded-2xl h-14 bg-primary hover:bg-primary/90 font-black px-8 disabled:opacity-50 disabled:grayscale"
                 >
-                  Tutup & Lihat Laporan
+                  Tutup & Cetak Summary
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -156,6 +166,12 @@ export function Sidebar() {
           <span className="text-[9px] font-bold uppercase tracking-widest mt-1">Keluar</span>
         </button>
       </div>
+
+      <Dialog open={showSummaryPreview} onOpenChange={setShowSummaryPreview}>
+        <DialogContent className="max-w-[400px] p-0 border-none shadow-none bg-transparent">
+          <SessionSummaryReceipt session={lastClosedSession} />
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

@@ -1,19 +1,22 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { usePOS } from './POSContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
-import { FileText, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, History, CreditCard, Banknote, Download } from 'lucide-react';
+import { FileText, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, History, CreditCard, Banknote, Download, Printer } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 
 export function SessionReportView() {
   const { lastClosedSession, sessions, history, customers } = usePOS();
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   
   const sessionToView = lastClosedSession || sessions[0];
 
@@ -58,6 +61,13 @@ export function SessionReportView() {
     document.body.removeChild(link);
   };
 
+  const handlePrintSummary = () => {
+    setIsPreviewOpen(true);
+    setTimeout(() => {
+      window.print();
+    }, 500);
+  };
+
   if (!sessionToView) {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] text-center opacity-30">
@@ -93,6 +103,14 @@ export function SessionReportView() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button 
+            onClick={handlePrintSummary}
+            variant="outline"
+            className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
+          >
+            <Printer className="h-5 w-5" />
+            Cetak Ringkasan
+          </Button>
           <Button 
             onClick={handleExportCSV}
             variant="outline"
@@ -247,6 +265,12 @@ export function SessionReportView() {
           </div>
         </ScrollArea>
       </Card>
+
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-[400px] p-0 border-none shadow-none bg-transparent">
+          <SessionSummaryReceipt session={sessionToView} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
