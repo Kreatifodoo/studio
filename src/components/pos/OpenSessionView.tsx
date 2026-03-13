@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -23,19 +22,19 @@ export function OpenSessionView() {
         <div className="bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6">
           <Store className="h-10 w-10" />
         </div>
-        <CardTitle className="text-3xl font-black mb-2">Open New Session</CardTitle>
-        <CardDescription className="text-base font-medium">Please enter the initial cash amount in the drawer to start accepting orders.</CardDescription>
+        <CardTitle className="text-3xl font-black mb-2">Buka Sesi Kasir Baru</CardTitle>
+        <CardDescription className="text-base font-medium">Masukkan modal tunai awal di laci untuk mulai menerima pesanan.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 px-6">
         <div className="space-y-3">
-          <Label htmlFor="cash" className="text-sm font-black uppercase tracking-widest text-muted-foreground ml-1">Opening Cash Balance ($)</Label>
+          <Label htmlFor="cash" className="text-sm font-black uppercase tracking-widest text-muted-foreground ml-1">Modal Awal Tunai (Rp)</Label>
           <Input 
             id="cash"
             type="number"
             value={cash}
             onChange={(e) => setCash(e.target.value)}
             className="h-16 rounded-2xl border-2 focus-visible:ring-primary/20 text-2xl font-black pl-6"
-            placeholder="0.00"
+            placeholder="0"
           />
         </div>
       </CardContent>
@@ -45,7 +44,7 @@ export function OpenSessionView() {
           className="w-full h-16 rounded-2xl text-xl font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
         >
           <PlayCircle className="h-6 w-6" />
-          Start Session
+          Mulai Sesi
         </Button>
       </CardFooter>
     </Card>

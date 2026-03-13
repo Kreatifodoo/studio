@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
@@ -51,20 +50,20 @@ interface POSContextType {
 }
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
-  { id: 'pm_1', name: 'Credit / Debit Card', icon: 'CreditCard', description: 'Visa, Mastercard, Amex', enabled: true },
-  { id: 'pm_2', name: 'Digital Wallet', icon: 'Smartphone', description: 'Apple Pay, Google Pay', enabled: true },
-  { id: 'pm_3', name: 'Cash', icon: 'Banknote', description: 'Payment at counter', enabled: true },
+  { id: 'pm_1', name: 'Tunai', icon: 'Banknote', description: 'Pembayaran di kasir', enabled: true },
+  { id: 'pm_2', name: 'Kartu Debit / Kredit', icon: 'CreditCard', description: 'Visa, Mastercard, GPN', enabled: true },
+  { id: 'pm_3', name: 'Dompet Digital', icon: 'Smartphone', description: 'QRIS, GoPay, OVO, ShopeePay', enabled: true },
 ];
 
 const INITIAL_FEES: Fee[] = [
-  { id: 'f_1', name: 'Tax', type: 'Tax', value: 10, enabled: true },
-  { id: 'f_2', name: 'Service Charge', type: 'Service', value: 5, enabled: true },
+  { id: 'f_1', name: 'Pajak (PPN)', type: 'Tax', value: 11, enabled: true },
+  { id: 'f_2', name: 'Biaya Layanan', type: 'Service', value: 5, enabled: true },
 ];
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
 export function POSProvider({ children }: { children: React.ReactNode }) {
-  const [activeCategory, setActiveCategory] = useState<Category>('All');
+  const [activeCategory, setActiveCategory] = useState<Category>('Semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [history, setHistory] = useState<Transaction[]>([]);
@@ -238,6 +237,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
 export const usePOS = () => {
   const context = useContext(POSContext);
-  if (!context) throw new Error('usePOS must be used within POSProvider');
+  if (!context) throw new Error('usePOS harus digunakan di dalam POSProvider');
   return context;
 };

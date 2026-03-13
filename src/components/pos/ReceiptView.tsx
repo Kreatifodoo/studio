@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -11,35 +10,37 @@ interface ReceiptViewProps {
   storeName?: string;
 }
 
-export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: ReceiptViewProps) {
+export function ReceiptView({ transaction, storeName = "NEXTPOS KEDAI" }: ReceiptViewProps) {
   const { packages, products } = usePOS();
   
   if (!transaction) return null;
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
   return (
     <div id="pos-receipt" className="w-[80mm] bg-white text-black p-4 font-mono text-[11px] leading-relaxed">
-      {/* Header */}
       <div className="text-center mb-6 space-y-1">
         <h2 className="text-base font-black uppercase tracking-tighter" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
           {storeName}
         </h2>
         <p className="opacity-80">Jalan Modern Avenue No. 88</p>
-        <p className="opacity-80">Tech District, Jakarta</p>
+        <p className="opacity-80">Distrik Teknologi, Jakarta</p>
         <p className="opacity-80">CS: (021) 8888-2222</p>
       </div>
 
-      {/* Order Info */}
       <div className="border-t border-b border-black/20 py-3 mb-4 space-y-1">
         <div className="flex justify-between">
-          <span>ORDER ID</span>
+          <span>NO. ORDER</span>
           <span className="font-bold">#{transaction.id}</span>
         </div>
         <div className="flex justify-between">
-          <span>DATE</span>
+          <span>TANGGAL</span>
           <span>{format(new Date(transaction.date), 'dd/MM/yyyy HH:mm')}</span>
         </div>
         <div className="flex justify-between">
-          <span>PAYMENT</span>
+          <span>METODE</span>
           <span className="font-bold">{transaction.paymentMethod}</span>
         </div>
         {transaction.paymentReference && (
@@ -50,7 +51,6 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
         )}
       </div>
 
-      {/* Items */}
       <div className="space-y-3 mb-6">
         {transaction.items.map((item, idx) => (
           <div key={idx} className="flex flex-col">
@@ -59,7 +59,6 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
               <span>x{item.quantity}</span>
             </div>
             
-            {/* Package Components Detail */}
             {item.isPackage && (
               <div className="pl-2 mb-1 border-l border-black/10">
                 {packages.find(p => p.id === item.productId)?.items.map((pkgItem, pIdx) => {
@@ -74,15 +73,14 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
               </div>
             )}
 
-            {/* Combo Selections Detail */}
             {item.isCombo && item.comboSelections && (
               <div className="pl-2 mb-1 border-l border-black/10">
                 {item.comboSelections.map((sel, sIdx) => {
                   const productDetails = products.find(p => p.id === sel.productId);
                   return (
                     <div key={sIdx} className="text-[9px] opacity-70 flex justify-between italic">
-                      <span>- {productDetails?.name || 'Choice'}</span>
-                      {sel.extraPrice > 0 && <span>+${sel.extraPrice.toFixed(2)}</span>}
+                      <span>- {productDetails?.name || 'Pilihan'}</span>
+                      {sel.extraPrice > 0 && <span>+{formatCurrency(sel.extraPrice)}</span>}
                     </div>
                   );
                 })}
@@ -91,16 +89,16 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
 
             <div className="flex justify-between text-[10px] opacity-70 italic">
               <div className="flex flex-col">
-                <span>@{item.price.toFixed(2)}</span>
+                <span>@{formatCurrency(item.price)}</span>
                 {item.promoSavings > 0 && (
-                  <span className="text-[8px] text-gray-500 line-through">orig. @{item.originalPrice.toFixed(2)}</span>
+                  <span className="text-[8px] text-gray-500 line-through">asli @{formatCurrency(item.originalPrice)}</span>
                 )}
               </div>
-              <span>${(item.price * item.quantity).toFixed(2)}</span>
+              <span>{formatCurrency(item.price * item.quantity)}</span>
             </div>
             
             {item.promoSavings > 0 && (
-              <p className="text-[8px] font-bold text-gray-600 italic">** Promo Discount: -${(item.promoSavings * item.quantity).toFixed(2)}</p>
+              <p className="text-[8px] font-bold text-gray-600 italic">** Potongan Promo: -{formatCurrency(item.promoSavings * item.quantity)}</p>
             )}
 
             {item.note && (
@@ -110,49 +108,45 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
         ))}
       </div>
 
-      {/* Calculations */}
       <div className="border-t border-black/20 pt-4 space-y-2">
         <div className="flex justify-between">
           <span>SUBTOTAL</span>
-          <span>${transaction.subtotal.toFixed(2)}</span>
+          <span>{formatCurrency(transaction.subtotal)}</span>
         </div>
         
         {transaction.totalSavings > 0 && (
           <div className="flex justify-between text-gray-600 font-bold">
-            <span>PROMO SAVINGS</span>
-            <span>-${transaction.totalSavings.toFixed(2)}</span>
+            <span>TOTAL HEMAT</span>
+            <span>-{formatCurrency(transaction.totalSavings)}</span>
           </div>
         )}
 
         <div className="flex justify-between">
-          <span>TAX (10%)</span>
-          <span>${transaction.tax.toFixed(2)}</span>
+          <span>PAJAK (11%)</span>
+          <span>{formatCurrency(transaction.tax)}</span>
         </div>
         
         <div className="pt-2">
           <div className="flex justify-between text-base font-black border-t-2 border-black pt-2" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
-            <span>TOTAL</span>
-            <span>${transaction.total.toFixed(2)}</span>
+            <span>TOTAL AKHIR</span>
+            <span>{formatCurrency(transaction.total)}</span>
           </div>
         </div>
       </div>
 
-      {/* Saving Banner */}
       {transaction.totalSavings > 0 && (
         <div className="mt-4 p-2 border-2 border-dashed border-black text-center">
           <p className="font-bold uppercase text-[9px]">Anda Berhemat Hari Ini!</p>
-          <p className="text-base font-black">${transaction.totalSavings.toFixed(2)}</p>
+          <p className="text-base font-black">{formatCurrency(transaction.totalSavings)}</p>
         </div>
       )}
 
-      {/* Footer */}
       <div className="text-center mt-10 pt-6 border-t border-black/20 space-y-4">
         <div className="space-y-1">
           <p className="font-bold uppercase">Terima Kasih!</p>
           <p className="text-[10px]">Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan</p>
         </div>
         
-        {/* Placeholder Barcode */}
         <div className="flex flex-col items-center gap-1 opacity-60">
           <div className="w-full h-8 bg-black flex flex-col items-center justify-center p-1">
              <div className="w-full h-full bg-white flex items-center justify-center gap-0.5 px-2">

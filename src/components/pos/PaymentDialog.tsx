@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -47,6 +46,10 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setCurrentTransaction(null);
   }, []);
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
   useEffect(() => {
     if (open) {
       reset();
@@ -59,7 +62,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setTransactionId(newId);
     
     const method = paymentMethods.find(p => p.name === methodName);
-    const isCash = methodName.toLowerCase().includes('cash') || method?.icon === 'Banknote';
+    const isCash = methodName.toLowerCase().includes('tunai') || method?.icon === 'Banknote';
     const isCardOrDigital = method?.icon === 'CreditCard' || method?.icon === 'Smartphone';
 
     if (isCash) {
@@ -82,6 +85,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
       subtotal,
       tax,
       total,
+      totalSavings: cart.reduce((acc, item) => acc + (item.promoSavings * item.quantity), 0),
       status: 'Completed',
       paymentMethod: methodName,
       paymentReference: ref
@@ -129,8 +133,8 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
         {stage === 'method' && (
           <>
             <DialogHeader className="mb-6">
-              <DialogTitle className="text-2xl font-black">Select Payment Method</DialogTitle>
-              <DialogDescription>Total amount to pay: <span className="text-primary font-black text-xl ml-1">${total.toFixed(2)}</span></DialogDescription>
+              <DialogTitle className="text-2xl font-black">Pilih Metode Pembayaran</DialogTitle>
+              <DialogDescription>Total yang harus dibayar: <span className="text-primary font-black text-xl ml-1">{formatCurrency(total)}</span></DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-1 gap-4">
               {enabledMethods.length > 0 ? (
@@ -150,7 +154,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
                   </button>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground py-10 font-bold">No payment methods configured.</p>
+                <p className="text-center text-muted-foreground py-10 font-bold">Metode pembayaran belum dikonfigurasi.</p>
               )}
             </div>
           </>
@@ -159,22 +163,22 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
         {stage === 'cash-input' && (
           <div className="flex flex-col gap-6">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black">Cash Payment</DialogTitle>
-              <DialogDescription>Input nominal received from customer.</DialogDescription>
+              <DialogTitle className="text-2xl font-black">Pembayaran Tunai</DialogTitle>
+              <DialogDescription>Masukkan jumlah uang yang diterima dari pelanggan.</DialogDescription>
             </DialogHeader>
 
             <div className="bg-primary/5 p-6 rounded-[2rem] flex flex-col items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Amount to Pay</span>
-              <span className="text-4xl font-black text-primary">${total.toFixed(2)}</span>
+              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Total Tagihan</span>
+              <span className="text-4xl font-black text-primary">{formatCurrency(total)}</span>
             </div>
 
             <div className="space-y-3">
-              <Label className="text-xs font-black uppercase tracking-widest ml-1">Cash Received ($)</Label>
+              <Label className="text-xs font-black uppercase tracking-widest ml-1">Uang Diterima (Rp)</Label>
               <Input 
                 type="number" 
                 value={cashReceived}
                 onChange={(e) => onCashInputChange(e.target.value)}
-                placeholder="0.00"
+                placeholder="0"
                 autoFocus
                 className="h-16 rounded-2xl text-2xl font-black text-center focus-visible:ring-primary/20 border-2"
               />
@@ -185,9 +189,9 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
               isCashValid ? "bg-accent/5 border-accent/20" : "bg-muted/10 border-muted/20"
             )}>
               <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Change</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Kembalian</span>
                 <span className={cn("text-2xl font-black", isCashValid ? "text-accent" : "text-muted-foreground")}>
-                  ${change.toFixed(2)}
+                  {formatCurrency(change)}
                 </span>
               </div>
               <Coins className={cn("h-8 w-8", isCashValid ? "text-accent" : "text-muted-foreground")} />
@@ -198,7 +202,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
               onClick={handleConfirmCash}
               className="h-16 rounded-2xl text-lg font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
             >
-              Confirm & Print Receipt
+              Konfirmasi & Cetak Struk
               <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
@@ -208,21 +212,21 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
           <div className="flex flex-col gap-6">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black">{selectedMethod}</DialogTitle>
-              <DialogDescription>Input payment reference or note (e.g. Last 4 digits of card).</DialogDescription>
+              <DialogDescription>Masukkan referensi pembayaran atau catatan (misal: 4 digit terakhir kartu).</DialogDescription>
             </DialogHeader>
 
             <div className="bg-primary/5 p-6 rounded-[2rem] flex flex-col items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Amount to Pay</span>
-              <span className="text-4xl font-black text-primary">${total.toFixed(2)}</span>
+              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Total Tagihan</span>
+              <span className="text-4xl font-black text-primary">{formatCurrency(total)}</span>
             </div>
 
             <div className="space-y-3">
-              <Label className="text-xs font-black uppercase tracking-widest ml-1">Reference Note</Label>
+              <Label className="text-xs font-black uppercase tracking-widest ml-1">Catatan Referensi</Label>
               <Input 
                 type="text" 
                 value={paymentReference}
                 onChange={(e) => setPaymentReference(e.target.value)}
-                placeholder="Ex: Ref-1234 or Card 4421"
+                placeholder="Contoh: Ref-1234 atau Kartu 4421"
                 autoFocus
                 className="h-16 rounded-2xl text-xl font-bold text-center focus-visible:ring-primary/20 border-2"
               />
@@ -232,7 +236,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
               onClick={handleConfirmReference}
               className="h-16 rounded-2xl text-lg font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
             >
-              Confirm & Print Receipt
+              Konfirmasi & Cetak Struk
               <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
@@ -245,12 +249,12 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
                 <CheckCircle2 className="h-20 w-20 text-accent animate-in zoom-in duration-500" />
               </div>
               <DialogHeader>
-                <DialogTitle className="text-4xl font-black mb-2 text-primary">Done!</DialogTitle>
+                <DialogTitle className="text-4xl font-black mb-2 text-primary">Berhasil!</DialogTitle>
                 <DialogDescription className="text-lg font-medium">
-                  Transaction {transactionId} successful.
+                  Transaksi {transactionId} selesai.
                   {parseFloat(cashReceived) > 0 && (
                     <span className="block mt-2 text-sm text-accent font-bold">
-                      Change: ${change.toFixed(2)}
+                      Kembalian: {formatCurrency(change)}
                     </span>
                   )}
                 </DialogDescription>
@@ -262,13 +266,13 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
                   onClick={() => window.print()} 
                   className="h-14 rounded-2xl font-bold gap-2"
                 >
-                  <Printer className="h-5 w-5" /> Re-print Receipt
+                  <Printer className="h-5 w-5" /> Cetak Ulang Struk
                 </Button>
                 <Button 
                   onClick={() => onSuccess(selectedMethod, paymentReference)} 
                   className="w-full h-16 rounded-2xl text-lg font-black shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
                 >
-                  Continue to Next Order
+                  Lanjut Pesanan Berikutnya
                 </Button>
               </div>
             </div>

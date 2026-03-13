@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle2, ShoppingBag, Calendar } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 export function HistoryView() {
   const { history } = usePOS();
@@ -16,12 +17,16 @@ export function HistoryView() {
     setMounted(true);
   }, []);
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
   return (
     <div className="flex flex-col gap-8 h-full">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-black">Order History</h2>
-          <p className="text-muted-foreground mt-1">Review your completed transactions</p>
+          <h2 className="text-3xl font-black">Riwayat Transaksi</h2>
+          <p className="text-muted-foreground mt-1">Tinjau kembali pesanan yang telah diselesaikan</p>
         </div>
       </div>
 
@@ -29,7 +34,7 @@ export function HistoryView() {
         {history.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-20 opacity-20">
              <Calendar className="h-24 w-24 mb-4" />
-             <p className="text-2xl font-bold">No orders found</p>
+             <p className="text-2xl font-bold">Belum ada transaksi</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4 pb-20">
@@ -44,24 +49,24 @@ export function HistoryView() {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-lg font-bold">Order #{t.id.toUpperCase()}</h3>
                         <Badge variant="secondary" className="bg-accent/10 text-accent-foreground border-none px-3 py-0.5 rounded-lg text-[10px] font-bold">
-                           <CheckCircle2 className="h-3 w-3 mr-1" /> COMPLETED
+                           <CheckCircle2 className="h-3 w-3 mr-1" /> SELESAI
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5" />
-                        {mounted ? format(new Date(t.date), 'PPP p') : 'Loading date...'}
+                        {mounted ? format(new Date(t.date), 'PPP p', { locale: id }) : 'Memuat tanggal...'}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between md:justify-end gap-12 border-t md:border-t-0 pt-4 md:pt-0">
                     <div className="text-right">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Items</p>
-                      <p className="text-lg font-bold">{t.items.reduce((a,b) => a + b.quantity, 0)} Items</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Item</p>
+                      <p className="text-lg font-bold">{t.items.reduce((a,b) => a + b.quantity, 0)} Item</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Total</p>
-                      <p className="text-2xl font-black text-primary">${t.total.toFixed(2)}</p>
+                      <p className="text-2xl font-black text-primary">{formatCurrency(t.total)}</p>
                     </div>
                   </div>
                 </div>

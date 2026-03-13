@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -6,6 +5,7 @@ import { usePOS } from './POSContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
 import { FileText, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, History, CreditCard, Banknote, Download } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -17,17 +17,19 @@ export function SessionReportView() {
   
   const sessionToView = lastClosedSession || sessions[0];
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
   const handleExportCSV = () => {
     if (!sessionToView) return;
 
     const sessionTransactions = history.filter(t => sessionToView.transactionIds.includes(t.id));
     
-    // Header for CSV
-    const headers = ["Order ID", "Date", "Time", "Customer", "Items", "Subtotal", "Tax", "Total", "Payment Method", "Reference"];
+    const headers = ["ID Pesanan", "Tanggal", "Jam", "Pelanggan", "Item", "Subtotal", "Pajak", "Total", "Metode Pembayaran", "Referensi"];
     
-    // Data rows
     const rows = sessionTransactions.map(t => {
-      const customer = customers.find(c => c.id === t.customerId)?.name || "Walk-in";
+      const customer = customers.find(c => c.id === t.customerId)?.name || "Umum";
       const itemsList = t.items.map(i => `${i.quantity}x ${i.name}`).join(" | ");
       return [
         t.id,
@@ -35,9 +37,9 @@ export function SessionReportView() {
         format(new Date(t.date), 'HH:mm:ss'),
         customer,
         `"${itemsList}"`,
-        t.subtotal.toFixed(2),
-        t.tax.toFixed(2),
-        t.total.toFixed(2),
+        t.subtotal.toFixed(0),
+        t.tax.toFixed(0),
+        t.total.toFixed(0),
         t.paymentMethod || "N/A",
         t.paymentReference || ""
       ];
@@ -49,7 +51,7 @@ export function SessionReportView() {
     const url = URL.createObjectURL(blob);
     
     link.setAttribute("href", url);
-    link.setAttribute("download", `POS_Report_Session_${sessionToView.id}_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.setAttribute("download", `Laporan_Sesi_${sessionToView.id}_${format(new Date(), 'yyyyMMdd')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -60,8 +62,8 @@ export function SessionReportView() {
     return (
       <div className="flex flex-col items-center justify-center h-[70vh] text-center opacity-30">
         <FileText className="h-24 w-24 mb-6" />
-        <h2 className="text-3xl font-black">No Reports Available</h2>
-        <p className="text-xl">Close a session to generate your first report.</p>
+        <h2 className="text-3xl font-black">Laporan Belum Tersedia</h2>
+        <p className="text-xl">Tutup sesi kasir untuk melihat laporan pertama Anda.</p>
       </div>
     );
   }
@@ -72,22 +74,22 @@ export function SessionReportView() {
   const totalSubtotal = sessionTransactions.reduce((acc, t) => acc + t.subtotal, 0);
   
   const paymentsByMethod = sessionTransactions.reduce((acc: any, t) => {
-    const method = t.paymentMethod || 'Other';
+    const method = t.paymentMethod || 'Lainnya';
     acc[method] = (acc[method] || 0) + t.total;
     return acc;
   }, {});
 
-  const cashDifference = (sessionToView.closingCash || 0) - (sessionToView.openingCash + (paymentsByMethod['Cash'] || 0));
+  const cashDifference = (sessionToView.closingCash || 0) - (sessionToView.openingCash + (paymentsByMethod['Tunai'] || 0));
 
   return (
     <div className="flex flex-col gap-8 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-black flex items-center gap-3">
-            <FileText className="text-primary" /> Session Report
+            <FileText className="text-primary" /> Laporan Sesi Kasir
           </h2>
           <p className="text-muted-foreground mt-1 font-medium">
-            Session #{sessionToView.id} • {format(new Date(sessionToView.startTime), 'PPP p')} - {sessionToView.endTime ? format(new Date(sessionToView.endTime), 'p') : 'Ongoing'}
+            Sesi #{sessionToView.id} • {format(new Date(sessionToView.startTime), 'PPP p', { locale: localeId })} - {sessionToView.endTime ? format(new Date(sessionToView.endTime), 'p', { locale: localeId }) : 'Berlangsung'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -97,21 +99,21 @@ export function SessionReportView() {
             className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
           >
             <Download className="h-5 w-5" />
-            Export to CSV
+            Ekspor ke CSV
           </Button>
           <Badge className="bg-primary/10 text-primary border-none px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest h-12 flex items-center">
-            {sessionToView.status}
+            {sessionToView.status === 'Open' ? 'TERBUKA' : 'TERTUTUP'}
           </Badge>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <ReportStatCard title="Total Sales" value={`$${totalSales.toFixed(2)}`} icon={DollarSign} color="bg-primary" />
-        <ReportStatCard title="Opening Cash" value={`$${sessionToView.openingCash.toFixed(2)}`} icon={ArrowUpRight} color="bg-green-500" />
-        <ReportStatCard title="Closing Cash" value={`$${(sessionToView.closingCash || 0).toFixed(2)}`} icon={ArrowDownRight} color="bg-orange-500" />
+        <ReportStatCard title="Total Penjualan" value={formatCurrency(totalSales)} icon={DollarSign} color="bg-primary" />
+        <ReportStatCard title="Modal Awal" value={formatCurrency(sessionToView.openingCash)} icon={ArrowUpRight} color="bg-green-500" />
+        <ReportStatCard title="Uang Akhir" value={formatCurrency(sessionToView.closingCash || 0)} icon={ArrowDownRight} color="bg-orange-500" />
         <ReportStatCard 
-          title="Cash Difference" 
-          value={`${cashDifference >= 0 ? '+' : ''}$${cashDifference.toFixed(2)}`} 
+          title="Selisih Kas" 
+          value={`${cashDifference >= 0 ? '+' : ''}${formatCurrency(cashDifference)}`} 
           icon={PieChart} 
           color={cashDifference === 0 ? "bg-accent" : "bg-destructive"} 
         />
@@ -120,38 +122,38 @@ export function SessionReportView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
           <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-xl font-black">Transaction Summary</CardTitle>
+            <CardTitle className="text-xl font-black">Ringkasan Transaksi</CardTitle>
           </CardHeader>
           <div className="space-y-6">
              <div className="flex justify-between items-center py-4 border-b">
-               <span className="text-muted-foreground font-bold">Total Transactions</span>
+               <span className="text-muted-foreground font-bold">Total Transaksi</span>
                <span className="font-black text-xl">{sessionTransactions.length}</span>
              </div>
              <div className="flex justify-between items-center py-4 border-b">
-               <span className="text-muted-foreground font-bold">Subtotal (Net Sales)</span>
-               <span className="font-black text-xl">${totalSubtotal.toFixed(2)}</span>
+               <span className="text-muted-foreground font-bold">Subtotal (Net)</span>
+               <span className="font-black text-xl">{formatCurrency(totalSubtotal)}</span>
              </div>
              <div className="flex justify-between items-center py-4 border-b">
-               <span className="text-muted-foreground font-bold">Collected Taxes</span>
-               <span className="font-black text-xl">${totalTax.toFixed(2)}</span>
+               <span className="text-muted-foreground font-bold">Pajak Terkumpul</span>
+               <span className="font-black text-xl">{formatCurrency(totalTax)}</span>
              </div>
              <div className="flex justify-between items-center py-6 bg-primary/5 px-6 rounded-3xl">
-               <span className="text-primary font-black text-lg">Gross Sales</span>
-               <span className="text-primary font-black text-3xl">${totalSales.toFixed(2)}</span>
+               <span className="text-primary font-black text-lg">Penjualan Bruto</span>
+               <span className="text-primary font-black text-3xl">{formatCurrency(totalSales)}</span>
              </div>
           </div>
         </Card>
 
         <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
           <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-xl font-black">Payment Methods</CardTitle>
+            <CardTitle className="text-xl font-black">Metode Pembayaran</CardTitle>
           </CardHeader>
           <div className="space-y-6 mt-4">
             {Object.entries(paymentsByMethod).map(([method, amount]: any) => (
               <div key={method} className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-sm">{method}</span>
-                  <span className="font-black">${amount.toFixed(2)}</span>
+                  <span className="font-black">{formatCurrency(amount)}</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                    <div 
@@ -162,7 +164,7 @@ export function SessionReportView() {
               </div>
             ))}
             {Object.keys(paymentsByMethod).length === 0 && (
-              <p className="text-center text-muted-foreground py-10 font-medium">No payments recorded</p>
+              <p className="text-center text-muted-foreground py-10 font-medium">Belum ada pembayaran</p>
             )}
           </div>
         </Card>
@@ -170,16 +172,16 @@ export function SessionReportView() {
 
       <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white overflow-hidden">
         <CardHeader className="px-0 pt-0 mb-4">
-          <CardTitle className="text-xl font-black">Session Transaction Details</CardTitle>
+          <CardTitle className="text-xl font-black">Detail Transaksi Sesi</CardTitle>
         </CardHeader>
         <div className="rounded-3xl border overflow-hidden">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="font-black">Time</TableHead>
-                <TableHead className="font-black">ID</TableHead>
-                <TableHead className="font-black">Method</TableHead>
-                <TableHead className="font-black">Note Reff</TableHead>
+                <TableHead className="font-black">Waktu</TableHead>
+                <TableHead className="font-black">ID Order</TableHead>
+                <TableHead className="font-black">Metode</TableHead>
+                <TableHead className="font-black">Ref</TableHead>
                 <TableHead className="text-right font-black">Total</TableHead>
               </TableRow>
             </TableHeader>
@@ -190,7 +192,7 @@ export function SessionReportView() {
                   <TableCell className="font-mono text-xs">#{t.id}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {t.paymentMethod?.toLowerCase().includes('cash') ? <Banknote className="h-3 w-3" /> : <CreditCard className="h-3 w-3" />}
+                      {t.paymentMethod?.toLowerCase().includes('tunai') ? <Banknote className="h-3 w-3" /> : <CreditCard className="h-3 w-3" />}
                       <span className="text-xs font-bold">{t.paymentMethod}</span>
                     </div>
                   </TableCell>
@@ -200,16 +202,16 @@ export function SessionReportView() {
                         {t.paymentReference}
                       </Badge>
                     ) : (
-                      <span className="text-muted-foreground text-[10px] italic">No reference</span>
+                      <span className="text-muted-foreground text-[10px] italic">Tanpa ref</span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right font-black">${t.total.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-black">{formatCurrency(t.total)}</TableCell>
                 </TableRow>
               ))}
               {sessionTransactions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-10 text-muted-foreground italic font-medium">
-                    No transactions in this session.
+                    Belum ada transaksi di sesi ini.
                   </TableCell>
                 </TableRow>
               )}
@@ -220,7 +222,7 @@ export function SessionReportView() {
 
       <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
         <CardHeader className="px-0 pt-0">
-          <CardTitle className="text-xl font-black">Session History</CardTitle>
+          <CardTitle className="text-xl font-black">Riwayat Sesi</CardTitle>
         </CardHeader>
         <ScrollArea className="h-64">
           <div className="space-y-4 pr-4">
@@ -228,18 +230,17 @@ export function SessionReportView() {
               <div 
                 key={s.id} 
                 className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl hover:bg-muted/30 transition-all cursor-pointer border border-transparent hover:border-primary/10"
-                onClick={() => {}}
               >
                 <div className="flex items-center gap-4">
                   <div className="bg-white p-3 rounded-xl text-primary"><History /></div>
                   <div>
-                    <p className="font-black">Session #{s.id}</p>
-                    <p className="text-xs text-muted-foreground font-bold">{format(new Date(s.startTime), 'PPP')}</p>
+                    <p className="font-black">Sesi #{s.id}</p>
+                    <p className="text-xs text-muted-foreground font-bold">{format(new Date(s.startTime), 'PPP', { locale: localeId })}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-black text-lg">${(history.filter(t => s.transactionIds.includes(t.id)).reduce((acc, t) => acc + t.total, 0)).toFixed(2)}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.transactionIds.length} Transactions</p>
+                  <p className="font-black text-lg">{formatCurrency(history.filter(t => s.transactionIds.includes(t.id)).reduce((acc, t) => acc + t.total, 0))}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.transactionIds.length} Transaksi</p>
                 </div>
               </div>
             ))}
@@ -260,7 +261,7 @@ function ReportStatCard({ title, value, icon: Icon, color }: any) {
       </div>
       <div>
         <p className="text-sm text-muted-foreground font-black uppercase tracking-widest mb-1">{title}</p>
-        <p className="text-3xl font-black tracking-tight">{value}</p>
+        <p className="text-xl font-black tracking-tight">{value}</p>
       </div>
     </Card>
   );

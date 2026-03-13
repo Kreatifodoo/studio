@@ -1,18 +1,17 @@
-
 import { Product, Category } from '@/types/pos';
 import { PlaceHolderImages } from './placeholder-images';
 
-export const CATEGORIES: Category[] = ['All', 'Packages', 'Main Course', 'Drinks', 'Snacks', 'Desserts'];
+export const CATEGORIES: Category[] = ['Semua', 'Paket', 'Makanan Utama', 'Minuman', 'Camilan', 'Pencuci Mulut'];
 
 const getImage = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || 'https://picsum.photos/seed/default/400/300';
 
 export const PRODUCTS: Product[] = [
-  { id: '1', sku: 'MC-001', barcode: '8880001', name: 'Classic Burger', price: 12.50, costPrice: 5.00, category: 'Main Course', image: getImage('item-burger'), available: true, onHandQty: 50, description: 'Juicy beef patty with special sauce' },
-  { id: '2', sku: 'MC-002', barcode: '8880002', name: 'Pepperoni Pizza', price: 18.00, costPrice: 8.00, category: 'Main Course', image: getImage('item-pizza'), available: true, onHandQty: 30, description: 'Traditional Italian style with fresh pepperoni' },
-  { id: '3', sku: 'SN-001', barcode: '8880003', name: 'Garden Salad', price: 8.50, costPrice: 3.00, category: 'Snacks', image: getImage('item-salad'), available: true, onHandQty: 25, description: 'Mix of seasonal fresh greens' },
-  { id: '4', sku: 'DR-001', barcode: '8880004', name: 'Coca Cola', price: 3.50, costPrice: 1.50, category: 'Drinks', image: getImage('item-coke'), available: true, onHandQty: 100, description: 'Chilled refreshing soda' },
-  { id: '5', sku: 'DR-002', barcode: '8880005', name: 'Caramel Latte', price: 5.50, costPrice: 2.00, category: 'Drinks', image: getImage('item-coffee'), available: true, onHandQty: 40, description: 'Rich espresso with caramel and steamed milk' },
-  { id: '6', sku: 'SN-002', barcode: '8880006', name: 'French Fries', price: 4.50, costPrice: 1.20, category: 'Snacks', image: getImage('item-fries'), available: true, onHandQty: 80, description: 'Crispy salted golden fries' },
-  { id: '7', sku: 'MC-003', barcode: '8880007', name: 'Spaghetti Carbonara', price: 14.50, costPrice: 6.00, category: 'Main Course', image: getImage('item-pasta'), available: true, onHandQty: 20, description: 'Classic creamy pasta with pancetta' },
-  { id: '8', sku: 'DS-001', barcode: '8880008', name: 'Lava Cake', price: 7.50, costPrice: 2.50, category: 'Desserts', image: getImage('item-cake'), available: true, onHandQty: 15, description: 'Warm chocolate cake with molten center' },
+  { id: '1', sku: 'MU-001', barcode: '8880001', name: 'Nasi Goreng Spesial', price: 25000, costPrice: 12000, category: 'Makanan Utama', image: getImage('item-burger'), available: true, onHandQty: 50, description: 'Nasi goreng dengan telur, ayam, dan kerupuk' },
+  { id: '2', sku: 'MU-002', barcode: '8880002', name: 'Mie Goreng Jawa', price: 22000, costPrice: 10000, category: 'Makanan Utama', image: getImage('item-pizza'), available: true, onHandQty: 30, description: 'Mie goreng khas Jawa dengan bumbu rempah' },
+  { id: '3', sku: 'CM-001', barcode: '8880003', name: 'Salad Buah Segar', price: 15000, costPrice: 7000, category: 'Camilan', image: getImage('item-salad'), available: true, onHandQty: 25, description: 'Potongan buah segar dengan saus mayo' },
+  { id: '4', sku: 'MN-001', barcode: '8880004', name: 'Es Teh Manis', price: 5000, costPrice: 1500, category: 'Minuman', image: getImage('item-coke'), available: true, onHandQty: 100, description: 'Teh seduh dengan gula asli' },
+  { id: '5', sku: 'MN-002', barcode: '8880005', name: 'Kopi Susu Gula Aren', price: 18000, costPrice: 8000, category: 'Minuman', image: getImage('item-coffee'), available: true, onHandQty: 40, description: 'Espresso dengan susu dan gula aren murni' },
+  { id: '6', sku: 'CM-002', barcode: '8880006', name: 'Kentang Goreng', price: 12000, costPrice: 5000, category: 'Camilan', image: getImage('item-fries'), available: true, onHandQty: 80, description: 'Kentang goreng renyah dengan saus sambal' },
+  { id: '7', sku: 'MU-003', barcode: '8880007', name: 'Ayam Bakar Madu', price: 35000, costPrice: 18000, category: 'Makanan Utama', image: getImage('item-pasta'), available: true, onHandQty: 20, description: 'Ayam bakar dengan bumbu madu spesial' },
+  { id: '8', sku: 'PM-001', barcode: '8880008', name: 'Pisang Goreng Keju', price: 15000, costPrice: 6000, category: 'Pencuci Mulut', image: getImage('item-cake'), available: true, onHandQty: 15, description: 'Pisang goreng hangat dengan parutan keju' },
 ];

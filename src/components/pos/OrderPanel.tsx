@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -32,7 +31,6 @@ export function OrderPanel() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   
-  // New Customer Form
   const [newCustName, setNewCustName] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
 
@@ -68,6 +66,10 @@ export function OrderPanel() {
   const allCalculatedFees = [...discounts, ...serviceCharges, ...taxes];
   const total = runningTotal + totalTax;
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
   const handleAISuggestions = async (itemId: string, itemName: string) => {
     setIsAIActive(itemId);
     setSuggestions([]);
@@ -101,7 +103,7 @@ export function OrderPanel() {
             <div className="bg-primary/10 p-3 rounded-2xl text-primary">
               <ShoppingBag className="h-7 w-7" />
             </div>
-            <h2 className="text-2xl font-black">Active Order</h2>
+            <h2 className="text-2xl font-black">Pesanan Aktif</h2>
           </div>
           <button
             onClick={clearCart}
@@ -111,17 +113,16 @@ export function OrderPanel() {
           </button>
         </div>
 
-        {/* Customer Selector */}
         <div className="bg-muted/30 p-4 rounded-[2rem] border border-transparent hover:border-primary/20 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <div className="bg-white p-2 rounded-xl text-primary"><User className="h-4 w-4" /></div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select Customer</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Pilih Pelanggan</span>
             </div>
             <button 
               onClick={() => setIsNewCustomerOpen(true)}
               className="p-1.5 bg-primary/10 rounded-lg text-primary hover:bg-primary hover:text-white transition-all"
-              title="Add New Customer"
+              title="Tambah Pelanggan Baru"
             >
               <UserPlus className="h-3.5 w-3.5" />
             </button>
@@ -131,10 +132,10 @@ export function OrderPanel() {
             onValueChange={(val) => setSelectedCustomerId(val === "none" ? null : val)}
           >
             <SelectTrigger className="border-none bg-transparent shadow-none h-auto p-0 text-sm font-bold focus:ring-0">
-              <SelectValue placeholder="Walk-in Customer" />
+              <SelectValue placeholder="Pelanggan Umum (Walk-in)" />
             </SelectTrigger>
             <SelectContent className="rounded-2xl">
-              <SelectItem value="none">Walk-in Customer</SelectItem>
+              <SelectItem value="none">Pelanggan Umum (Walk-in)</SelectItem>
               {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -147,7 +148,7 @@ export function OrderPanel() {
             <div className="bg-muted p-14 rounded-full">
                <ShoppingBag className="h-24 w-24" />
             </div>
-            <p className="text-2xl font-black text-muted-foreground">Your cart is empty</p>
+            <p className="text-2xl font-black text-muted-foreground">Keranjang kosong</p>
           </div>
         ) : (
           <div className="flex flex-col gap-8">
@@ -158,28 +159,28 @@ export function OrderPanel() {
                     <h4 className="font-black text-lg mb-1 leading-tight">{item.name}</h4>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-primary font-black">${item.price.toFixed(2)}</p>
+                        <p className="text-primary font-black">{formatCurrency(item.price)}</p>
                         {item.promoSavings > 0 && (
-                          <span className="text-[10px] line-through text-muted-foreground">${item.originalPrice.toFixed(2)}</span>
+                          <span className="text-[10px] line-through text-muted-foreground">{formatCurrency(item.originalPrice)}</span>
                         )}
                         {item.priceListId && (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Special Price</Badge>
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-primary/30 text-primary">Harga Khusus</Badge>
                         )}
                       </div>
                       {item.promoSavings > 0 && (
                         <div className="flex items-center gap-1.5">
                           <Tag className="h-3 w-3 text-accent" />
                           <p className="text-[10px] font-black text-accent uppercase tracking-tight">
-                            Promo: Save ${item.promoSavings.toFixed(2)}
+                            Promo: Hemat {formatCurrency(item.promoSavings)}
                           </p>
                         </div>
                       )}
                       <div className="flex items-center gap-2">
                         {item.isPackage && (
-                          <Badge variant="secondary" className="bg-accent/10 text-accent border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Package</Badge>
+                          <Badge variant="secondary" className="bg-accent/10 text-accent border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Paket</Badge>
                         )}
                         {item.isCombo && (
-                          <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Combo</Badge>
+                          <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-lg px-2 py-0 text-[8px] font-black uppercase">Pilihan</Badge>
                         )}
                       </div>
                     </div>
@@ -191,12 +192,11 @@ export function OrderPanel() {
                   </div>
                 </div>
 
-                {/* Package Components Display */}
                 {item.isPackage && (
                   <div className="bg-white/40 p-3 rounded-2xl border border-primary/5 mt-1">
                     <div className="flex items-center gap-1.5 mb-2">
                       <PackageIcon className="h-3 w-3 text-muted-foreground" />
-                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Bundle Contents:</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Isi Paket:</p>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {packages.find(p => p.id === item.productId)?.items.map((pkgItem, pIdx) => {
@@ -205,7 +205,7 @@ export function OrderPanel() {
                           <div key={pIdx} className="bg-white px-2 py-1 rounded-lg shadow-sm flex items-center gap-1.5 border border-muted/20">
                             <span className="text-[9px] font-black text-primary">{pkgItem.quantity}x</span>
                             <span className="text-[9px] font-bold text-muted-foreground truncate max-w-[80px]">
-                              {productDetails?.name || 'Item'}
+                              {productDetails?.name || 'Produk'}
                             </span>
                           </div>
                         );
@@ -214,12 +214,11 @@ export function OrderPanel() {
                   </div>
                 )}
 
-                {/* Combo Selections Display */}
                 {item.isCombo && item.comboSelections && (
                   <div className="bg-white/40 p-3 rounded-2xl border border-primary/5 mt-1">
                     <div className="flex items-center gap-1.5 mb-2">
                       <LayoutGrid className="h-3 w-3 text-muted-foreground" />
-                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Combo Choices:</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Pilihan Menu:</p>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {item.comboSelections.map((sel, sIdx) => {
@@ -227,10 +226,10 @@ export function OrderPanel() {
                         return (
                           <div key={sIdx} className="bg-white px-2 py-1 rounded-lg shadow-sm flex items-center gap-1.5 border border-muted/20">
                             <span className="text-[9px] font-bold text-muted-foreground truncate max-w-[120px]">
-                              {productDetails?.name || 'Choice'}
+                              {productDetails?.name || 'Pilihan'}
                             </span>
                             {sel.extraPrice > 0 && (
-                              <span className="text-[8px] font-black text-primary">+$ {sel.extraPrice.toFixed(2)}</span>
+                              <span className="text-[8px] font-black text-primary">+{formatCurrency(sel.extraPrice)}</span>
                             )}
                           </div>
                         );
@@ -249,12 +248,12 @@ export function OrderPanel() {
                         onClick={() => handleAISuggestions(item.id, item.name)}
                       >
                         <Wand2 className="h-4 w-4" />
-                        AI Notes
+                        Catatan AI
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-72 p-5 rounded-[2rem] shadow-2xl border-none" align="start">
                       <div className="flex flex-col gap-4">
-                        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Quick Customizations:</p>
+                        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Kustomisasi Cepat:</p>
                         {suggestions.length > 0 ? (
                           <div className="flex flex-wrap gap-2">
                             {suggestions.map((s, idx) => (
@@ -297,13 +296,13 @@ export function OrderPanel() {
         <div className="flex flex-col gap-3 mb-8">
           <div className="flex justify-between items-center text-sm font-bold">
             <span className="text-muted-foreground">Subtotal</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>{formatCurrency(subtotal)}</span>
           </div>
 
           {totalPromoSavings > 0 && (
             <div className="flex justify-between items-center text-sm font-black text-accent bg-accent/5 px-4 py-2 rounded-xl">
-              <span className="flex items-center gap-2"><Tag className="h-4 w-4" /> You saved today!</span>
-              <span>-${totalPromoSavings.toFixed(2)}</span>
+              <span className="flex items-center gap-2"><Tag className="h-4 w-4" /> Hemat Hari Ini!</span>
+              <span>-{formatCurrency(totalPromoSavings)}</span>
             </div>
           )}
           
@@ -311,7 +310,7 @@ export function OrderPanel() {
             <div key={fee.id} className="flex justify-between items-center text-sm font-bold">
               <span className="text-muted-foreground">{fee.name} ({fee.value}%)</span>
               <span className={fee.type === 'Discount' ? 'text-accent' : ''}>
-                {fee.amount < 0 ? '-' : ''}${Math.abs(fee.amount).toFixed(2)}
+                {fee.amount < 0 ? '-' : ''}{formatCurrency(Math.abs(fee.amount))}
               </span>
             </div>
           ))}
@@ -320,8 +319,8 @@ export function OrderPanel() {
         <Separator className="mb-8 opacity-50" />
 
         <div className="flex justify-between items-center mb-8">
-          <span className="text-xl font-black">Total Amount</span>
-          <span className="text-4xl font-black text-primary tracking-tight">${total.toFixed(2)}</span>
+          <span className="text-lg font-black">Total Pembayaran</span>
+          <span className="text-3xl font-black text-primary tracking-tight">{formatCurrency(total)}</span>
         </div>
 
         <Button
@@ -330,29 +329,28 @@ export function OrderPanel() {
           className="h-20 w-full rounded-3xl text-xl font-black shadow-2xl shadow-primary/30 bg-primary hover:bg-primary/90 transition-all active:scale-[0.98] flex gap-4"
         >
           <CreditCard className="h-7 w-7" />
-          {currentSession ? 'Complete Order' : 'Session Required'}
+          {currentSession ? 'Selesaikan Pesanan' : 'Sesi Belum Dibuka'}
           <ChevronRight className="h-6 w-6 ml-auto opacity-50" />
         </Button>
       </div>
 
-      {/* Quick New Customer Dialog */}
       <Dialog open={isNewCustomerOpen} onOpenChange={setIsNewCustomerOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black">Quick Add Customer</DialogTitle>
+            <DialogTitle className="text-2xl font-black">Tambah Pelanggan Baru</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Full Name</Label>
+              <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Nama Lengkap</Label>
               <Input 
                 value={newCustName} 
                 onChange={(e) => setNewCustName(e.target.value)}
-                placeholder="Ex: John Doe" 
+                placeholder="Contoh: Budi Santoso" 
                 className="h-12 rounded-xl focus-visible:ring-primary/20 border-2" 
               />
             </div>
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Phone Number</Label>
+              <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Nomor Telepon</Label>
               <div className="relative">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -369,7 +367,7 @@ export function OrderPanel() {
               onClick={handleAddQuickCustomer}
               className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-lg shadow-primary/20"
             >
-              Add & Select Customer
+              Simpan & Pilih Pelanggan
             </Button>
           </DialogFooter>
         </DialogContent>
