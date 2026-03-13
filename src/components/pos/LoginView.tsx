@@ -22,7 +22,7 @@ export function LoginView() {
     if (!username || !password) return;
 
     setIsLoading(true);
-    // Simulate a small delay for better UX
+    // Simulasi delay kecil untuk UX yang lebih baik
     setTimeout(() => {
       const success = login(username, password);
       if (success) {
@@ -42,17 +42,21 @@ export function LoginView() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#F9FBFF] p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#F9FBFF] p-4 font-poppins">
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-10">
-          <div className="bg-primary p-4 rounded-[2rem] shadow-2xl shadow-primary/20 mb-6">
-            <UtensilsCrossed className="h-10 w-10 text-white" />
+        <div className="flex flex-col items-center mb-10 text-center">
+          <div className="bg-primary p-5 rounded-[2rem] shadow-2xl shadow-primary/20 mb-6 flex items-center justify-center min-w-[80px] min-h-[80px]">
+            {storeSettings.logoUrl ? (
+              <img src={storeSettings.logoUrl} alt="Logo Toko" className="h-12 w-12 object-contain invert brightness-0" />
+            ) : (
+              <UtensilsCrossed className="h-10 w-10 text-white" />
+            )}
           </div>
           <h1 className="text-4xl font-black tracking-tight text-[#1a1f2b]">{storeSettings.name}</h1>
-          <p className="text-muted-foreground font-bold mt-2">Sistem Point of Sale Modern</p>
+          <p className="text-muted-foreground font-bold mt-2 uppercase tracking-widest text-[11px]">Sistem Point of Sale Modern</p>
         </div>
 
-        <Card className="border-none shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] rounded-[3rem] p-4 bg-white overflow-hidden">
+        <Card className="border-none shadow-[0_50px_100px_-20px_rgba(0,0,0,0.08)] rounded-[3rem] p-4 bg-white overflow-hidden">
           <CardHeader className="text-center pb-8 pt-8">
             <CardTitle className="text-2xl font-black">Masuk ke Sistem</CardTitle>
             <CardDescription className="font-medium">Masukkan kredensial Anda untuk memulai sesi kerja</CardDescription>
@@ -61,14 +65,14 @@ export function LoginView() {
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-6 px-8">
               <div className="space-y-3">
-                <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Username</Label>
+                <Label className="font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground ml-1">Username</Label>
                 <div className="relative">
-                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
+                  <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                   <Input 
                     placeholder="Masukkan username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="h-14 rounded-2xl border-2 focus-visible:ring-primary/20 pl-12 font-bold"
+                    className="h-16 rounded-[1.25rem] border-2 bg-muted/5 focus-visible:ring-primary/20 pl-14 font-bold text-lg"
                     required
                   />
                 </div>
@@ -76,23 +80,23 @@ export function LoginView() {
               
               <div className="space-y-3">
                 <div className="flex justify-between items-center ml-1">
-                  <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Kata Sandi</Label>
+                  <Label className="font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Kata Sandi</Label>
                   <button type="button" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Lupa Sandi?</button>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/50" />
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
                   <Input 
                     type={showPassword ? "text" : "password"}
                     placeholder="Masukkan kata sandi"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-14 rounded-2xl border-2 focus-visible:ring-primary/20 pl-12 pr-12 font-bold"
+                    className="h-16 rounded-[1.25rem] border-2 bg-muted/5 focus-visible:ring-primary/20 pl-14 pr-14 font-bold text-lg"
                     required
                   />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-primary transition-colors"
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-primary transition-colors"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -104,13 +108,13 @@ export function LoginView() {
               <Button 
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-16 rounded-2xl text-lg font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
+                className="w-full h-18 rounded-[1.25rem] text-lg font-black bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/20 gap-3 py-8"
               >
                 {isLoading ? (
-                  <div className="h-5 w-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <LogIn className="h-5 w-5" />
+                    <LogIn className="h-6 w-6" />
                     Masuk Sekarang
                   </>
                 )}
@@ -119,8 +123,8 @@ export function LoginView() {
           </form>
         </Card>
         
-        <p className="text-center mt-10 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
-          &copy; {new Date().getFullYear()} NextPOS • Kelola Bisnis Jadi Lebih Mudah
+        <p className="text-center mt-12 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-60">
+          &copy; {new Date().getFullYear()} NEXTPOS • KELOLA BISNIS JADI LEBIH MUDAH
         </p>
       </div>
     </div>
