@@ -17,14 +17,26 @@ import { Badge } from '@/components/ui/badge';
 import { PaymentDialog } from './PaymentDialog';
 
 export function OrderPanel() {
-  const { cart, removeFromCart, updateQuantity, updateNote, clearCart, addTransaction } = usePOS();
+  const { cart, removeFromCart, updateQuantity, updateNote, clearCart, addTransaction, fees } = usePOS();
   const [isAIActive, setIsAIActive] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + tax;
+  
+  // Dynamic Fee Calculation
+  const enabledFees = fees.filter(f => f.enabled);
+  
+  const calculatedFees = enabledFees.map(fee => {
+    const amount = (subtotal * fee.value) / 100;
+    return {
+      ...fee,
+      amount: fee.type === 'Discount' ? -amount : amount
+    };
+  });
+
+  const totalFeesAmount = calculatedFees.reduce((acc, f) => acc + f.amount, 0);
+  const total = subtotal + totalFeesAmount;
 
   const handleAISuggestions = async (itemId: string, itemName: string) => {
     setIsAIActive(itemId);
@@ -138,19 +150,20 @@ export function OrderPanel() {
       </ScrollArea>
 
       <div className="p-10 bg-white border-t rounded-t-[3rem] shadow-[0_-20px_50px_-12px_rgba(0,0,0,0.05)]">
-        <div className="flex flex-col gap-4 mb-8">
+        <div className="flex flex-col gap-3 mb-8">
           <div className="flex justify-between items-center text-sm font-bold">
             <span className="text-muted-foreground">Subtotal</span>
             <span>${subtotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between items-center text-sm font-bold">
-            <span className="text-muted-foreground">Tax (10%)</span>
-            <span>${tax.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between items-center text-sm font-bold">
-            <span className="text-muted-foreground">Discount</span>
-            <span className="text-accent">-$0.00</span>
-          </div>
+          
+          {calculatedFees.map(fee => (
+            <div key={fee.id} className="flex justify-between items-center text-sm font-bold">
+              <span className="text-muted-foreground">{fee.name} ({fee.value}%)</span>
+              <span className={fee.type === 'Discount' ? 'text-accent' : ''}>
+                {fee.type === 'Discount' ? '-' : ''}${Math.abs(fee.amount).toFixed(2)}
+              </span>
+            </div>
+          ))}
         </div>
 
         <Separator className="mb-8 opacity-50" />
@@ -181,7 +194,7 @@ export function OrderPanel() {
             date: new Date().toISOString(),
             items: [...cart],
             subtotal,
-            tax,
+            tax: calculatedFees.find(f => f.type === 'Tax')?.amount || 0,
             total,
             status: 'Completed'
           });

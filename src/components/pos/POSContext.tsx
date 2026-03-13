@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod } from '@/types/pos';
+import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -33,12 +33,19 @@ interface POSContextType {
   setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
   paymentMethods: PaymentMethod[];
   setPaymentMethods: React.Dispatch<React.SetStateAction<PaymentMethod[]>>;
+  fees: Fee[];
+  setFees: React.Dispatch<React.SetStateAction<Fee[]>>;
 }
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
   { id: 'pm_1', name: 'Credit / Debit Card', icon: 'CreditCard', description: 'Visa, Mastercard, Amex', enabled: true },
   { id: 'pm_2', name: 'Digital Wallet', icon: 'Smartphone', description: 'Apple Pay, Google Pay', enabled: true },
   { id: 'pm_3', name: 'Cash', icon: 'Banknote', description: 'Payment at counter', enabled: true },
+];
+
+const INITIAL_FEES: Fee[] = [
+  { id: 'f_1', name: 'Tax', type: 'Tax', value: 10, enabled: true },
+  { id: 'f_2', name: 'Service Charge', type: 'Service', value: 5, enabled: true },
 ];
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
@@ -54,6 +61,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(INITIAL_PAYMENT_METHODS);
+  const [fees, setFees] = useState<Fee[]>(INITIAL_FEES);
 
   const addToCart = (product: Product) => {
     if (!product.available) return;
@@ -107,7 +115,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       view, setView,
       products, setProducts,
       categories, setCategories,
-      paymentMethods, setPaymentMethods
+      paymentMethods, setPaymentMethods,
+      fees, setFees
     }}>
       {children}
     </POSContext.Provider>

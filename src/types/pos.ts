@@ -3,6 +3,8 @@ export type Category = 'All' | 'Main Course' | 'Drinks' | 'Snacks' | 'Desserts';
 
 export type AppView = 'pos' | 'history' | 'dashboard' | 'settings';
 
+export type FeeType = 'Tax' | 'Service' | 'Discount';
+
 export interface Product {
   id: string;
   name: string;
@@ -37,5 +39,13 @@ export interface PaymentMethod {
   name: string;
   icon: 'CreditCard' | 'Banknote' | 'Smartphone';
   description: string;
+  enabled: boolean;
+}
+
+export interface Fee {
+  id: string;
+  name: string;
+  type: FeeType;
+  value: number; // Percentage
   enabled: boolean;
 }
