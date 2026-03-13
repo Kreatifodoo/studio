@@ -17,24 +17,17 @@ import { Badge } from '@/components/ui/badge';
 import { PaymentDialog } from './PaymentDialog';
 
 export function OrderPanel() {
-  const { cart, removeFromCart, updateQuantity, updateNote, clearCart, addTransaction, fees } = usePOS();
+  const { cart, removeFromCart, updateQuantity, updateNote, clearCart, addTransaction, fees, currentSession } = usePOS();
   const [isAIActive, setIsAIActive] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   
-  // Sequential Fee Calculation Logic:
-  // 1. Start with Subtotal
-  // 2. Apply Discounts
-  // 3. Apply Service Charges (on subtotal after discounts)
-  // 4. Apply Tax (on total after service charges)
-  
   const enabledFees = fees.filter(f => f.enabled);
   
   let runningTotal = subtotal;
   
-  // 1. Calculate Discounts
   const discounts = enabledFees.filter(f => f.type === 'Discount').map(fee => {
     const amount = (subtotal * fee.value) / 100;
     return { ...fee, amount: -amount };
@@ -42,7 +35,6 @@ export function OrderPanel() {
   const totalDiscounts = discounts.reduce((acc, f) => acc + f.amount, 0);
   runningTotal += totalDiscounts;
 
-  // 2. Calculate Service Charges (usually based on subtotal after discount)
   const serviceCharges = enabledFees.filter(f => f.type === 'Service').map(fee => {
     const amount = (runningTotal * fee.value) / 100;
     return { ...fee, amount };
@@ -50,7 +42,6 @@ export function OrderPanel() {
   const totalService = serviceCharges.reduce((acc, f) => acc + f.amount, 0);
   runningTotal += totalService;
 
-  // 3. Calculate Tax (usually based on subtotal + service)
   const taxes = enabledFees.filter(f => f.type === 'Tax').map(fee => {
     const amount = (runningTotal * fee.value) / 100;
     return { ...fee, amount };
@@ -72,7 +63,7 @@ export function OrderPanel() {
   };
 
   const finalizeOrder = () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !currentSession) return;
     setIsPaymentOpen(true);
   };
 
@@ -197,11 +188,11 @@ export function OrderPanel() {
 
         <Button
           onClick={finalizeOrder}
-          disabled={cart.length === 0}
+          disabled={cart.length === 0 || !currentSession}
           className="h-20 w-full rounded-3xl text-xl font-black shadow-2xl shadow-primary/30 bg-primary hover:bg-primary/90 transition-all active:scale-[0.98] flex gap-4"
         >
           <CreditCard className="h-7 w-7" />
-          Complete Order
+          {currentSession ? 'Complete Order' : 'Session Required'}
           <ChevronRight className="h-6 w-6 ml-auto opacity-50" />
         </Button>
       </div>
@@ -210,7 +201,7 @@ export function OrderPanel() {
         open={isPaymentOpen}
         onOpenChange={setIsPaymentOpen}
         total={total}
-        onSuccess={() => {
+        onSuccess={(methodName) => {
           addTransaction({
             id: Math.random().toString(36).substr(2, 8).toUpperCase(),
             date: new Date().toISOString(),
@@ -218,7 +209,8 @@ export function OrderPanel() {
             subtotal,
             tax: totalTax,
             total,
-            status: 'Completed'
+            status: 'Completed',
+            paymentMethod: methodName
           });
           clearCart();
           setIsPaymentOpen(false);

@@ -18,7 +18,7 @@ interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   total: number;
-  onSuccess: () => void;
+  onSuccess: (methodName: string) => void;
 }
 
 export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentDialogProps) {
@@ -26,6 +26,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
   const [stage, setStage] = useState<'method' | 'processing' | 'success'>('method');
   const [progress, setProgress] = useState(0);
   const [transactionId, setTransactionId] = useState<string>('');
+  const [selectedMethod, setSelectedMethod] = useState<string>('');
 
   const enabledMethods = paymentMethods.filter(pm => pm.enabled);
 
@@ -46,7 +47,8 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     }
   }, [stage]);
 
-  const handleStartPayment = () => {
+  const handleStartPayment = (methodName: string) => {
+    setSelectedMethod(methodName);
     setStage('processing');
     setProgress(0);
   };
@@ -55,6 +57,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setStage('method');
     setProgress(0);
     setTransactionId('');
+    setSelectedMethod('');
   };
 
   const getIcon = (iconName: string) => {
@@ -72,8 +75,6 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
         if (!val) setTimeout(reset, 500);
     }}>
       <DialogContent className="max-w-md p-8 rounded-[2.5rem] overflow-hidden border-none shadow-2xl">
-        <DialogTitle className="sr-only">Payment Process</DialogTitle>
-        
         {stage === 'method' && (
           <>
             <DialogHeader className="mb-6">
@@ -85,7 +86,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
                 enabledMethods.map((pm) => (
                   <button 
                     key={pm.id}
-                    onClick={handleStartPayment} 
+                    onClick={() => handleStartPayment(pm.name)} 
                     className="flex items-center gap-5 p-5 rounded-[2rem] border-2 border-transparent bg-muted/20 hover:border-primary hover:bg-white transition-all text-left shadow-sm group"
                   >
                     <div className="bg-white p-4 rounded-2xl text-primary group-hover:scale-110 transition-transform">
@@ -112,7 +113,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
             </div>
             <DialogHeader>
               <DialogTitle className="text-2xl font-black mb-2">Processing Payment</DialogTitle>
-              <DialogDescription>Please wait while we confirm the transaction...</DialogDescription>
+              <DialogDescription>Please wait while we confirm the transaction via {selectedMethod}...</DialogDescription>
             </DialogHeader>
             <Progress value={progress} className="w-full h-3 rounded-full bg-muted" />
           </div>
@@ -131,7 +132,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Transaction ID</p>
                <p className="text-sm font-bold font-mono">{transactionId}</p>
             </div>
-            <Button onClick={onSuccess} className="w-full h-16 rounded-[1.5rem] text-lg font-black mt-4 shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90">Print Receipt & Continue</Button>
+            <Button onClick={() => onSuccess(selectedMethod)} className="w-full h-16 rounded-[1.5rem] text-lg font-black mt-4 shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90">Print Receipt & Continue</Button>
           </div>
         )}
       </DialogContent>

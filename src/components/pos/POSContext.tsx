@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee } from '@/types/pos';
+import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -22,9 +22,14 @@ interface POSContextType {
   updateNote: (itemId: string, note: string) => void;
   clearCart: () => void;
   
-  // History
+  // History & Sessions
   history: Transaction[];
   addTransaction: (transaction: Transaction) => void;
+  currentSession: Session | null;
+  sessions: Session[];
+  openSession: (openingCash: number) => void;
+  closeSession: (closingCash: number) => void;
+  lastClosedSession: Session | null;
 
   // Master Data
   products: Product[];
@@ -56,6 +61,11 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<OrderItem[]>([]);
   const [history, setHistory] = useState<Transaction[]>([]);
   const [view, setView] = useState<AppView>('pos');
+  
+  // Session State
+  const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [lastClosedSession, setLastClosedSession] = useState<Session | null>(null);
 
   // Master Data State
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -63,8 +73,34 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(INITIAL_PAYMENT_METHODS);
   const [fees, setFees] = useState<Fee[]>(INITIAL_FEES);
 
+  const openSession = (openingCash: number) => {
+    const newSession: Session = {
+      id: Math.random().toString(36).substr(2, 9).toUpperCase(),
+      startTime: new Date().toISOString(),
+      openingCash,
+      status: 'Open',
+      transactionIds: []
+    };
+    setCurrentSession(newSession);
+    setLastClosedSession(null);
+  };
+
+  const closeSession = (closingCash: number) => {
+    if (!currentSession) return;
+    const closed: Session = {
+      ...currentSession,
+      endTime: new Date().toISOString(),
+      closingCash,
+      status: 'Closed'
+    };
+    setSessions(prev => [closed, ...prev]);
+    setLastClosedSession(closed);
+    setCurrentSession(null);
+    setView('reports');
+  };
+
   const addToCart = (product: Product) => {
-    if (!product.available) return;
+    if (!product.available || !currentSession) return;
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id);
       if (existing) {
@@ -104,6 +140,12 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const addTransaction = (t: Transaction) => {
     setHistory(prev => [t, ...prev]);
+    if (currentSession) {
+      setCurrentSession(prev => prev ? {
+        ...prev,
+        transactionIds: [...prev.transactionIds, t.id]
+      } : null);
+    }
   };
 
   return (
@@ -112,6 +154,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       searchQuery, setSearchQuery,
       cart, addToCart, removeFromCart, updateQuantity, updateNote, clearCart,
       history, addTransaction,
+      currentSession, sessions, openSession, closeSession, lastClosedSession,
       view, setView,
       products, setProducts,
       categories, setCategories,

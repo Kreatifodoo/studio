@@ -1,7 +1,7 @@
 
 export type Category = 'All' | 'Main Course' | 'Drinks' | 'Snacks' | 'Desserts';
 
-export type AppView = 'pos' | 'history' | 'dashboard' | 'settings';
+export type AppView = 'pos' | 'history' | 'dashboard' | 'settings' | 'reports';
 
 export type FeeType = 'Tax' | 'Service' | 'Discount';
 
@@ -32,6 +32,17 @@ export interface Transaction {
   tax: number;
   total: number;
   status: 'Completed' | 'Pending';
+  paymentMethod?: string;
+}
+
+export interface Session {
+  id: string;
+  startTime: string;
+  endTime?: string;
+  openingCash: number;
+  closingCash?: number;
+  status: 'Open' | 'Closed';
+  transactionIds: string[];
 }
 
 export interface PaymentMethod {

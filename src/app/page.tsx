@@ -10,10 +10,23 @@ import { OrderPanel } from '@/components/pos/OrderPanel';
 import { HistoryView } from '@/components/pos/HistoryView';
 import { DashboardView } from '@/components/pos/DashboardView';
 import { SettingsView } from '@/components/pos/SettingsView';
+import { OpenSessionView } from '@/components/pos/OpenSessionView';
+import { SessionReportView } from '@/components/pos/SessionReportView';
 import { cn } from '@/lib/utils';
 
 function POSLayout() {
-  const { view } = usePOS();
+  const { view, currentSession } = usePOS();
+
+  if (!currentSession && view === 'pos') {
+    return (
+      <div className="flex min-h-screen bg-[#F9FBFF] font-poppins">
+        <Sidebar />
+        <main className="flex-1 ml-24 md:ml-32 p-8 flex items-center justify-center">
+          <OpenSessionView />
+        </main>
+      </div>
+    );
+  }
 
   const renderView = () => {
     switch (view) {
@@ -25,6 +38,8 @@ function POSLayout() {
         return <DashboardView />;
       case 'settings':
         return <SettingsView />;
+      case 'reports':
+        return <SessionReportView />;
       default:
         return <ProductGrid />;
     }
