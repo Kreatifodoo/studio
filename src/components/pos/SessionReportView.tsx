@@ -6,15 +6,55 @@ import { usePOS } from './POSContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { FileText, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, History, CreditCard, Banknote } from 'lucide-react';
+import { FileText, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, History, CreditCard, Banknote, Download } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 
 export function SessionReportView() {
-  const { lastClosedSession, sessions, history } = usePOS();
+  const { lastClosedSession, sessions, history, customers } = usePOS();
   
   const sessionToView = lastClosedSession || sessions[0];
+
+  const handleExportCSV = () => {
+    if (!sessionToView) return;
+
+    const sessionTransactions = history.filter(t => sessionToView.transactionIds.includes(t.id));
+    
+    // Header for CSV
+    const headers = ["Order ID", "Date", "Time", "Customer", "Items", "Subtotal", "Tax", "Total", "Payment Method", "Reference"];
+    
+    // Data rows
+    const rows = sessionTransactions.map(t => {
+      const customer = customers.find(c => c.id === t.customerId)?.name || "Walk-in";
+      const itemsList = t.items.map(i => `${i.quantity}x ${i.name}`).join(" | ");
+      return [
+        t.id,
+        format(new Date(t.date), 'yyyy-MM-dd'),
+        format(new Date(t.date), 'HH:mm:ss'),
+        customer,
+        `"${itemsList}"`,
+        t.subtotal.toFixed(2),
+        t.tax.toFixed(2),
+        t.total.toFixed(2),
+        t.paymentMethod || "N/A",
+        t.paymentReference || ""
+      ];
+    });
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `POS_Report_Session_${sessionToView.id}_${format(new Date(), 'yyyyMMdd')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (!sessionToView) {
     return (
@@ -50,9 +90,19 @@ export function SessionReportView() {
             Session #{sessionToView.id} • {format(new Date(sessionToView.startTime), 'PPP p')} - {sessionToView.endTime ? format(new Date(sessionToView.endTime), 'p') : 'Ongoing'}
           </p>
         </div>
-        <Badge className="bg-primary/10 text-primary border-none px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest">
-          {sessionToView.status}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={handleExportCSV}
+            variant="outline"
+            className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
+          >
+            <Download className="h-5 w-5" />
+            Export to CSV
+          </Button>
+          <Badge className="bg-primary/10 text-primary border-none px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest h-12 flex items-center">
+            {sessionToView.status}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
