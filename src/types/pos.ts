@@ -184,4 +184,5 @@ export interface User {
   roleId: string;
   status: 'Active' | 'Inactive';
   avatarUrl?: string;
+  password?: string;
 }

@@ -33,7 +33,12 @@ import {
   ShieldCheck,
   Mail,
   User as UserIcon,
-  Shield
+  Shield,
+  Key,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertTriangle
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -46,7 +51,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
@@ -70,7 +76,7 @@ export function SettingsView() {
     promoDiscounts, setPromoDiscounts,
     storeSettings, setStoreSettings,
     users, setUsers,
-    roles
+    roles, currentUser
   } = usePOS();
   
   const { toast } = useToast();
@@ -93,6 +99,7 @@ export function SettingsView() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isFeeDialogOpen, setIsFeeDialogOpen] = useState(false);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<Partial<Product>>({});
@@ -114,6 +121,12 @@ export function SettingsView() {
   const [feeForm, setFeeForm] = useState<Partial<Fee>>({});
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({});
+  
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const isAdmin = currentUser?.roleId === 'admin';
 
   const navGroups = [
     {
@@ -541,6 +554,10 @@ export function SettingsView() {
   };
 
   const handleOpenAddUser = () => {
+    if (!isAdmin) {
+      toast({ variant: "destructive", title: "Akses Ditolak", description: "Hanya Administrator yang dapat menambah user." });
+      return;
+    }
     setEditingUser(null);
     setUserForm({ name: '', username: '', email: '', roleId: 'cashier', status: 'Active', avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100` });
     setIsUserDialogOpen(true);
@@ -551,6 +568,25 @@ export function SettingsView() {
     if (editingUser) setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...editingUser, ...userForm } as User : u));
     else setUsers(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...userForm as User }]);
     setIsUserDialogOpen(false);
+    toast({ title: "User Berhasil Disimpan" });
+  };
+
+  const handleOpenResetPassword = (user: User) => {
+    if (!isAdmin) {
+      toast({ variant: "destructive", title: "Akses Ditolak", description: "Hanya Administrator yang dapat me-reset password." });
+      return;
+    }
+    setResetPasswordUser(user);
+    setNewPassword('');
+    setShowPassword(false);
+    setIsResetPasswordOpen(true);
+  };
+
+  const handleConfirmResetPassword = () => {
+    if (!newPassword || !resetPasswordUser) return;
+    setUsers(prev => prev.map(u => u.id === resetPasswordUser.id ? { ...u, password: newPassword } : u));
+    setIsResetPasswordOpen(false);
+    toast({ title: "Password Berhasil Di-reset", description: `Password untuk ${resetPasswordUser.name} telah diperbarui.` });
   };
 
   const handleValueChange = (setter: any) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -713,9 +749,11 @@ export function SettingsView() {
                   <CardTitle className="text-2xl font-black">Manajemen User</CardTitle>
                   <CardDescription className="font-medium">Kelola akses staf dan hak istimewa role</CardDescription>
                 </div>
-                <Button onClick={handleOpenAddUser} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                  <Plus className="h-5 w-5" /> Tambah User
-                </Button>
+                {isAdmin && (
+                  <Button onClick={handleOpenAddUser} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
+                    <Plus className="h-5 w-5" /> Tambah User
+                  </Button>
+                )}
               </div>
               <div className="space-y-4">
                 {users.map((user) => {
@@ -747,12 +785,36 @@ export function SettingsView() {
                           {user.status === 'Active' ? 'AKTIF' : 'NON-AKTIF'}
                         </Badge>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}>
-                            <Pencil className="h-5 w-5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setUsers(prev => prev.filter(u => u.id !== user.id))}>
-                            <Trash2 className="h-5 w-5" />
-                          </Button>
+                          {isAdmin && (
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-primary/70 hover:text-primary"
+                                title="Reset Password"
+                                onClick={() => handleOpenResetPassword(user)}
+                              >
+                                <Lock className="h-5 w-5" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                title="Edit User"
+                                onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}
+                              >
+                                <Pencil className="h-5 w-5" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive/50" 
+                                title="Hapus User"
+                                onClick={() => setUsers(prev => prev.filter(u => u.id !== user.id))}
+                              >
+                                <Trash2 className="h-5 w-5" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1065,6 +1127,28 @@ export function SettingsView() {
                 <Input value={userForm.username || ''} onChange={(e) => setUserForm({...userForm, username: e.target.value})} className="h-12 rounded-xl border-2" />
               </div>
             </div>
+            {!editingUser && (
+              <div className="space-y-2">
+                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Password Awal</Label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    type={showPassword ? "text" : "password"}
+                    value={userForm.password || ''} 
+                    onChange={(e) => setUserForm({...userForm, password: e.target.value})} 
+                    className="h-12 rounded-xl border-2 pl-12 pr-12" 
+                    placeholder="Masukkan password"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
               <div className="relative">
@@ -1101,6 +1185,49 @@ export function SettingsView() {
           <DialogFooter className="mt-8">
             <Button onClick={handleSaveUser} className="w-full h-16 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
               Simpan Data User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-3xl font-black">Reset Password</DialogTitle>
+            <DialogDescription className="font-bold">Reset password untuk: <span className="text-primary">{resetPasswordUser?.name}</span></DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+              <p className="text-[10px] font-bold text-orange-800 leading-relaxed">
+                Password yang di-reset tidak dapat dikembalikan. Harap informasikan password baru kepada staf yang bersangkutan secara aman.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Password Baru</Label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  type={showPassword ? "text" : "password"}
+                  value={newPassword} 
+                  onChange={(e) => setNewPassword(e.target.value)} 
+                  className="h-12 rounded-xl border-2 pl-12 pr-12" 
+                  placeholder="Masukkan password baru"
+                  autoFocus
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="mt-8">
+            <Button onClick={handleConfirmResetPassword} disabled={!newPassword} className="w-full h-16 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
+              Konfirmasi Reset Password
             </Button>
           </DialogFooter>
         </DialogContent>
