@@ -201,7 +201,7 @@ export function OrderPanel() {
         open={isPaymentOpen}
         onOpenChange={setIsPaymentOpen}
         total={total}
-        onSuccess={(methodName) => {
+        onSuccess={(methodName, reference) => {
           addTransaction({
             id: Math.random().toString(36).substr(2, 8).toUpperCase(),
             date: new Date().toISOString(),
@@ -210,7 +210,8 @@ export function OrderPanel() {
             tax: totalTax,
             total,
             status: 'Completed',
-            paymentMethod: methodName
+            paymentMethod: methodName,
+            paymentReference: reference
           });
           clearCart();
           setIsPaymentOpen(false);

@@ -6,14 +6,14 @@ import { usePOS } from './POSContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { FileText, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, History } from 'lucide-react';
+import { FileText, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, History, CreditCard, Banknote } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export function SessionReportView() {
   const { lastClosedSession, sessions, history } = usePOS();
   
-  // Use either the most recently closed session or allow picking one
   const sessionToView = lastClosedSession || sessions[0];
 
   if (!sessionToView) {
@@ -26,13 +26,11 @@ export function SessionReportView() {
     );
   }
 
-  // Calculate Session Stats
   const sessionTransactions = history.filter(t => sessionToView.transactionIds.includes(t.id));
   const totalSales = sessionTransactions.reduce((acc, t) => acc + t.total, 0);
   const totalTax = sessionTransactions.reduce((acc, t) => acc + t.tax, 0);
   const totalSubtotal = sessionTransactions.reduce((acc, t) => acc + t.subtotal, 0);
   
-  // Payment Breakdown
   const paymentsByMethod = sessionTransactions.reduce((acc: any, t) => {
     const method = t.paymentMethod || 'Other';
     acc[method] = (acc[method] || 0) + t.total;
@@ -108,7 +106,7 @@ export function SessionReportView() {
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                    <div 
                     className="h-full bg-primary" 
-                    style={{ width: `${(amount / totalSales) * 100}%` }}
+                    style={{ width: `${(amount / (totalSales || 1)) * 100}%` }}
                    ></div>
                 </div>
               </div>
@@ -120,9 +118,59 @@ export function SessionReportView() {
         </Card>
       </div>
 
+      <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white overflow-hidden">
+        <CardHeader className="px-0 pt-0 mb-4">
+          <CardTitle className="text-xl font-black">Session Transaction Details</CardTitle>
+        </CardHeader>
+        <div className="rounded-3xl border overflow-hidden">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="font-black">Time</TableHead>
+                <TableHead className="font-black">ID</TableHead>
+                <TableHead className="font-black">Method</TableHead>
+                <TableHead className="font-black">Note Reff</TableHead>
+                <TableHead className="text-right font-black">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sessionTransactions.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell className="font-medium">{format(new Date(t.date), 'p')}</TableCell>
+                  <TableCell className="font-mono text-xs">#{t.id}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {t.paymentMethod?.toLowerCase().includes('cash') ? <Banknote className="h-3 w-3" /> : <CreditCard className="h-3 w-3" />}
+                      <span className="text-xs font-bold">{t.paymentMethod}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {t.paymentReference ? (
+                      <Badge variant="outline" className="bg-primary/5 text-primary border-none rounded-lg font-mono text-[10px]">
+                        {t.paymentReference}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-[10px] italic">No reference</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-black">${t.total.toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+              {sessionTransactions.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground italic font-medium">
+                    No transactions in this session.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
       <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
         <CardHeader className="px-0 pt-0">
-          <CardTitle className="text-xl font-black">Recent Sessions</CardTitle>
+          <CardTitle className="text-xl font-black">Session History</CardTitle>
         </CardHeader>
         <ScrollArea className="h-64">
           <div className="space-y-4 pr-4">

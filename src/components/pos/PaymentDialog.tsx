@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -8,7 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { CheckCircle2, CreditCard, Banknote, Smartphone, Wallet, ArrowRight, Coins } from 'lucide-react';
+import { CheckCircle2, CreditCard, Banknote, Smartphone, Wallet, ArrowRight, Coins, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,15 +20,16 @@ interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   total: number;
-  onSuccess: (methodName: string) => void;
+  onSuccess: (methodName: string, reference?: string) => void;
 }
 
 export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentDialogProps) {
   const { paymentMethods } = usePOS();
-  const [stage, setStage] = useState<'method' | 'cash-input' | 'success'>('method');
+  const [stage, setStage] = useState<'method' | 'cash-input' | 'ref-input' | 'success'>('method');
   const [transactionId, setTransactionId] = useState<string>('');
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [cashReceived, setCashReceived] = useState<string>('');
+  const [paymentReference, setPaymentReference] = useState<string>('');
   const [change, setChange] = useState<number>(0);
 
   const enabledMethods = paymentMethods.filter(pm => pm.enabled);
@@ -37,10 +39,10 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setTransactionId('');
     setSelectedMethod('');
     setCashReceived('');
+    setPaymentReference('');
     setChange(0);
   }, []);
 
-  // Reset state whenever the dialog is opened
   useEffect(() => {
     if (open) {
       reset();
@@ -51,18 +53,24 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setSelectedMethod(methodName);
     setTransactionId(Math.random().toString(36).toUpperCase().slice(2, 10));
     
-    // Check if method is Cash (based on name or icon Banknote)
-    const isCash = methodName.toLowerCase().includes('cash') || 
-                   paymentMethods.find(p => p.name === methodName)?.icon === 'Banknote';
+    const method = paymentMethods.find(p => p.name === methodName);
+    const isCash = methodName.toLowerCase().includes('cash') || method?.icon === 'Banknote';
+    const isCardOrDigital = method?.icon === 'CreditCard' || method?.icon === 'Smartphone';
 
     if (isCash) {
       setStage('cash-input');
+    } else if (isCardOrDigital) {
+      setStage('ref-input');
     } else {
       setStage('success');
     }
   };
 
   const handleConfirmCash = () => {
+    setStage('success');
+  };
+
+  const handleConfirmReference = () => {
     setStage('success');
   };
 
@@ -164,6 +172,40 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
           </div>
         )}
 
+        {stage === 'ref-input' && (
+          <div className="flex flex-col gap-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black">{selectedMethod}</DialogTitle>
+              <DialogDescription>Input payment reference or note (e.g. Last 4 digits of card).</DialogDescription>
+            </DialogHeader>
+
+            <div className="bg-primary/5 p-6 rounded-[2rem] flex flex-col items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Amount to Pay</span>
+              <span className="text-4xl font-black text-primary">${total.toFixed(2)}</span>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-xs font-black uppercase tracking-widest ml-1">Reference Note</Label>
+              <Input 
+                type="text" 
+                value={paymentReference}
+                onChange={(e) => setPaymentReference(e.target.value)}
+                placeholder="Ex: Ref-1234 or Card 4421"
+                autoFocus
+                className="h-16 rounded-2xl text-xl font-bold text-center focus-visible:ring-primary/20 border-2"
+              />
+            </div>
+
+            <Button 
+              onClick={handleConfirmReference}
+              className="h-16 rounded-2xl text-lg font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
+            >
+              Complete Payment
+              <ArrowRight className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
+
         {stage === 'success' && (
           <div className="py-12 flex flex-col items-center text-center gap-6">
             <div className="bg-accent/10 p-6 rounded-full">
@@ -178,13 +220,18 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
                     Change: ${change.toFixed(2)}
                   </span>
                 )}
+                {paymentReference && (
+                  <span className="block mt-2 text-sm text-primary font-bold">
+                    Ref: {paymentReference}
+                  </span>
+                )}
               </DialogDescription>
             </DialogHeader>
             <div className="bg-muted/30 w-full p-4 rounded-2xl">
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Transaction ID</p>
                <p className="text-sm font-bold font-mono">{transactionId}</p>
             </div>
-            <Button onClick={() => onSuccess(selectedMethod)} className="w-full h-16 rounded-[1.5rem] text-lg font-black mt-4 shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90">Print Receipt & Continue</Button>
+            <Button onClick={() => onSuccess(selectedMethod, paymentReference)} className="w-full h-16 rounded-[1.5rem] text-lg font-black mt-4 shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90">Print Receipt & Continue</Button>
           </div>
         )}
       </DialogContent>

@@ -33,6 +33,7 @@ export interface Transaction {
   total: number;
   status: 'Completed' | 'Pending';
   paymentMethod?: string;
+  paymentReference?: string;
 }
 
 export interface Session {
