@@ -22,7 +22,9 @@ import {
   Percent,
   Receipt,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Eye,
+  Package
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Category, Product, PaymentMethod, Fee, FeeType } from '@/types/pos';
@@ -32,7 +34,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
@@ -53,6 +56,8 @@ export function SettingsView() {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryFormValue, setCategoryFormValue] = useState('');
+  const [viewingCategoryProducts, setViewingCategoryProducts] = useState<Category | null>(null);
+  const [isViewProductsOpen, setIsViewProductsOpen] = useState(false);
 
   // Product States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
@@ -111,31 +116,46 @@ export function SettingsView() {
     setCategories(prev => [...prev, trimmed]);
     setNewCategoryName('');
     toast({
-      title: "Category Added",
-      description: `Successfully added "${trimmed}" to your categories.`
+      title: "Success",
+      description: `Category "${trimmed}" added successfully.`
     });
   };
 
   const handleOpenEditCategory = (cat: Category) => {
-    setEditingCategory(cat); setCategoryFormValue(cat); setIsCategoryDialogOpen(true);
+    setEditingCategory(cat); 
+    setCategoryFormValue(cat); 
+    setIsCategoryDialogOpen(true);
   };
+
   const handleSaveCategory = () => {
     if (!editingCategory || !categoryFormValue) return;
-    setCategories(prev => prev.map(c => c === editingCategory ? categoryFormValue : c));
-    setProducts(prev => prev.map(p => p.category === editingCategory ? { ...p, category: categoryFormValue } : p));
+    
+    const newVal = categoryFormValue.trim();
+    if (categories.some(c => c !== editingCategory && c.toLowerCase() === newVal.toLowerCase())) {
+      toast({
+        title: "Error",
+        description: "Category name already exists.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCategories(prev => prev.map(c => c === editingCategory ? newVal : c));
+    setProducts(prev => prev.map(p => p.category === editingCategory ? { ...p, category: newVal } : p));
     setIsCategoryDialogOpen(false); 
     setEditingCategory(null);
     toast({
-      title: "Category Updated",
-      description: `Renamed category to "${categoryFormValue}".`
+      title: "Updated",
+      description: `Category renamed to "${newVal}".`
     });
   };
+
   const handleDeleteCategory = (cat: Category) => {
     if (cat === 'All') return; 
     setCategories(prev => prev.filter(c => c !== cat));
     toast({
-      title: "Category Deleted",
-      description: `Successfully removed the category "${cat}".`
+      title: "Deleted",
+      description: `Category "${cat}" removed.`
     });
   };
 
@@ -313,9 +333,9 @@ export function SettingsView() {
                 placeholder="New Category Name..." 
                 value={newCategoryName} 
                 onChange={(e) => setNewCategoryName(e.target.value)} 
-                className="rounded-xl h-12 flex-1" 
+                className="rounded-xl h-12 flex-1 border-2 focus:border-primary" 
               />
-              <Button onClick={handleAddCategory} className="rounded-xl bg-primary h-12 px-6 font-bold gap-2">
+              <Button onClick={handleAddCategory} className="rounded-xl bg-primary h-12 px-8 font-bold gap-2 active:scale-95 transition-all">
                 <Plus className="h-5 w-5" /> Add
               </Button>
             </div>
@@ -325,13 +345,26 @@ export function SettingsView() {
                   <div className="flex items-center gap-4">
                     <div className="bg-white p-3 rounded-xl text-primary font-bold shadow-sm">{cat.charAt(0)}</div>
                     <span className="font-black text-lg">{cat}</span>
+                    <Badge variant="outline" className="rounded-lg bg-white border-none text-[10px] font-bold text-muted-foreground">
+                       {products.filter(p => p.category === cat).length} Products
+                    </Badge>
                   </div>
-                  {cat !== 'All' && (
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenEditCategory(cat)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"><Pencil className="h-5 w-5" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(cat)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => { setViewingCategoryProducts(cat); setIsViewProductsOpen(true); }} 
+                      className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
+                    >
+                      <Eye className="h-5 w-5" />
+                    </Button>
+                    {cat !== 'All' && (
+                      <>
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditCategory(cat)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"><Pencil className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCategory(cat)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -393,6 +426,40 @@ export function SettingsView() {
           <DialogHeader><DialogTitle className="text-2xl font-black">Edit Category</DialogTitle><CardDescription>Rename the category.</CardDescription></DialogHeader>
           <div className="py-4"><Label className="mb-2 block">Category Name</Label><Input value={categoryFormValue} onChange={(e) => setCategoryFormValue(e.target.value)} className="rounded-xl" /></div>
           <DialogFooter><Button onClick={handleSaveCategory} className="w-full h-12 rounded-xl bg-primary font-bold">Update Category</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Products Dialog */}
+      <Dialog open={isViewProductsOpen} onOpenChange={setIsViewProductsOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-3">
+              <Package className="text-primary" /> {viewingCategoryProducts}
+            </DialogTitle>
+            <DialogDescription>Daftar produk yang terhubung dengan kategori ini.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-6 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
+            {products.filter(p => p.category === viewingCategoryProducts).length > 0 ? (
+              products.filter(p => p.category === viewingCategoryProducts).map(p => (
+                <div key={p.id} className="flex items-center gap-4 p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
+                  <img src={p.image} className="w-14 h-14 rounded-xl object-cover" alt={p.name} />
+                  <div className="flex-1">
+                    <p className="font-black text-lg leading-tight">{p.name}</p>
+                    <p className="text-sm font-black text-primary mt-1">${p.price.toFixed(2)}</p>
+                  </div>
+                  <div className={`h-2.5 w-2.5 rounded-full ${p.available ? 'bg-green-500' : 'bg-destructive'}`}></div>
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
+                 <Package className="h-16 w-16 mb-4" />
+                 <p className="font-bold">Tidak ada produk ditemukan.</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+             <Button variant="secondary" onClick={() => setIsViewProductsOpen(false)} className="w-full h-12 rounded-xl font-bold">Tutup</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
