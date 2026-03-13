@@ -90,9 +90,19 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
             )}
 
             <div className="flex justify-between text-[10px] opacity-70 italic">
-              <span>@{item.price.toFixed(2)}</span>
+              <div className="flex flex-col">
+                <span>@{item.price.toFixed(2)}</span>
+                {item.promoSavings > 0 && (
+                  <span className="text-[8px] text-gray-500 line-through">orig. @{item.originalPrice.toFixed(2)}</span>
+                )}
+              </div>
               <span>${(item.price * item.quantity).toFixed(2)}</span>
             </div>
+            
+            {item.promoSavings > 0 && (
+              <p className="text-[8px] font-bold text-gray-600 italic">** Promo Discount: -${(item.promoSavings * item.quantity).toFixed(2)}</p>
+            )}
+
             {item.note && (
               <p className="text-[9px] text-gray-600 mt-0.5">* {item.note}</p>
             )}
@@ -106,6 +116,14 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
           <span>SUBTOTAL</span>
           <span>${transaction.subtotal.toFixed(2)}</span>
         </div>
+        
+        {transaction.totalSavings > 0 && (
+          <div className="flex justify-between text-gray-600 font-bold">
+            <span>PROMO SAVINGS</span>
+            <span>-${transaction.totalSavings.toFixed(2)}</span>
+          </div>
+        )}
+
         <div className="flex justify-between">
           <span>TAX (10%)</span>
           <span>${transaction.tax.toFixed(2)}</span>
@@ -118,6 +136,14 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
           </div>
         </div>
       </div>
+
+      {/* Saving Banner */}
+      {transaction.totalSavings > 0 && (
+        <div className="mt-4 p-2 border-2 border-dashed border-black text-center">
+          <p className="font-bold uppercase text-[9px]">Anda Berhemat Hari Ini!</p>
+          <p className="text-base font-black">${transaction.totalSavings.toFixed(2)}</p>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="text-center mt-10 pt-6 border-t border-black/20 space-y-4">
