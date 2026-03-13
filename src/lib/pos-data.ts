@@ -2,7 +2,7 @@
 import { Product, Category } from '@/types/pos';
 import { PlaceHolderImages } from './placeholder-images';
 
-export const CATEGORIES: Category[] = ['All', 'Main Course', 'Drinks', 'Snacks', 'Desserts'];
+export const CATEGORIES: Category[] = ['All', 'Packages', 'Main Course', 'Drinks', 'Snacks', 'Desserts'];
 
 const getImage = (id: string) => PlaceHolderImages.find(img => img.id === id)?.imageUrl || 'https://picsum.photos/seed/default/400/300';
 

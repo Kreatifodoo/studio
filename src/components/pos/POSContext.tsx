@@ -17,6 +17,7 @@ interface POSContextType {
   // Cart & Orders
   cart: OrderItem[];
   addToCart: (product: Product) => void;
+  addPackageToCart: (pkg: Package) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, delta: number) => void;
   updateNote: (itemId: string, note: string) => void;
@@ -135,18 +136,18 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const addToCart = (product: Product) => {
     if (!product.available || !currentSession) return;
     
-    const existingInCart = cart.find(item => item.productId === product.id);
+    const existingInCart = cart.find(item => item.productId === product.id && !item.isPackage);
     const qtyInCart = existingInCart ? existingInCart.quantity : 0;
     
     if (qtyInCart >= product.onHandQty) return;
 
     setCart(prev => {
-      const existing = prev.find(item => item.productId === product.id);
+      const existing = prev.find(item => item.productId === product.id && !item.isPackage);
       if (existing) {
         const newQty = existing.quantity + 1;
         const { price: newPrice, priceListId } = getEffectivePriceInfo(product.id, newQty);
         return prev.map(item =>
-          item.productId === product.id ? { ...item, quantity: newQty, price: newPrice, priceListId } : item
+          (item.productId === product.id && !item.isPackage) ? { ...item, quantity: newQty, price: newPrice, priceListId } : item
         );
       }
       const { price: initialPrice, priceListId } = getEffectivePriceInfo(product.id, 1);
@@ -156,7 +157,29 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         name: product.name,
         price: initialPrice,
         quantity: 1,
-        priceListId
+        priceListId,
+        isPackage: false
+      }];
+    });
+  };
+
+  const addPackageToCart = (pkg: Package) => {
+    if (!pkg.enabled || !currentSession) return;
+
+    setCart(prev => {
+      const existing = prev.find(item => item.productId === pkg.id && item.isPackage);
+      if (existing) {
+        return prev.map(item =>
+          (item.productId === pkg.id && item.isPackage) ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [...prev, {
+        id: Math.random().toString(36).substr(2, 9),
+        productId: pkg.id,
+        name: pkg.name,
+        price: pkg.price,
+        quantity: 1,
+        isPackage: true
       }];
     });
   };
@@ -168,13 +191,17 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = (itemId: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.id === itemId) {
-        const product = products.find(p => p.id === item.productId);
         const newQty = Math.max(1, item.quantity + delta);
         
-        if (product && newQty > product.onHandQty) return item;
-        
-        const { price: newPrice, priceListId } = getEffectivePriceInfo(item.productId, newQty);
-        return { ...item, quantity: newQty, price: newPrice, priceListId };
+        if (item.isPackage) {
+          return { ...item, quantity: newQty };
+        } else {
+          const product = products.find(p => p.id === item.productId);
+          if (product && newQty > product.onHandQty) return item;
+          
+          const { price: newPrice, priceListId } = getEffectivePriceInfo(item.productId, newQty);
+          return { ...item, quantity: newQty, price: newPrice, priceListId };
+        }
       }
       return item;
     }));
@@ -191,17 +218,35 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const addTransaction = (t: Transaction) => {
     setHistory(prev => [t, ...prev]);
+    
+    // Decrease stock for products and package components
     setProducts(prevProducts => {
-      return prevProducts.map(p => {
-        const orderItem = t.items.find(item => item.productId === p.id);
-        if (orderItem) {
-          return {
-            ...p,
-            onHandQty: p.onHandQty - orderItem.quantity
-          };
+      let updatedProducts = [...prevProducts];
+      
+      t.items.forEach(item => {
+        if (item.isPackage) {
+          const pkg = packages.find(p => p.id === item.productId);
+          if (pkg) {
+            pkg.items.forEach(pkgItem => {
+              updatedProducts = updatedProducts.map(p => {
+                if (p.id === pkgItem.productId) {
+                  return { ...p, onHandQty: p.onHandQty - (pkgItem.quantity * item.quantity) };
+                }
+                return p;
+              });
+            });
+          }
+        } else {
+          updatedProducts = updatedProducts.map(p => {
+            if (p.id === item.productId) {
+              return { ...p, onHandQty: p.onHandQty - item.quantity };
+            }
+            return p;
+          });
         }
-        return p;
       });
+      
+      return updatedProducts;
     });
 
     setCurrentSession(prev => {
@@ -224,7 +269,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     <POSContext.Provider value={{
       activeCategory, setActiveCategory,
       searchQuery, setSearchQuery,
-      cart, addToCart, removeFromCart, updateQuantity, updateNote, clearCart,
+      cart, addToCart, addPackageToCart, removeFromCart, updateQuantity, updateNote, clearCart,
       selectedCustomerId, setSelectedCustomerId,
       history, addTransaction,
       currentSession, sessions, openSession, closeSession, lastClosedSession,

@@ -42,6 +42,7 @@ export interface OrderItem {
   quantity: number;
   note?: string;
   priceListId?: string; // Track if a special price list was used
+  isPackage?: boolean; // Flag to indicate if this is a package
 }
 
 export interface Transaction {
