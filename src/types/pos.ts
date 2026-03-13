@@ -7,11 +7,15 @@ export type FeeType = 'Tax' | 'Service' | 'Discount';
 
 export interface Product {
   id: string;
+  sku: string;
+  barcode: string;
   name: string;
   price: number;
+  costPrice: number;
   category: Category;
   image: string;
   available: boolean;
+  onHandQty: number;
   description?: string;
 }
 

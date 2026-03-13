@@ -101,6 +101,16 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (product: Product) => {
     if (!product.available || !currentSession) return;
+    
+    // Check current stock including what is already in cart
+    const existingInCart = cart.find(item => item.productId === product.id);
+    const qtyInCart = existingInCart ? existingInCart.quantity : 0;
+    
+    if (qtyInCart >= product.onHandQty) {
+      // Out of stock
+      return;
+    }
+
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id);
       if (existing) {
@@ -125,7 +135,14 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = (itemId: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.id === itemId) {
+        const product = products.find(p => p.id === item.productId);
         const newQty = Math.max(1, item.quantity + delta);
+        
+        // Check stock
+        if (product && newQty > product.onHandQty) {
+          return item;
+        }
+        
         return { ...item, quantity: newQty };
       }
       return item;
@@ -139,7 +156,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const clearCart = () => setCart([]);
 
   const addTransaction = (t: Transaction) => {
+    // Add to history
     setHistory(prev => [t, ...prev]);
+    
+    // Update stock
+    setProducts(prevProducts => {
+      return prevProducts.map(p => {
+        const orderItem = t.items.find(item => item.productId === p.id);
+        if (orderItem) {
+          return {
+            ...p,
+            onHandQty: p.onHandQty - orderItem.quantity
+          };
+        }
+        return p;
+      });
+    });
+
+    // Update session
     setCurrentSession(prev => {
       if (!prev) return null;
       return {

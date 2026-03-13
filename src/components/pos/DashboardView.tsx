@@ -2,6 +2,7 @@
 "use client";
 
 import React from 'react';
+import { usePOS } from './POSContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
   BarChart, 
@@ -11,12 +12,10 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  LineChart,
-  Line,
   AreaChart,
   Area
 } from 'recharts';
-import { TrendingUp, DollarSign, ShoppingBag, Users } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingBag, Users, Wallet } from 'lucide-react';
 
 const data = [
   { name: 'Mon', sales: 4000, orders: 240 },
@@ -29,6 +28,18 @@ const data = [
 ];
 
 export function DashboardView() {
+  const { history, products } = usePOS();
+
+  const totalRevenue = history.reduce((acc, t) => acc + t.total, 0);
+  const totalCost = history.reduce((acc, t) => {
+    return acc + t.items.reduce((itemAcc, item) => {
+      const product = products.find(p => p.id === item.productId);
+      return itemAcc + (product ? product.costPrice * item.quantity : 0);
+    }, 0);
+  }, 0);
+
+  const grossProfit = totalRevenue - totalCost;
+
   return (
     <div className="flex flex-col gap-8 pb-12">
       <div className="flex flex-col gap-1">
@@ -39,31 +50,31 @@ export function DashboardView() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Revenue" 
-          value="$12,845" 
+          value={`$${totalRevenue.toLocaleString()}`} 
           trend="+12.5%" 
           icon={DollarSign} 
           color="bg-primary"
         />
         <StatCard 
+          title="Gross Profit" 
+          value={`$${grossProfit.toLocaleString()}`} 
+          trend="+8.2%" 
+          icon={Wallet} 
+          color="bg-green-500"
+        />
+        <StatCard 
           title="Total Orders" 
-          value="456" 
+          value={history.length.toString()} 
           trend="+5.2%" 
           icon={ShoppingBag} 
           color="bg-accent"
-        />
-        <StatCard 
-          title="Average Order" 
-          value="$28.16" 
-          trend="-2.1%" 
-          icon={TrendingUp} 
-          color="bg-orange-500"
         />
         <StatCard 
           title="Total Customers" 
           value="1,205" 
           trend="+8.4%" 
           icon={Users} 
-          color="bg-green-500"
+          color="bg-orange-500"
         />
       </div>
 
