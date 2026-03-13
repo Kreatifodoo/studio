@@ -66,7 +66,7 @@ export function HistoryView() {
                   </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-dashed flex flex-wrap gap-2">
+                <div className="mt-6 pt-6 border-t border-solid border-muted/20 flex flex-wrap gap-2">
                    {t.items.map((item, idx) => (
                       <Badge key={idx} variant="outline" className="rounded-xl px-3 py-1 font-medium bg-background border-none text-muted-foreground">
                         {item.quantity}x {item.name}

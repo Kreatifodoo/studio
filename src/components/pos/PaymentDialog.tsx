@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -73,7 +72,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
 
   const finalizeStage = (methodName: string, ref: string) => {
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const tax = total - subtotal; // Simplified for receipt logic
+    const tax = total - subtotal; 
     
     const mockTransaction: Transaction = {
       id: transactionId,
@@ -90,7 +89,6 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setCurrentTransaction(mockTransaction);
     setStage('success');
 
-    // Auto-print gimmick (opens print dialog)
     setTimeout(() => {
       window.print();
     }, 500);
@@ -182,8 +180,8 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
             </div>
 
             <div className={cn(
-              "p-6 rounded-[2rem] border-2 border-dashed flex justify-between items-center transition-all",
-              isCashValid ? "bg-accent/5 border-accent/20" : "bg-muted/10 border-muted"
+              "p-6 rounded-[2rem] border-2 flex justify-between items-center transition-all",
+              isCashValid ? "bg-accent/5 border-accent/20" : "bg-muted/10 border-muted/20"
             )}>
               <div className="flex flex-col">
                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Change</span>

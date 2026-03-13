@@ -25,7 +25,7 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
       </div>
 
       {/* Order Info */}
-      <div className="border-t border-b border-black border-dashed py-3 mb-4 space-y-1">
+      <div className="border-t border-b border-black/20 py-3 mb-4 space-y-1">
         <div className="flex justify-between">
           <span>ORDER ID</span>
           <span className="font-bold">#{transaction.id}</span>
@@ -66,7 +66,7 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
       </div>
 
       {/* Calculations */}
-      <div className="border-t border-black border-dashed pt-4 space-y-2">
+      <div className="border-t border-black/20 pt-4 space-y-2">
         <div className="flex justify-between">
           <span>SUBTOTAL</span>
           <span>${transaction.subtotal.toFixed(2)}</span>
@@ -77,7 +77,7 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
         </div>
         
         <div className="pt-2">
-          <div className="flex justify-between text-base font-black border-t-2 border-black border-double pt-2" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
+          <div className="flex justify-between text-base font-black border-t-2 border-black pt-2" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
             <span>TOTAL</span>
             <span>${transaction.total.toFixed(2)}</span>
           </div>
@@ -85,7 +85,7 @@ export function ReceiptView({ transaction, storeName = "NEXTPOS DELI" }: Receipt
       </div>
 
       {/* Footer */}
-      <div className="text-center mt-10 pt-6 border-t border-black border-dashed space-y-4">
+      <div className="text-center mt-10 pt-6 border-t border-black/20 space-y-4">
         <div className="space-y-1">
           <p className="font-bold uppercase">Terima Kasih!</p>
           <p className="text-[10px]">Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan</p>
