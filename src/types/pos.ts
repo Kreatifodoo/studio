@@ -19,6 +19,21 @@ export interface Product {
   description?: string;
 }
 
+export interface PackageItem {
+  productId: string;
+  quantity: number;
+}
+
+export interface Package {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  price: number;
+  enabled: boolean;
+  items: PackageItem[];
+}
+
 export interface OrderItem {
   id: string;
   productId: string;

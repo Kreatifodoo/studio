@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList } from '@/types/pos';
+import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee, Session, Customer, PriceList, Package } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
@@ -47,6 +47,8 @@ interface POSContextType {
   addCustomer: (customer: Omit<Customer, 'id'>) => string;
   priceLists: PriceList[];
   setPriceLists: React.Dispatch<React.SetStateAction<PriceList[]>>;
+  packages: Package[];
+  setPackages: React.Dispatch<React.SetStateAction<Package[]>>;
 }
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
@@ -82,6 +84,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [fees, setFees] = useState<Fee[]>(INITIAL_FEES);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [priceLists, setPriceLists] = useState<PriceList[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
@@ -231,7 +234,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       paymentMethods, setPaymentMethods,
       fees, setFees,
       customers, setCustomers, addCustomer,
-      priceLists, setPriceLists
+      priceLists, setPriceLists,
+      packages, setPackages
     }}>
       {children}
     </POSContext.Provider>

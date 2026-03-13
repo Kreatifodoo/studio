@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Store, 
@@ -20,7 +21,7 @@ import {
   Upload,
   Image as ImageIcon,
   Eye,
-  Package,
+  Package as PackageIcon,
   Barcode,
   Users,
   Tags,
@@ -29,10 +30,11 @@ import {
   Box,
   LayoutGrid,
   Settings as SettingsIcon,
-  ChevronRight
+  ChevronRight,
+  Search
 } from 'lucide-react';
 import { usePOS } from './POSContext';
-import { Category, Product, PaymentMethod, Fee, FeeType, Customer, PriceList, PriceTier } from '@/types/pos';
+import { Category, Product, PaymentMethod, Fee, FeeType, Customer, PriceList, PriceTier, Package, PackageItem } from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
@@ -46,6 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export function SettingsView() {
   const { 
@@ -54,18 +57,21 @@ export function SettingsView() {
     paymentMethods, setPaymentMethods,
     fees, setFees,
     customers, setCustomers,
-    priceLists, setPriceLists
+    priceLists, setPriceLists,
+    packages, setPackages
   } = usePOS();
   
   const { toast } = useToast();
 
   // State for active menu
   const [activeTab, setActiveTab] = useState('general');
+  const [packageSearch, setPackageSearch] = useState('');
 
   // Dialog States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isPriceListDialogOpen, setIsPriceListDialogOpen] = useState(false);
+  const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
 
   // Form States
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -74,13 +80,15 @@ export function SettingsView() {
   const [customerForm, setCustomerForm] = useState<Partial<Customer>>({});
   const [editingPriceList, setEditingPriceList] = useState<PriceList | null>(null);
   const [priceListForm, setPriceListForm] = useState<Partial<PriceList>>({ tiers: [] });
+  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+  const [packageForm, setPackageForm] = useState<Partial<Package>>({ items: [] });
 
   // Navigation Items
   const navGroups = [
     {
       title: "Produk",
       items: [
-        { id: 'products', icon: Package, label: 'Master Produk' },
+        { id: 'products', icon: PackageIcon, label: 'Master Produk' },
         { id: 'pricelist', icon: Tags, label: 'Master Pricelist' },
         { id: 'package', icon: Box, label: 'Master Package' },
         { id: 'combo', icon: LayoutGrid, label: 'Master Combo' },
@@ -97,6 +105,60 @@ export function SettingsView() {
       ]
     }
   ];
+
+  // Package Handlers
+  const handleOpenAddPackage = () => {
+    setEditingPackage(null);
+    setPackageForm({
+      name: '',
+      sku: '',
+      description: '',
+      price: '' as any,
+      enabled: true,
+      items: []
+    });
+    setIsPackageDialogOpen(true);
+  };
+
+  const handleSavePackage = () => {
+    if (!packageForm.name || !packageForm.sku || !packageForm.price) {
+      toast({ variant: "destructive", title: "Error", description: "Mohon lengkapi data wajib." });
+      return;
+    }
+    if (editingPackage) {
+      setPackages(prev => prev.map(p => p.id === editingPackage.id ? { ...editingPackage, ...packageForm } as Package : p));
+    } else {
+      const newPkg: Package = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...packageForm as Package
+      };
+      setPackages(prev => [...prev, newPkg]);
+    }
+    setIsPackageDialogOpen(false);
+    toast({ title: "Success", description: "Package saved." });
+  };
+
+  const addPackageItem = () => {
+    setPackageForm(prev => ({
+      ...prev,
+      items: [...(prev.items || []), { productId: products[0]?.id || '', quantity: 1 }]
+    }));
+  };
+
+  const removePackageItem = (idx: number) => {
+    setPackageForm(prev => ({
+      ...prev,
+      items: prev.items?.filter((_, i) => i !== idx)
+    }));
+  };
+
+  const updatePackageItem = (idx: number, field: keyof PackageItem, value: any) => {
+    setPackageForm(prev => {
+      const newItems = [...(prev.items || [])];
+      newItems[idx] = { ...newItems[idx], [field]: value };
+      return { ...prev, items: newItems };
+    });
+  };
 
   // Price List Handlers
   const handleOpenAddPriceList = () => {
@@ -153,6 +215,11 @@ export function SettingsView() {
     const val = e.target.value;
     setter(val === '' ? '' : parseFloat(val));
   };
+
+  const filteredPackages = packages.filter(p => 
+    p.name.toLowerCase().includes(packageSearch.toLowerCase()) || 
+    p.sku.toLowerCase().includes(packageSearch.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col gap-8 h-full">
@@ -300,6 +367,78 @@ export function SettingsView() {
             </Card>
           )}
 
+          {activeTab === 'package' && (
+            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                  <CardTitle className="text-2xl font-black">Master Package</CardTitle>
+                  <CardDescription className="font-medium">Manage product bundles and packages</CardDescription>
+                </div>
+                <Button onClick={handleOpenAddPackage} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
+                  <Plus className="h-5 w-5" /> Tambah Package
+                </Button>
+              </div>
+
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Cari nama package atau SKU..." 
+                  value={packageSearch}
+                  onChange={(e) => setPackageSearch(e.target.value)}
+                  className="pl-10 h-12 rounded-xl border-2 focus-visible:ring-primary/20"
+                />
+              </div>
+
+              <div className="rounded-[1.5rem] border overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="font-black">Nama Package</TableHead>
+                      <TableHead className="font-black">SKU</TableHead>
+                      <TableHead className="font-black">Total Item</TableHead>
+                      <TableHead className="font-black">Harga Jual</TableHead>
+                      <TableHead className="font-black">Status</TableHead>
+                      <TableHead className="text-right font-black">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPackages.map((pkg) => (
+                      <TableRow key={pkg.id}>
+                        <TableCell className="font-bold">{pkg.name}</TableCell>
+                        <TableCell><Badge variant="outline" className="font-mono text-[10px]">{pkg.sku}</Badge></TableCell>
+                        <TableCell>{pkg.items.length} Items</TableCell>
+                        <TableCell className="font-black text-primary">${pkg.price.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Switch 
+                            checked={pkg.enabled} 
+                            onCheckedChange={(val) => setPackages(prev => prev.map(p => p.id === pkg.id ? { ...p, enabled: val } : p))} 
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => { setEditingPackage(pkg); setPackageForm(pkg); setIsPackageDialogOpen(true); }}>
+                               <Pencil className="h-4 w-4" />
+                             </Button>
+                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-destructive/50 hover:text-destructive" onClick={() => setPackages(prev => prev.filter(p => p.id !== pkg.id))}>
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredPackages.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground font-medium italic">
+                          Belum ada package yang dibuat.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          )}
+
           {activeTab === 'customers' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <div className="flex justify-between items-center mb-8">
@@ -335,12 +474,12 @@ export function SettingsView() {
             </Card>
           )}
 
-          {(activeTab === 'package' || activeTab === 'combo') && (
+          {activeTab === 'combo' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-12 bg-white h-full flex flex-col items-center justify-center text-center opacity-40">
               <div className="bg-muted p-10 rounded-full mb-6">
-                {activeTab === 'package' ? <Box className="h-16 w-16" /> : <LayoutGrid className="h-16 w-16" />}
+                <LayoutGrid className="h-16 w-16" />
               </div>
-              <h3 className="text-2xl font-black mb-2">{activeTab === 'package' ? 'Master Package' : 'Master Combo'}</h3>
+              <h3 className="text-2xl font-black mb-2">Master Combo</h3>
               <p className="text-muted-foreground font-bold">This module is coming soon in the next update.</p>
             </Card>
           )}
@@ -412,6 +551,138 @@ export function SettingsView() {
               else setProducts([...products, { id: Math.random().toString(36).substr(2, 9), ...productForm, available: true } as Product]);
               setIsProductDialogOpen(false);
             }} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Save Product</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Package Dialog */}
+      <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
+        <DialogContent className="max-w-3xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-3xl font-black">Package Configuration</DialogTitle>
+            <DialogDescription className="font-medium">Tentukan nama, SKU, dan komposisi item untuk paket ini.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-8 py-4">
+             {/* Basic Info */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="space-y-2">
+                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Package</Label>
+                 <Input 
+                   value={packageForm.name || ''} 
+                   onChange={(e) => setPackageForm({...packageForm, name: e.target.value})} 
+                   placeholder="e.g. Family Bundle" 
+                   className="h-12 rounded-xl border-2 focus:ring-primary/20"
+                 />
+               </div>
+               <div className="space-y-2">
+                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU Package</Label>
+                 <Input 
+                   value={packageForm.sku || ''} 
+                   onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} 
+                   placeholder="PKG-001" 
+                   className="h-12 rounded-xl border-2 font-mono"
+                 />
+               </div>
+               <div className="col-span-full space-y-2">
+                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Deskripsi</Label>
+                 <Textarea 
+                   value={packageForm.description || ''} 
+                   onChange={(e) => setPackageForm({...packageForm, description: e.target.value})} 
+                   placeholder="Berikan keterangan detail isi paket..." 
+                   className="min-h-[100px] rounded-xl border-2"
+                 />
+               </div>
+               <div className="space-y-2">
+                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Jual Paket ($)</Label>
+                 <Input 
+                   type="number" 
+                   value={packageForm.price === 0 || packageForm.price === '' as any ? '' : packageForm.price} 
+                   onChange={handleValueChange((val: any) => setPackageForm({...packageForm, price: val}))}
+                   className="h-14 rounded-xl border-2 font-black text-2xl text-primary"
+                 />
+               </div>
+             </div>
+
+             <Separator className="my-6" />
+
+             {/* Items Composition */}
+             <div className="space-y-4">
+               <div className="flex justify-between items-center">
+                 <Label className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground ml-1">Komposisi Produk</Label>
+                 <Button 
+                   variant="outline" 
+                   size="sm" 
+                   onClick={addPackageItem}
+                   className="rounded-xl h-10 border-2 font-bold gap-2"
+                 >
+                   <Plus className="h-4 w-4" /> Tambah Item Produk
+                 </Button>
+               </div>
+
+               <div className="space-y-3">
+                 {packageForm.items?.map((item, idx) => (
+                   <div key={idx} className="flex gap-4 items-end p-5 bg-muted/20 rounded-[1.5rem] border border-transparent hover:border-primary/10 transition-all">
+                     <div className="flex-1 space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Pilih Produk</Label>
+                        <Select 
+                          value={item.productId} 
+                          onValueChange={(val) => updatePackageItem(idx, 'productId', val)}
+                        >
+                          <SelectTrigger className="h-12 rounded-xl border-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl">
+                            {products.map(p => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name} (${p.price.toFixed(2)})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                     </div>
+                     <div className="w-24 space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Qty</Label>
+                        <Input 
+                          type="number" 
+                          value={item.quantity === 0 ? '' : item.quantity} 
+                          onChange={(e) => updatePackageItem(idx, 'quantity', e.target.value === '' ? 0 : parseInt(e.target.value))}
+                          className="h-12 rounded-xl border-2 font-bold text-center"
+                        />
+                     </div>
+                     <Button 
+                       variant="ghost" 
+                       size="icon" 
+                       onClick={() => removePackageItem(idx)}
+                       className="h-12 w-12 text-destructive/40 hover:text-destructive hover:bg-destructive/5 rounded-xl"
+                     >
+                       <Trash2 className="h-5 w-5" />
+                     </Button>
+                   </div>
+                 ))}
+                 {(packageForm.items?.length || 0) === 0 && (
+                   <div className="text-center py-12 bg-muted/10 rounded-[2rem] border-2 border-dashed">
+                      <p className="text-sm font-bold text-muted-foreground opacity-50">Belum ada item produk dalam paket ini.</p>
+                   </div>
+                 )}
+               </div>
+             </div>
+          </div>
+
+          <DialogFooter className="mt-8 gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPackageDialogOpen(false)} 
+              className="h-16 rounded-2xl font-black text-lg px-8 border-2"
+            >
+              Batal
+            </Button>
+            <Button 
+              onClick={handleSavePackage} 
+              className="flex-1 h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20"
+            >
+              Simpan Package
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
