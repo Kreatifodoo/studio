@@ -1,32 +1,24 @@
 
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
 import { 
   Store, 
-  Printer, 
-  Bell, 
   Plus, 
   Trash2, 
   Pencil,
   CreditCard,
   Percent,
-  Upload,
-  Image as ImageIcon,
-  Eye,
   Package as PackageIcon,
-  Barcode,
   Users,
   Tags,
-  Calendar,
   Layers,
   Box,
   LayoutGrid,
@@ -34,17 +26,17 @@ import {
   ChevronRight,
   Search,
   Check,
-  CircleCheck,
-  Settings2
+  Settings2,
+  Banknote,
+  Smartphone
 } from 'lucide-react';
 import { usePOS } from './POSContext';
-import { Category, Product, PaymentMethod, Fee, FeeType, Customer, PriceList, PriceTier, Package, PackageItem, Combo, ComboGroup, ComboOption } from '@/types/pos';
+import { Product, PaymentMethod, Fee, FeeType, Customer, PriceList, Package, PackageItem, Combo, ComboGroup, ComboOption } from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger,
   DialogFooter,
   DialogDescription
 } from "@/components/ui/dialog";
@@ -69,7 +61,6 @@ export function SettingsView() {
   
   const { toast } = useToast();
 
-  // State for active menu
   const [activeTab, setActiveTab] = useState('general');
   const [packageSearch, setPackageSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
@@ -82,6 +73,8 @@ export function SettingsView() {
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isFeeDialogOpen, setIsFeeDialogOpen] = useState(false);
 
   // Form States
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -94,11 +87,13 @@ export function SettingsView() {
   const [packageForm, setPackageForm] = useState<Partial<Package>>({ items: [] });
   const [editingCombo, setEditingCombo] = useState<Combo | null>(null);
   const [comboForm, setComboForm] = useState<Partial<Combo>>({ groups: [] });
-  
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState('');
+  const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
+  const [paymentForm, setPaymentForm] = useState<Partial<PaymentMethod>>({});
+  const [editingFee, setEditingFee] = useState<Fee | null>(null);
+  const [feeForm, setFeeForm] = useState<Partial<Fee>>({});
 
-  // Navigation Items
   const navGroups = [
     {
       title: "Produk",
@@ -133,7 +128,6 @@ export function SettingsView() {
       toast({ variant: "destructive", title: "Error", description: "Nama kategori tidak boleh kosong." });
       return;
     }
-
     if (editingCategory) {
       setCategories(prev => prev.map(cat => cat === editingCategory ? categoryForm : cat));
       setProducts(prev => prev.map(p => p.category === editingCategory ? { ...p, category: categoryForm } : p));
@@ -155,150 +149,123 @@ export function SettingsView() {
     toast({ title: "Deleted", description: "Kategori telah dihapus." });
   };
 
+  // Payment Handlers
+  const handleOpenAddPayment = () => {
+    setEditingPayment(null);
+    setPaymentForm({ name: '', icon: 'CreditCard', description: '', enabled: true });
+    setIsPaymentDialogOpen(true);
+  };
+
+  const handleSavePayment = () => {
+    if (!paymentForm.name) return;
+    if (editingPayment) {
+      setPaymentMethods(prev => prev.map(pm => pm.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : pm));
+    } else {
+      const newPm: PaymentMethod = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...paymentForm as PaymentMethod
+      };
+      setPaymentMethods(prev => [...prev, newPm]);
+    }
+    setIsPaymentDialogOpen(false);
+    toast({ title: "Success", description: "Metode pembayaran disimpan." });
+  };
+
+  // Fee Handlers
+  const handleOpenAddFee = () => {
+    setEditingFee(null);
+    setFeeForm({ name: '', type: 'Tax', value: 0, enabled: true });
+    setIsFeeDialogOpen(true);
+  };
+
+  const handleSaveFee = () => {
+    if (!feeForm.name) return;
+    if (editingFee) {
+      setFees(prev => prev.map(f => f.id === editingFee.id ? { ...editingFee, ...feeForm } as Fee : f));
+    } else {
+      const newFee: Fee = {
+        id: Math.random().toString(36).substr(2, 9),
+        ...feeForm as Fee
+      };
+      setFees(prev => [...prev, newFee]);
+    }
+    setIsFeeDialogOpen(false);
+    toast({ title: "Success", description: "Fee/Discount disimpan." });
+  };
+
   // Package Handlers
   const handleOpenAddPackage = () => {
     setEditingPackage(null);
-    setPackageForm({
-      name: '',
-      sku: '',
-      description: '',
-      price: '' as any,
-      enabled: true,
-      items: []
-    });
+    setPackageForm({ name: '', sku: '', description: '', price: '' as any, enabled: true, items: [] });
     setIsPackageDialogOpen(true);
   };
 
   const handleSavePackage = () => {
-    if (!packageForm.name || !packageForm.sku || !packageForm.price) {
-      toast({ variant: "destructive", title: "Error", description: "Mohon lengkapi data wajib." });
-      return;
-    }
+    if (!packageForm.name || !packageForm.sku || !packageForm.price) return;
     if (editingPackage) {
       setPackages(prev => prev.map(p => p.id === editingPackage.id ? { ...editingPackage, ...packageForm } as Package : p));
     } else {
-      const newPkg: Package = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...packageForm as Package
-      };
-      setPackages(prev => [...prev, newPkg]);
+      setPackages(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...packageForm as Package }]);
     }
     setIsPackageDialogOpen(false);
-    toast({ title: "Success", description: "Package saved." });
   };
 
-  const addPackageItem = () => {
-    setPackageForm(prev => ({
-      ...prev,
-      items: [...(prev.items || []), { productId: products[0]?.id || '', quantity: 1 }]
-    }));
-  };
-
-  const removePackageItem = (idx: number) => {
-    setPackageForm(prev => ({
-      ...prev,
-      items: prev.items?.filter((_, i) => i !== idx)
-    }));
-  };
-
-  const updatePackageItem = (idx: number, field: keyof PackageItem, value: any) => {
-    setPackageForm(prev => {
-      const newItems = [...(prev.items || [])];
-      newItems[idx] = { ...newItems[idx], [field]: value };
-      return { ...prev, items: newItems };
-    });
-  };
+  const addPackageItem = () => setPackageForm(prev => ({ ...prev, items: [...(prev.items || []), { productId: products[0]?.id || '', quantity: 1 }] }));
+  const removePackageItem = (idx: number) => setPackageForm(prev => ({ ...prev, items: prev.items?.filter((_, i) => i !== idx) }));
+  const updatePackageItem = (idx: number, field: keyof PackageItem, value: any) => setPackageForm(prev => {
+    const newItems = [...(prev.items || [])];
+    newItems[idx] = { ...newItems[idx], [field]: value };
+    return { ...prev, items: newItems };
+  });
 
   // Combo Handlers
   const handleOpenAddCombo = () => {
     setEditingCombo(null);
-    setComboForm({
-      name: '',
-      sku: '',
-      description: '',
-      basePrice: '' as any,
-      enabled: true,
-      groups: []
-    });
+    setComboForm({ name: '', sku: '', description: '', basePrice: '' as any, enabled: true, groups: [] });
     setIsComboDialogOpen(true);
   };
 
   const handleSaveCombo = () => {
-    if (!comboForm.name || !comboForm.sku || !comboForm.basePrice) {
-      toast({ variant: "destructive", title: "Error", description: "Mohon lengkapi data wajib." });
-      return;
-    }
+    if (!comboForm.name || !comboForm.sku || !comboForm.basePrice) return;
     if (editingCombo) {
       setCombos(prev => prev.map(c => c.id === editingCombo.id ? { ...editingCombo, ...comboForm } as Combo : c));
     } else {
-      const newCombo: Combo = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...comboForm as Combo
-      };
-      setCombos(prev => [...prev, newCombo]);
+      setCombos(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...comboForm as Combo }]);
     }
     setIsComboDialogOpen(false);
-    toast({ title: "Success", description: "Combo saved." });
   };
 
-  const addComboGroup = () => {
-    setComboForm(prev => ({
-      ...prev,
-      groups: [
-        ...(prev.groups || []),
-        { id: Math.random().toString(36).substr(2, 5), name: '', required: true, options: [] }
-      ]
-    }));
-  };
+  const addComboGroup = () => setComboForm(prev => ({ ...prev, groups: [...(prev.groups || []), { id: Math.random().toString(36).substr(2, 5), name: '', required: true, options: [] }] }));
+  const removeComboGroup = (gIdx: number) => setComboForm(prev => ({ ...prev, groups: prev.groups?.filter((_, i) => i !== gIdx) }));
+  const updateComboGroup = (gIdx: number, field: keyof ComboGroup, value: any) => setComboForm(prev => {
+    const newGroups = [...(prev.groups || [])];
+    newGroups[gIdx] = { ...newGroups[gIdx], [field]: value };
+    return { ...prev, groups: newGroups };
+  });
 
-  const removeComboGroup = (gIdx: number) => {
-    setComboForm(prev => ({
-      ...prev,
-      groups: prev.groups?.filter((_, i) => i !== gIdx)
-    }));
-  };
+  const addComboOption = (gIdx: number) => setComboForm(prev => {
+    const newGroups = [...(prev.groups || [])];
+    newGroups[gIdx].options = [...newGroups[gIdx].options, { productId: products[0]?.id || '', extraPrice: 0 }];
+    return { ...prev, groups: newGroups };
+  });
 
-  const updateComboGroup = (gIdx: number, field: keyof ComboGroup, value: any) => {
-    setComboForm(prev => {
-      const newGroups = [...(prev.groups || [])];
-      newGroups[gIdx] = { ...newGroups[gIdx], [field]: value };
-      return { ...prev, groups: newGroups };
-    });
-  };
+  const removeComboOption = (gIdx: number, oIdx: number) => setComboForm(prev => {
+    const newGroups = [...(prev.groups || [])];
+    newGroups[gIdx].options = newGroups[gIdx].options.filter((_, i) => i !== oIdx);
+    return { ...prev, groups: newGroups };
+  });
 
-  const addComboOption = (gIdx: number) => {
-    setComboForm(prev => {
-      const newGroups = [...(prev.groups || [])];
-      newGroups[gIdx].options = [
-        ...newGroups[gIdx].options,
-        { productId: products[0]?.id || '', extraPrice: 0 }
-      ];
-      return { ...prev, groups: newGroups };
-    });
-  };
-
-  const removeComboOption = (gIdx: number, oIdx: number) => {
-    setComboForm(prev => {
-      const newGroups = [...(prev.groups || [])];
-      newGroups[gIdx].options = newGroups[gIdx].options.filter((_, i) => i !== oIdx);
-      return { ...prev, groups: newGroups };
-    });
-  };
-
-  const updateComboOption = (gIdx: number, oIdx: number, field: keyof ComboOption, value: any) => {
-    setComboForm(prev => {
-      const newGroups = [...(prev.groups || [])];
-      newGroups[gIdx].options[oIdx] = { ...newGroups[gIdx].options[oIdx], [field]: value };
-      return { ...prev, groups: newGroups };
-    });
-  };
+  const updateComboOption = (gIdx: number, oIdx: number, field: keyof ComboOption, value: any) => setComboForm(prev => {
+    const newGroups = [...(prev.groups || [])];
+    newGroups[gIdx].options[oIdx] = { ...newGroups[gIdx].options[oIdx], [field]: value };
+    return { ...prev, groups: newGroups };
+  });
 
   // Price List Handlers
   const handleOpenAddPriceList = () => {
     setEditingPriceList(null);
     setPriceListForm({ 
-      name: '', 
-      productId: products[0]?.id || '', 
+      name: '', productId: products[0]?.id || '', 
       startDate: new Date().toISOString().split('T')[0], 
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       tiers: [{ minQty: 1, maxQty: 10, price: 0 }],
@@ -309,17 +276,9 @@ export function SettingsView() {
 
   const handleSavePriceList = () => {
     if (!priceListForm.name || !priceListForm.productId) return;
-    if (editingPriceList) {
-      setPriceLists(prev => prev.map(pl => pl.id === editingPriceList.id ? { ...editingPriceList, ...priceListForm } as PriceList : pl));
-    } else {
-      const newList: PriceList = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...priceListForm as PriceList
-      };
-      setPriceLists(prev => [...prev, newList]);
-    }
+    if (editingPriceList) setPriceLists(prev => prev.map(pl => pl.id === editingPriceList.id ? { ...editingPriceList, ...priceListForm } as PriceList : pl));
+    else setPriceLists(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...priceListForm as PriceList }]);
     setIsPriceListDialogOpen(false);
-    toast({ title: "Success", description: "Price list saved." });
   };
 
   // Customer Handlers
@@ -331,17 +290,9 @@ export function SettingsView() {
 
   const handleSaveCustomer = () => {
     if (!customerForm.name || !customerForm.phone) return;
-    if (editingCustomer) {
-      setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...customerForm } as Customer : c));
-    } else {
-      const newCust: Customer = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...customerForm as Customer
-      };
-      setCustomers(prev => [...prev, newCust]);
-    }
+    if (editingCustomer) setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...customerForm } as Customer : c));
+    else setCustomers(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...customerForm as Customer }]);
     setIsCustomerDialogOpen(false);
-    toast({ title: "Success", description: "Customer saved." });
   };
 
   const handleValueChange = (setter: any) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -349,19 +300,18 @@ export function SettingsView() {
     setter(val === '' ? '' : parseFloat(val));
   };
 
-  const filteredPackages = packages.filter(p => 
-    p.name.toLowerCase().includes(packageSearch.toLowerCase()) || 
-    p.sku.toLowerCase().includes(packageSearch.toLowerCase())
-  );
+  const filteredPackages = packages.filter(p => p.name.toLowerCase().includes(packageSearch.toLowerCase()) || p.sku.toLowerCase().includes(packageSearch.toLowerCase()));
+  const filteredCombos = combos.filter(c => c.name.toLowerCase().includes(comboSearch.toLowerCase()) || c.sku.toLowerCase().includes(comboSearch.toLowerCase()));
+  const filteredCategories = categories.filter(c => c !== 'All' && c.toLowerCase().includes(categorySearch.toLowerCase()));
 
-  const filteredCombos = combos.filter(c => 
-    c.name.toLowerCase().includes(comboSearch.toLowerCase()) || 
-    c.sku.toLowerCase().includes(comboSearch.toLowerCase())
-  );
-
-  const filteredCategories = categories.filter(c => 
-    c !== 'All' && c.toLowerCase().includes(categorySearch.toLowerCase())
-  );
+  const getPaymentIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'CreditCard': return <CreditCard />;
+      case 'Smartphone': return <Smartphone />;
+      case 'Banknote': return <Banknote />;
+      default: return <CreditCard />;
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 h-full">
@@ -371,14 +321,11 @@ export function SettingsView() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8 items-start">
-        {/* Sidebar Navigation */}
         <aside className="w-full lg:w-72 bg-white rounded-[2rem] p-4 shadow-sm border border-muted/50">
           <div className="space-y-8">
             {navGroups.map((group, idx) => (
               <div key={idx} className="space-y-2">
-                <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">
-                  {group.title}
-                </p>
+                <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">{group.title}</p>
                 <div className="space-y-1">
                   {group.items.map((item) => (
                     <button
@@ -386,9 +333,7 @@ export function SettingsView() {
                       onClick={() => setActiveTab(item.id)}
                       className={cn(
                         "w-full flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all duration-200 group",
-                        activeTab === item.id
-                          ? "bg-primary text-white shadow-lg shadow-primary/20 translate-x-1"
-                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        activeTab === item.id ? "bg-primary text-white shadow-lg shadow-primary/20 translate-x-1" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                       )}
                     >
                       <div className="flex items-center gap-3">
@@ -404,7 +349,6 @@ export function SettingsView() {
           </div>
         </aside>
 
-        {/* Content Area */}
         <div className="flex-1 w-full min-h-[600px]">
           {activeTab === 'general' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
@@ -426,37 +370,19 @@ export function SettingsView() {
           {activeTab === 'products' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <div className="flex justify-between items-center mb-8">
-                <div>
-                  <CardTitle className="text-2xl font-black">Product Master</CardTitle>
-                  <CardDescription className="font-medium">Manage your items and inventory</CardDescription>
-                </div>
-                <Button onClick={() => { setEditingProduct(null); setProductForm({ onHandQty: '' as any, price: '' as any, costPrice: '' as any }); setIsProductDialogOpen(true); }} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                  <Plus className="h-5 w-5" /> Add Product
-                </Button>
+                <div><CardTitle className="text-2xl font-black">Product Master</CardTitle><CardDescription className="font-medium">Manage your items and inventory</CardDescription></div>
+                <Button onClick={() => { setEditingProduct(null); setProductForm({ onHandQty: '' as any, price: '' as any, costPrice: '' as any }); setIsProductDialogOpen(true); }} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Product</Button>
               </div>
               <div className="space-y-4">
-                {products.map((product) => (
-                  <div key={product.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
+                {products.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
                     <div className="flex items-center gap-5">
-                      <div className="h-14 w-14 rounded-2xl overflow-hidden bg-white border shadow-sm">
-                        <img src={product.image} className="h-full w-full object-cover" alt={product.name} />
-                      </div>
-                      <div>
-                        <p className="font-black text-lg leading-tight">{product.name}</p>
-                        <div className="flex gap-2 items-center mt-1">
-                          <span className="text-primary font-black text-sm">${product.price.toFixed(2)}</span>
-                          <Badge variant="outline" className="text-[9px] font-bold border-muted-foreground/20 text-muted-foreground px-2 py-0">{product.sku}</Badge>
-                          <span className="text-[10px] font-bold text-muted-foreground">Stock: {product.onHandQty}</span>
-                        </div>
-                      </div>
+                      <div className="h-14 w-14 rounded-2xl overflow-hidden bg-white border shadow-sm"><img src={p.image} className="h-full w-full object-cover" alt={p.name} /></div>
+                      <div><p className="font-black text-lg leading-tight">{p.name}</p><div className="flex gap-2 items-center mt-1"><span className="text-primary font-black text-sm">${p.price.toFixed(2)}</span><Badge variant="outline" className="text-[9px] font-bold px-2 py-0">{p.sku}</Badge></div></div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-muted-foreground hover:text-primary" onClick={() => { setEditingProduct(product); setProductForm(product); setIsProductDialogOpen(true); }}>
-                        <Pencil className="h-5 w-5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl text-muted-foreground hover:text-destructive" onClick={() => setProducts(products.filter(p => p.id !== product.id))}>
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(p); setProductForm(p); setIsProductDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setProducts(products.filter(item => item.id !== p.id))}><Trash2 className="h-5 w-5" /></Button>
                     </div>
                   </div>
                 ))}
@@ -467,114 +393,48 @@ export function SettingsView() {
           {activeTab === 'pricelist' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <div className="flex justify-between items-center mb-8">
-                <div>
-                  <CardTitle className="text-2xl font-black">Price Lists</CardTitle>
-                  <CardDescription className="font-medium">Tiered pricing and date-based promos</CardDescription>
-                </div>
-                <Button onClick={handleOpenAddPriceList} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                  <Plus className="h-5 w-5" /> Create Price List
-                </Button>
+                <div><CardTitle className="text-2xl font-black">Price Lists</CardTitle><CardDescription className="font-medium">Tiered pricing and date-based promos</CardDescription></div>
+                <Button onClick={handleOpenAddPriceList} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Create Price List</Button>
               </div>
               <div className="space-y-4">
-                {priceLists.map((pl) => {
-                  const product = products.find(p => p.id === pl.productId);
-                  return (
-                    <div key={pl.id} className="flex items-center justify-between p-6 bg-muted/10 rounded-[2rem]">
-                      <div className="flex items-center gap-5">
-                        <div className="bg-white p-4 rounded-2xl text-primary shadow-sm border"><Tags /></div>
-                        <div>
-                          <p className="font-black text-lg leading-tight">{pl.name}</p>
-                          <p className="text-xs font-bold text-muted-foreground mt-1">
-                            {product?.name} • {pl.startDate} to {pl.endDate}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-4 items-center">
-                        <Badge className={cn("rounded-lg px-3 py-1 font-black text-[9px] border-none", pl.enabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground')}>
-                          {pl.enabled ? 'ACTIVE' : 'DISABLED'}
-                        </Badge>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => { setEditingPriceList(pl); setPriceListForm(pl); setIsPriceListDialogOpen(true); }}>
-                            <Pencil className="h-5 w-5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-destructive/50 hover:text-destructive" onClick={() => setPriceLists(priceLists.filter(p => p.id !== pl.id))}>
-                            <Trash2 className="h-5 w-5" />
-                          </Button>
-                        </div>
-                      </div>
+                {priceLists.map((pl) => (
+                  <div key={pl.id} className="flex items-center justify-between p-6 bg-muted/10 rounded-[2rem]">
+                    <div className="flex items-center gap-5">
+                      <div className="bg-white p-4 rounded-2xl text-primary border shadow-sm"><Tags /></div>
+                      <div><p className="font-black text-lg leading-tight">{pl.name}</p><p className="text-xs font-bold text-muted-foreground mt-1">{products.find(p => p.id === pl.productId)?.name} • {pl.startDate} to {pl.endDate}</p></div>
                     </div>
-                  );
-                })}
+                    <div className="flex gap-4 items-center">
+                      <Badge className={cn("rounded-lg px-3 py-1 font-black text-[9px]", pl.enabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground')}>{pl.enabled ? 'ACTIVE' : 'DISABLED'}</Badge>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingPriceList(pl); setPriceListForm(pl); setIsPriceListDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </Card>
           )}
 
           {activeTab === 'package' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div>
-                  <CardTitle className="text-2xl font-black">Master Package</CardTitle>
-                  <CardDescription className="font-medium">Manage product bundles and packages</CardDescription>
-                </div>
-                <Button onClick={handleOpenAddPackage} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                  <Plus className="h-5 w-5" /> Tambah Package
-                </Button>
+              <div className="flex justify-between items-center mb-8">
+                <div><CardTitle className="text-2xl font-black">Master Package</CardTitle><CardDescription className="font-medium">Manage product bundles and packages</CardDescription></div>
+                <Button onClick={handleOpenAddPackage} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Package</Button>
               </div>
-
-              <div className="relative mb-6">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Cari nama package atau SKU..." 
-                  value={packageSearch}
-                  onChange={(e) => setPackageSearch(e.target.value)}
-                  className="pl-10 h-12 rounded-xl border-2 focus-visible:ring-primary/20"
-                />
-              </div>
-
               <div className="rounded-[1.5rem] border overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="font-black">Nama Package</TableHead>
-                      <TableHead className="font-black">SKU</TableHead>
-                      <TableHead className="font-black">Total Item</TableHead>
-                      <TableHead className="font-black">Harga Jual</TableHead>
-                      <TableHead className="font-black">Status</TableHead>
-                      <TableHead className="text-right font-black">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader className="bg-muted/50"><TableRow><TableHead className="font-black">Nama Package</TableHead><TableHead className="font-black">SKU</TableHead><TableHead className="font-black">Harga Jual</TableHead><TableHead className="font-black">Status</TableHead><TableHead className="text-right font-black">Aksi</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {filteredPackages.map((pkg) => (
                       <TableRow key={pkg.id}>
                         <TableCell className="font-bold">{pkg.name}</TableCell>
-                        <TableCell><Badge variant="outline" className="font-mono text-[10px]">{pkg.sku}</Badge></TableCell>
-                        <TableCell>{pkg.items.length} Items</TableCell>
+                        <TableCell><Badge variant="outline">{pkg.sku}</Badge></TableCell>
                         <TableCell className="font-black text-primary">${pkg.price.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Switch 
-                            checked={pkg.enabled} 
-                            onCheckedChange={(val) => setPackages(prev => prev.map(p => p.id === pkg.id ? { ...p, enabled: val } : p))} 
-                          />
-                        </TableCell>
+                        <TableCell><Switch checked={pkg.enabled} onCheckedChange={(val) => setPackages(prev => prev.map(p => p.id === pkg.id ? { ...p, enabled: val } : p))} /></TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => { setEditingPackage(pkg); setPackageForm(pkg); setIsPackageDialogOpen(true); }}>
-                               <Pencil className="h-4 w-4" />
-                             </Button>
-                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-destructive/50 hover:text-destructive" onClick={() => setPackages(prev => prev.filter(p => p.id !== pkg.id))}>
-                               <Trash2 className="h-4 w-4" />
-                             </Button>
-                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => { setEditingPackage(pkg); setPackageForm(pkg); setIsPackageDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setPackages(prev => prev.filter(p => p.id !== pkg.id))}><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
-                    {filteredPackages.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground font-medium italic">
-                          Belum ada package yang dibuat.
-                        </TableCell>
-                      </TableRow>
-                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -583,123 +443,105 @@ export function SettingsView() {
 
           {activeTab === 'combo' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div>
-                  <CardTitle className="text-2xl font-black">Master Combo</CardTitle>
-                  <CardDescription className="font-medium">Manage flexible combo sets and choices</CardDescription>
-                </div>
-                <Button onClick={handleOpenAddCombo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                  <Plus className="h-5 w-5" /> Tambah Combo
-                </Button>
+              <div className="flex justify-between items-center mb-8">
+                <div><CardTitle className="text-2xl font-black">Master Combo</CardTitle><CardDescription className="font-medium">Manage flexible combo sets</CardDescription></div>
+                <Button onClick={handleOpenAddCombo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Combo</Button>
               </div>
-
-              <div className="relative mb-6">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Cari nama combo atau SKU..." 
-                  value={comboSearch}
-                  onChange={(e) => setComboSearch(e.target.value)}
-                  className="pl-10 h-12 rounded-xl border-2 focus-visible:ring-primary/20"
-                />
-              </div>
-
               <div className="rounded-[1.5rem] border overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="font-black">Nama Combo</TableHead>
-                      <TableHead className="font-black">SKU</TableHead>
-                      <TableHead className="font-black">Grup Pilihan</TableHead>
-                      <TableHead className="font-black">Harga Dasar</TableHead>
-                      <TableHead className="font-black">Status</TableHead>
-                      <TableHead className="text-right font-black">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader className="bg-muted/50"><TableRow><TableHead className="font-black">Nama Combo</TableHead><TableHead className="font-black">Harga Dasar</TableHead><TableHead className="font-black">Status</TableHead><TableHead className="text-right font-black">Aksi</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {filteredCombos.map((combo) => (
-                      <TableRow key={combo.id}>
-                        <TableCell className="font-bold">{combo.name}</TableCell>
-                        <TableCell><Badge variant="outline" className="font-mono text-[10px]">{combo.sku}</Badge></TableCell>
-                        <TableCell>{combo.groups.length} Grup</TableCell>
-                        <TableCell className="font-black text-primary">${combo.basePrice.toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Switch 
-                            checked={combo.enabled} 
-                            onCheckedChange={(val) => setCombos(prev => prev.map(c => c.id === combo.id ? { ...c, enabled: val } : c))} 
-                          />
-                        </TableCell>
+                    {filteredCombos.map((c) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-bold">{c.name}</TableCell>
+                        <TableCell className="font-black text-primary">${c.basePrice.toFixed(2)}</TableCell>
+                        <TableCell><Switch checked={c.enabled} onCheckedChange={(val) => setCombos(prev => prev.map(item => item.id === c.id ? { ...item, enabled: val } : item))} /></TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => { setEditingCombo(combo); setComboForm(combo); setIsComboDialogOpen(true); }}>
-                               <Pencil className="h-4 w-4" />
-                             </Button>
-                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg text-destructive/50 hover:text-destructive" onClick={() => setCombos(prev => prev.filter(c => c.id !== combo.id))}>
-                               <Trash2 className="h-4 w-4" />
-                             </Button>
-                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => { setEditingCombo(c); setComboForm(c); setIsComboDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setCombos(prev => prev.filter(item => item.id !== c.id))}><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
-                    {filteredCombos.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground font-medium italic">
-                          Belum ada combo yang dibuat.
-                        </TableCell>
-                      </TableRow>
-                    )}
                   </TableBody>
                 </Table>
               </div>
             </Card>
           )}
 
-          {activeTab === 'categories' && (
+          {activeTab === 'payments' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                <div>
-                  <CardTitle className="text-2xl font-black">Master Kategori</CardTitle>
-                  <CardDescription className="font-medium">Kelola kategori produk untuk filter POS</CardDescription>
-                </div>
-                <Button onClick={handleOpenAddCategory} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                  <Plus className="h-5 w-5" /> Tambah Kategori
-                </Button>
+              <div className="flex justify-between items-center mb-8">
+                <div><CardTitle className="text-2xl font-black">Master Payment</CardTitle><CardDescription className="font-medium">Manage available payment methods</CardDescription></div>
+                <Button onClick={handleOpenAddPayment} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Payment</Button>
               </div>
-
-              <div className="relative mb-6">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Cari nama kategori..." 
-                  value={categorySearch}
-                  onChange={(e) => setCategorySearch(e.target.value)}
-                  className="pl-10 h-12 rounded-xl border-2 focus-visible:ring-primary/20"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredCategories.map((cat) => (
-                  <div key={cat} className="group flex items-center justify-between p-5 bg-muted/10 rounded-3xl border border-transparent hover:border-primary/20 transition-all hover:bg-white hover:shadow-xl hover:shadow-primary/5">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-primary/5 p-3 rounded-2xl text-primary group-hover:scale-110 transition-transform">
-                        <Layers className="h-5 w-5" />
+              <div className="space-y-4">
+                {paymentMethods.map((pm) => (
+                  <div key={pm.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
+                    <div className="flex items-center gap-5">
+                      <div className="bg-white p-4 rounded-2xl text-primary shadow-sm border">{getPaymentIcon(pm.icon)}</div>
+                      <div>
+                        <p className="font-black text-lg leading-tight">{pm.name}</p>
+                        <p className="text-xs font-bold text-muted-foreground mt-1">{pm.description}</p>
                       </div>
-                      <span className="font-black text-lg">{cat}</span>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" onClick={() => { setEditingCategory(cat); setCategoryForm(cat); setIsCategoryDialogOpen(true); }}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-destructive/40 hover:text-destructive" onClick={() => handleDeleteCategory(cat)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="flex gap-4 items-center">
+                      <Switch checked={pm.enabled} onCheckedChange={(val) => setPaymentMethods(prev => prev.map(item => item.id === pm.id ? { ...item, enabled: val } : item))} />
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingPayment(pm); setPaymentForm(pm); setIsPaymentDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setPaymentMethods(prev => prev.filter(item => item.id !== pm.id))}><Trash2 className="h-5 w-5" /></Button>
+                      </div>
                     </div>
                   </div>
                 ))}
-                {filteredCategories.length === 0 && (
-                  <div className="col-span-full py-20 text-center opacity-30">
-                    <Layers className="h-20 w-20 mx-auto mb-4" />
-                    <p className="text-xl font-black">Tidak ada kategori ditemukan</p>
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'fees' && (
+            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+              <div className="flex justify-between items-center mb-8">
+                <div><CardTitle className="text-2xl font-black">Fees & Discounts</CardTitle><CardDescription className="font-medium">Manage taxes, service charges, and discounts</CardDescription></div>
+                <Button onClick={handleOpenAddFee} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Fee/Discount</Button>
+              </div>
+              <div className="space-y-4">
+                {fees.map((f) => (
+                  <div key={f.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem]">
+                    <div className="flex items-center gap-5">
+                      <div className="bg-white p-4 rounded-2xl text-primary shadow-sm border"><Percent /></div>
+                      <div>
+                        <p className="font-black text-lg leading-tight">{f.name}</p>
+                        <p className="text-xs font-bold text-muted-foreground mt-1">{f.type} • {f.value}%</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 items-center">
+                      <Switch checked={f.enabled} onCheckedChange={(val) => setFees(prev => prev.map(item => item.id === f.id ? { ...item, enabled: val } : item))} />
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingFee(f); setFeeForm(f); setIsFeeDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setFees(prev => prev.filter(item => item.id !== f.id))}><Trash2 className="h-5 w-5" /></Button>
+                      </div>
+                    </div>
                   </div>
-                )}
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'categories' && (
+            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
+              <div className="flex justify-between items-center mb-8">
+                <div><CardTitle className="text-2xl font-black">Master Kategori</CardTitle><CardDescription className="font-medium">Manage product categories</CardDescription></div>
+                <Button onClick={handleOpenAddCategory} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Kategori</Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredCategories.map((cat) => (
+                  <div key={cat} className="group flex items-center justify-between p-5 bg-muted/10 rounded-3xl border border-transparent hover:border-primary/20 transition-all hover:bg-white hover:shadow-xl hover:shadow-primary/5">
+                    <div className="flex items-center gap-4"><div className="bg-primary/5 p-3 rounded-2xl text-primary"><Layers className="h-5 w-5" /></div><span className="font-black text-lg">{cat}</span></div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(cat); setCategoryForm(cat); setIsCategoryDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive/40" onClick={() => handleDeleteCategory(cat)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </Card>
           )}
@@ -707,75 +549,81 @@ export function SettingsView() {
           {activeTab === 'customers' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <div className="flex justify-between items-center mb-8">
-                <div>
-                  <CardTitle className="text-2xl font-black">Customer Master</CardTitle>
-                  <CardDescription className="font-medium">Track your loyal shoppers</CardDescription>
-                </div>
-                <Button onClick={handleOpenAddCustomer} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                  <Plus className="h-5 w-5" /> Add Customer
-                </Button>
+                <div><CardTitle className="text-2xl font-black">Customer Master</CardTitle><CardDescription className="font-medium">Track your loyal shoppers</CardDescription></div>
+                <Button onClick={handleOpenAddCustomer} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Customer</Button>
               </div>
               <div className="space-y-4">
                 {customers.map((c) => (
                   <div key={c.id} className="flex items-center justify-between p-6 bg-muted/10 rounded-[2rem]">
-                    <div className="flex items-center gap-5">
-                      <div className="bg-white p-4 rounded-2xl text-primary shadow-sm border"><Users /></div>
-                      <div>
-                        <p className="font-black text-lg leading-tight">{c.name}</p>
-                        <p className="text-xs font-bold text-muted-foreground mt-1">{c.phone}</p>
-                      </div>
-                    </div>
+                    <div className="flex items-center gap-5"><div className="bg-white p-4 rounded-2xl text-primary shadow-sm border"><Users /></div><div><p className="font-black text-lg leading-tight">{c.name}</p><p className="text-xs font-bold text-muted-foreground mt-1">{c.phone}</p></div></div>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => { setEditingCustomer(c); setCustomerForm(c); setIsCustomerDialogOpen(true); }}>
-                        <Pencil className="h-5 w-5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-destructive/50" onClick={() => setCustomers(customers.filter(cust => cust.id !== c.id))}>
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingCustomer(c); setCustomerForm(c); setIsCustomerDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setCustomers(customers.filter(cust => cust.id !== c.id))}><Trash2 className="h-5 w-5" /></Button>
                     </div>
                   </div>
                 ))}
               </div>
             </Card>
           )}
-
-          {/* Placeholder contents for other tabs */}
-          {['payments', 'fees'].includes(activeTab) && (
-            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-               <div className="flex flex-col items-center justify-center h-full py-20 opacity-30">
-                  <SettingsIcon className="h-20 w-20 mb-4" />
-                  <p className="text-xl font-bold uppercase tracking-widest">{activeTab} Settings</p>
-               </div>
-            </Card>
-          )}
         </div>
       </div>
 
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
+          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">{editingPayment ? 'Edit Payment' : 'Add Payment'}</DialogTitle></DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Payment Name</Label><Input value={paymentForm.name || ''} onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+            <div className="space-y-2">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Icon Type</Label>
+              <Select value={paymentForm.icon} onValueChange={(val: any) => setPaymentForm({...paymentForm, icon: val})}>
+                <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-2xl">
+                  <SelectItem value="Banknote">Banknote (Cash)</SelectItem>
+                  <SelectItem value="CreditCard">Credit Card</SelectItem>
+                  <SelectItem value="Smartphone">Smartphone (Digital)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Description</Label><Input value={paymentForm.description || ''} onChange={(e) => setPaymentForm({...paymentForm, description: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+          </div>
+          <DialogFooter className="mt-8"><Button onClick={handleSavePayment} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Save Payment Method</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fee Dialog */}
+      <Dialog open={isFeeDialogOpen} onOpenChange={setIsFeeDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
+          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">{editingFee ? 'Edit Fee/Discount' : 'Add Fee/Discount'}</DialogTitle></DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Fee Name</Label><Input value={feeForm.name || ''} onChange={(e) => setFeeForm({...feeForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+            <div className="space-y-2">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Fee Type</Label>
+              <Select value={feeForm.type} onValueChange={(val: any) => setFeeForm({...feeForm, type: val})}>
+                <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-2xl">
+                  <SelectItem value="Tax">Tax</SelectItem>
+                  <SelectItem value="Service">Service Charge</SelectItem>
+                  <SelectItem value="Discount">Discount</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Percentage (%)</Label>
+              <Input type="number" value={feeForm.value || ''} onChange={handleValueChange((val: any) => setFeeForm({...feeForm, value: val}))} className="h-12 rounded-xl border-2" />
+            </div>
+          </div>
+          <DialogFooter className="mt-8"><Button onClick={handleSaveFee} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Save Fee/Discount</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* (Previous Dialogs remain unchanged for Product, Package, Combo, etc.) */}
       {/* Category Dialog */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-3xl font-black">
-              {editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Kategori</Label>
-              <Input 
-                value={categoryForm} 
-                onChange={(e) => setCategoryForm(e.target.value)} 
-                placeholder="Contoh: Bakery, Seafood, dll"
-                className="h-12 rounded-xl border-2 focus-visible:ring-primary/20" 
-              />
-            </div>
-          </div>
-          <DialogFooter className="mt-8">
-            <Button onClick={handleSaveCategory} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20 gap-2">
-              <Check className="h-5 w-5" />
-              Simpan Kategori
-            </Button>
-          </DialogFooter>
+          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
+          <div className="space-y-6"><div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Kategori</Label><Input value={categoryForm} onChange={(e) => setCategoryForm(e.target.value)} placeholder="Bakery, Seafood, dll" className="h-12 rounded-xl border-2 focus:ring-primary/20" /></div></div>
+          <DialogFooter className="mt-8"><Button onClick={handleSaveCategory} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20 gap-2"><Check className="h-5 w-5" />Simpan Kategori</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -785,10 +633,7 @@ export function SettingsView() {
           <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Product Details</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Product Name</Label>
-                  <Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="h-12 rounded-xl focus:ring-primary/20 border-2" />
-                </div>
+                <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Product Name</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="h-12 rounded-xl focus:ring-primary/20 border-2" /></div>
                 <div className="space-y-2">
                   <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
                   <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}>
@@ -796,336 +641,76 @@ export function SettingsView() {
                     <SelectContent className="rounded-2xl">{categories.filter(c => c !== 'All').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Description</Label>
-                  <Input value={productForm.description || ''} onChange={(e) => setProductForm({...productForm, description: e.target.value})} className="h-12 rounded-xl border-2" />
-                </div>
+                <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Description</Label><Input value={productForm.description || ''} onChange={(e) => setProductForm({...productForm, description: e.target.value})} className="h-12 rounded-xl border-2" /></div>
              </div>
              <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                     <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU</Label>
-                     <Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} className="h-12 rounded-xl border-2" />
-                   </div>
-                   <div className="space-y-2">
-                     <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Barcode</Label>
-                     <Input value={productForm.barcode || ''} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} className="h-12 rounded-xl border-2" />
-                   </div>
+                   <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+                   <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Barcode</Label><Input value={productForm.barcode || ''} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} className="h-12 rounded-xl border-2" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                     <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Price ($)</Label>
-                     <Input type="number" value={productForm.price === 0 || productForm.price === '' as any ? '' : productForm.price} onChange={handleValueChange((val: any) => setProductForm({...productForm, price: val}))} className="h-12 rounded-xl border-2 font-black text-primary" />
-                   </div>
-                   <div className="space-y-2">
-                     <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Cost ($)</Label>
-                     <Input type="number" value={productForm.costPrice === 0 || productForm.costPrice === '' as any ? '' : productForm.costPrice} onChange={handleValueChange((val: any) => setProductForm({...productForm, costPrice: val}))} className="h-12 rounded-xl border-2 font-black" />
-                   </div>
+                   <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Price ($)</Label><Input type="number" value={productForm.price || ''} onChange={handleValueChange((val: any) => setProductForm({...productForm, price: val}))} className="h-12 rounded-xl border-2 font-black text-primary" /></div>
+                   <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Cost ($)</Label><Input type="number" value={productForm.costPrice || ''} onChange={handleValueChange((val: any) => setProductForm({...productForm, costPrice: val}))} className="h-12 rounded-xl border-2 font-black" /></div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">On Hand Qty</Label>
-                  <Input type="number" value={productForm.onHandQty === 0 || productForm.onHandQty === '' as any ? '' : productForm.onHandQty} onChange={handleValueChange((val: any) => setProductForm({...productForm, onHandQty: val}))} className="h-12 rounded-xl border-2 font-black" />
-                </div>
+                <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">On Hand Qty</Label><Input type="number" value={productForm.onHandQty || ''} onChange={handleValueChange((val: any) => setProductForm({...productForm, onHandQty: val}))} className="h-12 rounded-xl border-2 font-black" /></div>
              </div>
           </div>
-          <DialogFooter className="mt-8">
-            <Button onClick={() => {
-              if (editingProduct) setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
-              else setProducts([...products, { id: Math.random().toString(36).substr(2, 9), ...productForm, available: true } as Product]);
-              setIsProductDialogOpen(false);
-            }} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Save Product</Button>
-          </DialogFooter>
+          <DialogFooter className="mt-8"><Button onClick={() => { if (editingProduct) setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p)); else setProducts([...products, { id: Math.random().toString(36).substr(2, 9), ...productForm, available: true } as Product]); setIsProductDialogOpen(false); }} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Save Product</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Package Dialog */}
       <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
         <DialogContent className="max-w-3xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-3xl font-black">Package Configuration</DialogTitle>
-            <DialogDescription className="font-medium">Tentukan nama, SKU, dan komposisi item untuk paket ini.</DialogDescription>
-          </DialogHeader>
-
+          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Package Configuration</DialogTitle></DialogHeader>
           <div className="space-y-8 py-4">
-             {/* Basic Info */}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="space-y-2">
-                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Package</Label>
-                 <Input 
-                   value={packageForm.name || ''} 
-                   onChange={(e) => setPackageForm({...packageForm, name: e.target.value})} 
-                   placeholder="e.g. Family Bundle" 
-                   className="h-12 rounded-xl border-2 focus:ring-primary/20"
-                 />
-               </div>
-               <div className="space-y-2">
-                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU Package</Label>
-                 <Input 
-                   value={packageForm.sku || ''} 
-                   onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} 
-                   placeholder="PKG-001" 
-                   className="h-12 rounded-xl border-2 font-mono"
-                 />
-               </div>
-               <div className="col-span-full space-y-2">
-                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Deskripsi</Label>
-                 <Textarea 
-                   value={packageForm.description || ''} 
-                   onChange={(e) => setPackageForm({...packageForm, description: e.target.value})} 
-                   placeholder="Berikan keterangan detail isi paket..." 
-                   className="min-h-[100px] rounded-xl border-2"
-                 />
-               </div>
-               <div className="space-y-2">
-                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Jual Paket ($)</Label>
-                 <Input 
-                   type="number" 
-                   value={packageForm.price === 0 || packageForm.price === '' as any ? '' : packageForm.price} 
-                   onChange={handleValueChange((val: any) => setPackageForm({...packageForm, price: val}))}
-                   className="h-14 rounded-xl border-2 font-black text-2xl text-primary"
-                 />
-               </div>
+               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Package</Label><Input value={packageForm.name || ''} onChange={(e) => setPackageForm({...packageForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU Package</Label><Input value={packageForm.sku || ''} onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+               <div className="col-span-full space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Deskripsi</Label><Textarea value={packageForm.description || ''} onChange={(e) => setPackageForm({...packageForm, description: e.target.value})} className="min-h-[100px] rounded-xl border-2" /></div>
+               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Jual Paket ($)</Label><Input type="number" value={packageForm.price || ''} onChange={handleValueChange((val: any) => setPackageForm({...packageForm, price: val}))} className="h-14 rounded-xl border-2 font-black text-2xl text-primary" /></div>
              </div>
-
              <Separator className="my-6" />
-
-             {/* Items Composition */}
              <div className="space-y-4">
-               <div className="flex justify-between items-center">
-                 <Label className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground ml-1">Komposisi Produk</Label>
-                 <Button 
-                   variant="outline" 
-                   size="sm" 
-                   onClick={addPackageItem}
-                   className="rounded-xl h-10 border-2 font-bold gap-2"
-                 >
-                   <Plus className="h-4 w-4" /> Tambah Item Produk
-                 </Button>
-               </div>
-
-               <div className="space-y-3">
-                 {packageForm.items?.map((item, idx) => (
-                   <div key={idx} className="flex gap-4 items-end p-5 bg-muted/20 rounded-[1.5rem] border border-transparent hover:border-primary/10 transition-all">
-                     <div className="flex-1 space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Pilih Produk</Label>
-                        <Select 
-                          value={item.productId} 
-                          onValueChange={(val) => updatePackageItem(idx, 'productId', val)}
-                        >
-                          <SelectTrigger className="h-12 rounded-xl border-2">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-2xl">
-                            {products.map(p => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name} (${p.price.toFixed(2)})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                     </div>
-                     <div className="w-24 space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Qty</Label>
-                        <Input 
-                          type="number" 
-                          value={item.quantity === 0 ? '' : item.quantity} 
-                          onChange={(e) => updatePackageItem(idx, 'quantity', e.target.value === '' ? 0 : parseInt(e.target.value))}
-                          className="h-12 rounded-xl border-2 font-bold text-center"
-                        />
-                     </div>
-                     <Button 
-                       variant="ghost" 
-                       size="icon" 
-                       onClick={() => removePackageItem(idx)}
-                       className="h-12 w-12 text-destructive/40 hover:text-destructive hover:bg-destructive/5 rounded-xl"
-                     >
-                       <Trash2 className="h-5 w-5" />
-                     </Button>
-                   </div>
-                 ))}
-                 {(packageForm.items?.length || 0) === 0 && (
-                   <div className="text-center py-12 bg-muted/10 rounded-[2rem] border-2 border-dashed">
-                      <p className="text-sm font-bold text-muted-foreground opacity-50">Belum ada item produk dalam paket ini.</p>
-                   </div>
-                 )}
-               </div>
+               <div className="flex justify-between items-center"><Label className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground">Komposisi Produk</Label><Button variant="outline" size="sm" onClick={addPackageItem} className="rounded-xl h-10 border-2 font-bold gap-2"><Plus className="h-4 w-4" /> Tambah Item</Button></div>
+               <div className="space-y-3">{packageForm.items?.map((item, idx) => (<div key={idx} className="flex gap-4 items-end p-5 bg-muted/20 rounded-[1.5rem] border border-transparent hover:border-primary/10 transition-all"><div className="flex-1 space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Produk</Label><Select value={item.productId} onValueChange={(val) => updatePackageItem(idx, 'productId', val)}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-2xl">{products.map(p => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}</SelectContent></Select></div><div className="w-24 space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Qty</Label><Input type="number" value={item.quantity || ''} onChange={(e) => updatePackageItem(idx, 'quantity', e.target.value === '' ? 0 : parseInt(e.target.value))} className="h-12 rounded-xl border-2 font-bold text-center" /></div><Button variant="ghost" size="icon" onClick={() => removePackageItem(idx)} className="h-12 w-12 text-destructive/40"><Trash2 className="h-5 w-5" /></Button></div>))}</div>
              </div>
           </div>
-
-          <DialogFooter className="mt-8 gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsPackageDialogOpen(false)} 
-              className="h-16 rounded-2xl font-black text-lg px-8 border-2"
-            >
-              Batal
-            </Button>
-            <Button 
-              onClick={handleSavePackage} 
-              className="flex-1 h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20"
-            >
-              Simpan Package
-            </Button>
-          </DialogFooter>
+          <DialogFooter className="mt-8 gap-3"><Button variant="outline" onClick={() => setIsPackageDialogOpen(false)} className="h-16 rounded-2xl font-black text-lg px-8">Batal</Button><Button onClick={handleSavePackage} className="flex-1 h-16 rounded-2xl bg-primary font-black text-lg">Simpan Package</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Combo Dialog */}
       <Dialog open={isComboDialogOpen} onOpenChange={setIsComboDialogOpen}>
         <DialogContent className="max-w-4xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-3xl font-black">Combo Configuration</DialogTitle>
-            <DialogDescription className="font-medium">Build a flexible combo with multiple choice groups.</DialogDescription>
-          </DialogHeader>
-
+          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Combo Configuration</DialogTitle></DialogHeader>
           <div className="space-y-8 py-4">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="space-y-2">
-                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Combo</Label>
-                 <Input 
-                   value={comboForm.name || ''} 
-                   onChange={(e) => setComboForm({...comboForm, name: e.target.value})} 
-                   placeholder="Combo Super Hemat" 
-                   className="h-12 rounded-xl border-2 focus:ring-primary/20"
-                 />
-               </div>
-               <div className="space-y-2">
-                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU Combo</Label>
-                 <Input 
-                   value={comboForm.sku || ''} 
-                   onChange={(e) => setComboForm({...comboForm, sku: e.target.value})} 
-                   placeholder="CMB-001" 
-                   className="h-12 rounded-xl border-2 font-mono"
-                 />
-               </div>
-               <div className="col-span-full space-y-2">
-                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Deskripsi</Label>
-                 <Textarea 
-                   value={comboForm.description || ''} 
-                   onChange={(e) => setComboForm({...comboForm, description: e.target.value})} 
-                   placeholder="Keterangan isi combo..." 
-                   className="min-h-[80px] rounded-xl border-2"
-                 />
-               </div>
-               <div className="space-y-2">
-                 <Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Dasar Combo ($)</Label>
-                 <Input 
-                   type="number" 
-                   value={comboForm.basePrice === 0 || comboForm.basePrice === '' as any ? '' : comboForm.basePrice} 
-                   onChange={handleValueChange((val: any) => setComboForm({...comboForm, basePrice: val}))}
-                   className="h-14 rounded-xl border-2 font-black text-2xl text-primary"
-                 />
-               </div>
+               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Combo</Label><Input value={comboForm.name || ''} onChange={(e) => setComboForm({...comboForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU Combo</Label><Input value={comboForm.sku || ''} onChange={(e) => setComboForm({...comboForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Dasar Combo ($)</Label><Input type="number" value={comboForm.basePrice || ''} onChange={handleValueChange((val: any) => setComboForm({...comboForm, basePrice: val}))} className="h-14 rounded-xl border-2 font-black text-2xl text-primary" /></div>
              </div>
-
              <Separator className="my-6" />
-
-             {/* Groups Builder */}
              <div className="space-y-6">
-               <div className="flex justify-between items-center">
-                 <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 p-2 rounded-xl text-primary"><Settings2 className="h-4 w-4" /></div>
-                    <Label className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground">Choice Groups Builder</Label>
-                 </div>
-                 <Button onClick={addComboGroup} variant="outline" className="h-10 rounded-xl border-2 font-bold gap-2">
-                   <Plus className="h-4 w-4" /> Tambah Grup Pilihan
-                 </Button>
-               </div>
-
+               <div className="flex justify-between items-center"><div className="flex items-center gap-3"><Label className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground">Choice Groups Builder</Label></div><Button onClick={addComboGroup} variant="outline" className="h-10 rounded-xl border-2 font-bold gap-2"><Plus className="h-4 w-4" /> Tambah Grup</Button></div>
                <div className="space-y-6">
                  {comboForm.groups?.map((group, gIdx) => (
                    <div key={group.id} className="p-6 bg-muted/10 rounded-[2rem] border-2 border-transparent hover:border-primary/5 transition-all space-y-6">
                      <div className="flex flex-col md:flex-row gap-6 items-start">
-                        <div className="flex-1 space-y-2">
-                           <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Nama Grup (e.g. Pilih Minuman)</Label>
-                           <Input 
-                             value={group.name} 
-                             onChange={(e) => updateComboGroup(gIdx, 'name', e.target.value)}
-                             className="h-12 rounded-xl border-2 bg-white"
-                           />
-                        </div>
-                        <div className="flex items-center gap-3 pt-8">
-                           <Checkbox 
-                             id={`req-${group.id}`} 
-                             checked={group.required} 
-                             onCheckedChange={(val) => updateComboGroup(gIdx, 'required', !!val)} 
-                           />
-                           <Label htmlFor={`req-${group.id}`} className="font-bold text-sm cursor-pointer">Wajib Dipilih</Label>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => removeComboGroup(gIdx)}
-                          className="h-12 w-12 text-destructive/40 hover:text-destructive mt-6"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
+                        <div className="flex-1 space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Nama Grup</Label><Input value={group.name} onChange={(e) => updateComboGroup(gIdx, 'name', e.target.value)} className="h-12 rounded-xl border-2 bg-white" /></div>
+                        <div className="flex items-center gap-3 pt-8"><Checkbox id={`req-${group.id}`} checked={group.required} onCheckedChange={(val) => updateComboGroup(gIdx, 'required', !!val)} /><Label htmlFor={`req-${group.id}`} className="font-bold text-sm">Wajib Dipilih</Label></div>
+                        <Button variant="ghost" size="icon" onClick={() => removeComboGroup(gIdx)} className="h-12 w-12 text-destructive/40 mt-6"><Trash2 className="h-5 w-5" /></Button>
                      </div>
-
                      <div className="space-y-3 pl-4 border-l-2 border-primary/10">
-                        <div className="flex justify-between items-center mb-2">
-                           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Produk Opsi dlm Grup:</p>
-                           <Button 
-                             onClick={() => addComboOption(gIdx)} 
-                             variant="ghost" 
-                             size="sm" 
-                             className="h-8 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg"
-                           >
-                              <Plus className="h-3.5 w-3.5 mr-1" /> Tambah Opsi
-                           </Button>
-                        </div>
-                        
-                        {group.options.map((opt, oIdx) => (
-                          <div key={oIdx} className="flex gap-4 items-end bg-white/50 p-4 rounded-2xl border border-transparent hover:border-primary/5">
-                             <div className="flex-1 space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Produk</Label>
-                                <Select 
-                                  value={opt.productId} 
-                                  onValueChange={(val) => updateComboOption(gIdx, oIdx, 'productId', val)}
-                                >
-                                  <SelectTrigger className="h-10 rounded-lg bg-white border-2"><SelectValue /></SelectTrigger>
-                                  <SelectContent className="rounded-xl">
-                                    {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                             </div>
-                             <div className="w-28 space-y-1.5">
-                                <Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Extra Price ($)</Label>
-                                <Input 
-                                  type="number" 
-                                  value={opt.extraPrice === 0 ? '' : opt.extraPrice} 
-                                  onChange={(e) => updateComboOption(gIdx, oIdx, 'extraPrice', e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                                  className="h-10 rounded-lg bg-white border-2 font-bold"
-                                />
-                             </div>
-                             <Button 
-                               variant="ghost" 
-                               size="icon" 
-                               onClick={() => removeComboOption(gIdx, oIdx)}
-                               className="h-10 w-10 text-destructive/30 hover:text-destructive"
-                             >
-                               <Trash2 className="h-4 w-4" />
-                             </Button>
-                          </div>
-                        ))}
+                        <div className="flex justify-between items-center mb-2"><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Produk Opsi:</p><Button onClick={() => addComboOption(gIdx)} variant="ghost" size="sm" className="h-8 text-[10px] font-black text-primary"><Plus className="h-3.5 w-3.5 mr-1" /> Tambah Opsi</Button></div>
+                        {group.options.map((opt, oIdx) => (<div key={oIdx} className="flex gap-4 items-end bg-white/50 p-4 rounded-2xl border border-transparent hover:border-primary/5"><div className="flex-1 space-y-1.5"><Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Produk</Label><Select value={opt.productId} onValueChange={(val) => updateComboOption(gIdx, oIdx, 'productId', val)}><SelectTrigger className="h-10 rounded-lg bg-white border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div><div className="w-28 space-y-1.5"><Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Extra Price ($)</Label><Input type="number" value={opt.extraPrice || ''} onChange={(e) => updateComboOption(gIdx, oIdx, 'extraPrice', e.target.value === '' ? 0 : parseFloat(e.target.value))} className="h-10 rounded-lg bg-white border-2 font-bold" /></div><Button variant="ghost" size="icon" onClick={() => removeComboOption(gIdx, oIdx)} className="h-10 w-10 text-destructive/30"><Trash2 className="h-4 w-4" /></Button></div>))}
                      </div>
                    </div>
                  ))}
-                 {(comboForm.groups?.length || 0) === 0 && (
-                   <div className="text-center py-16 border-2 border-dashed rounded-[2rem] bg-muted/5 opacity-50">
-                      <LayoutGrid className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="font-black text-sm uppercase tracking-widest">Belum ada grup pilihan</p>
-                      <p className="text-xs font-medium">Klik tombol di atas untuk mulai membangun combo.</p>
-                   </div>
-                 )}
                </div>
              </div>
           </div>
-
-          <DialogFooter className="mt-10 gap-3">
-            <Button variant="outline" onClick={() => setIsComboDialogOpen(false)} className="h-16 rounded-2xl font-black text-lg px-8 border-2">Batal</Button>
-            <Button onClick={handleSaveCombo} className="flex-1 h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Simpan Master Combo</Button>
-          </DialogFooter>
+          <DialogFooter className="mt-10 gap-3"><Button variant="outline" onClick={() => setIsComboDialogOpen(false)} className="h-16 rounded-2xl font-black text-lg px-8">Batal</Button><Button onClick={handleSaveCombo} className="flex-1 h-16 rounded-2xl bg-primary font-black text-lg">Simpan Combo</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1136,11 +721,8 @@ export function SettingsView() {
           <div className="space-y-6">
             <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label><Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
             <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Phone Number</Label><Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Email</Label><Input value={customerForm.email || ''} onChange={(e) => setCustomerForm({...customerForm, email: e.target.value})} className="h-12 rounded-xl border-2" /></div>
           </div>
-          <DialogFooter className="mt-8">
-            <Button onClick={handleSaveCustomer} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Save Customer</Button>
-          </DialogFooter>
+          <DialogFooter className="mt-8"><Button onClick={handleSaveCustomer} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Save Customer</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1149,85 +731,12 @@ export function SettingsView() {
         <DialogContent className="max-w-xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
           <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Price List Config</DialogTitle></DialogHeader>
           <div className="space-y-8">
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Price List Name</Label>
-              <Input value={priceListForm.name || ''} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} placeholder="Wholesale Promo" className="h-12 rounded-xl border-2" />
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Target Product</Label>
-              <Select value={priceListForm.productId} onValueChange={(val) => setPriceListForm({...priceListForm, productId: val})}>
-                <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-2xl">
-                  {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Start Date</Label>
-                <Input type="date" value={priceListForm.startDate || ''} onChange={(e) => setPriceListForm({...priceListForm, startDate: e.target.value})} className="h-12 rounded-xl border-2" />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">End Date</Label>
-                <Input type="date" value={priceListForm.endDate || ''} onChange={(e) => setPriceListForm({...priceListForm, endDate: e.target.value})} className="h-12 rounded-xl border-2" />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground ml-1">Quantity Tiers</Label>
-                <Button variant="outline" size="sm" onClick={() => setPriceListForm(prev => ({ ...prev, tiers: [...(prev.tiers || []), { minQty: 1, maxQty: 99, price: 0 }] }))} className="rounded-xl h-8 text-[10px] font-bold border-2">
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Tier
-                </Button>
-              </div>
-              <div className="space-y-4">
-                {priceListForm.tiers?.map((tier, idx) => (
-                  <div key={idx} className="flex gap-4 items-end p-5 bg-muted/20 rounded-[1.5rem] relative group border border-transparent hover:border-primary/10 transition-all">
-                    <div className="flex-1 space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Min Qty</Label>
-                      <Input type="number" value={tier.minQty === 0 ? '' : tier.minQty} onChange={(e) => {
-                        const newTiers = [...(priceListForm.tiers || [])];
-                        newTiers[idx].minQty = e.target.value === '' ? 0 : parseInt(e.target.value);
-                        setPriceListForm({...priceListForm, tiers: newTiers});
-                      }} className="h-11 rounded-xl border-2 font-bold" />
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Max Qty</Label>
-                      <Input type="number" value={tier.maxQty === 0 ? '' : tier.maxQty} onChange={(e) => {
-                        const newTiers = [...(priceListForm.tiers || [])];
-                        newTiers[idx].maxQty = e.target.value === '' ? 0 : parseInt(e.target.value);
-                        setPriceListForm({...priceListForm, tiers: newTiers});
-                      }} className="h-11 rounded-xl border-2 font-bold" />
-                    </div>
-                    <div className="flex-1 space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Price ($)</Label>
-                      <Input type="number" value={tier.price === 0 ? '' : tier.price} onChange={(e) => {
-                        const newTiers = [...(priceListForm.tiers || [])];
-                        newTiers[idx].price = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                        setPriceListForm({...priceListForm, tiers: newTiers});
-                      }} className="h-11 rounded-xl border-2 font-black text-primary" />
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => setPriceListForm(prev => ({ ...prev, tiers: prev.tiers?.filter((_, i) => i !== idx) }))} className="text-destructive/40 hover:text-destructive h-11 w-11 rounded-xl">
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between bg-muted/10 p-5 rounded-2xl">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-black">Enable Price List</Label>
-                <p className="text-xs text-muted-foreground font-medium">Toggle this list to be active in POS</p>
-              </div>
-              <Switch checked={priceListForm.enabled} onCheckedChange={(val) => setPriceListForm({...priceListForm, enabled: val})} />
-            </div>
+            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Name</Label><Input value={priceListForm.name || ''} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Product</Label><Select value={priceListForm.productId} onValueChange={(val) => setPriceListForm({...priceListForm, productId: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-2xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>
+            <div className="grid grid-cols-2 gap-6"><div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Start Date</Label><Input type="date" value={priceListForm.startDate || ''} onChange={(e) => setPriceListForm({...priceListForm, startDate: e.target.value})} className="h-12 rounded-xl border-2" /></div><div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">End Date</Label><Input type="date" value={priceListForm.endDate || ''} onChange={(e) => setPriceListForm({...priceListForm, endDate: e.target.value})} className="h-12 rounded-xl border-2" /></div></div>
+            <div className="space-y-4">{priceListForm.tiers?.map((tier, idx) => (<div key={idx} className="flex gap-4 items-end p-5 bg-muted/20 rounded-[1.5rem]"><div className="flex-1 space-y-1.5"><Label className="text-[10px] font-black opacity-60">Min</Label><Input type="number" value={tier.minQty || ''} onChange={(e) => { const newTiers = [...(priceListForm.tiers || [])]; newTiers[idx].minQty = parseInt(e.target.value) || 0; setPriceListForm({...priceListForm, tiers: newTiers}); }} className="h-11 rounded-xl border-2" /></div><div className="flex-1 space-y-1.5"><Label className="text-[10px] font-black opacity-60">Max</Label><Input type="number" value={tier.maxQty || ''} onChange={(e) => { const newTiers = [...(priceListForm.tiers || [])]; newTiers[idx].maxQty = parseInt(e.target.value) || 0; setPriceListForm({...priceListForm, tiers: newTiers}); }} className="h-11 rounded-xl border-2" /></div><div className="flex-1 space-y-1.5"><Label className="text-[10px] font-black opacity-60">Price</Label><Input type="number" value={tier.price || ''} onChange={(e) => { const newTiers = [...(priceListForm.tiers || [])]; newTiers[idx].price = parseFloat(e.target.value) || 0; setPriceListForm({...priceListForm, tiers: newTiers}); }} className="h-11 rounded-xl border-2 font-black text-primary" /></div><Button variant="ghost" size="icon" onClick={() => setPriceListForm(prev => ({ ...prev, tiers: prev.tiers?.filter((_, i) => i !== idx) }))} className="text-destructive/40 h-11 w-11"><Trash2 className="h-5 w-5" /></Button></div>))}</div>
           </div>
-          <DialogFooter className="mt-8">
-            <Button onClick={handleSavePriceList} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Apply Price List</Button>
-          </DialogFooter>
+          <DialogFooter className="mt-8"><Button onClick={handleSavePriceList} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Save Price List</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -1237,18 +746,8 @@ export function SettingsView() {
 function SettingsSection({ icon: Icon, title, description, children }: any) {
   return (
     <div className="space-y-8">
-      <div className="flex gap-5">
-        <div className="bg-primary/10 p-4 rounded-2xl text-primary h-fit shadow-sm">
-          <Icon className="h-7 w-7" />
-        </div>
-        <div>
-          <h3 className="text-2xl font-black leading-tight">{title}</h3>
-          <p className="text-sm text-muted-foreground font-medium mt-1">{description}</p>
-        </div>
-      </div>
-      <div className="pl-0 lg:pl-4">
-        {children}
-      </div>
+      <div className="flex gap-5"><div className="bg-primary/10 p-4 rounded-2xl text-primary h-fit"><Icon className="h-7 w-7" /></div><div><h3 className="text-2xl font-black leading-tight">{title}</h3><p className="text-sm text-muted-foreground font-medium mt-1">{description}</p></div></div>
+      <div className="pl-0 lg:pl-4">{children}</div>
     </div>
   );
 }
