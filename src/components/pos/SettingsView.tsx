@@ -115,7 +115,7 @@ export function SettingsView() {
         </head>
         <body>
           <div class="label">
-            <div class="store">ALEX'S DELI</div>
+            <div class="store">NEXTPOS DELI</div>
             <div class="name">${product.name}</div>
             <div class="barcode-box">${product.barcode}</div>
             <div class="code">SKU: ${product.sku}</div>
