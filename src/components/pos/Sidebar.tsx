@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 
 export function Sidebar() {
@@ -169,6 +169,9 @@ export function Sidebar() {
 
       <Dialog open={showSummaryPreview} onOpenChange={setShowSummaryPreview}>
         <DialogContent className="max-w-[400px] p-0 border-none shadow-none bg-transparent">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Ringkasan Sesi Kasir</DialogTitle>
+          </DialogHeader>
           <SessionSummaryReceipt session={lastClosedSession} />
         </DialogContent>
       </Dialog>
