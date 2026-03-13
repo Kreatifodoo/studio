@@ -6,15 +6,12 @@ import { Product, OrderItem, Transaction, Category, AppView, PaymentMethod, Fee,
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 
 interface POSContextType {
-  // Navigation & UI
   activeCategory: Category;
   setActiveCategory: (cat: Category) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   view: AppView;
   setView: (view: AppView) => void;
-  
-  // Cart & Orders
   cart: OrderItem[];
   addToCart: (product: Product) => void;
   addPackageToCart: (pkg: Package) => void;
@@ -25,8 +22,6 @@ interface POSContextType {
   clearCart: () => void;
   selectedCustomerId: string | null;
   setSelectedCustomerId: (id: string | null) => void;
-  
-  // History & Sessions
   history: Transaction[];
   addTransaction: (transaction: Transaction) => void;
   currentSession: Session | null;
@@ -34,8 +29,6 @@ interface POSContextType {
   openSession: (openingCash: number) => void;
   closeSession: (closingCash: number) => void;
   lastClosedSession: Session | null;
-
-  // Master Data
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   categories: Category[];
@@ -77,13 +70,9 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [history, setHistory] = useState<Transaction[]>([]);
   const [view, setView] = useState<AppView>('pos');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  
-  // Session State
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [lastClosedSession, setLastClosedSession] = useState<Session | null>(null);
-
-  // Master Data State
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(INITIAL_PAYMENT_METHODS);
@@ -102,32 +91,26 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     let basePrice = product.price;
     let priceListId: string | undefined = undefined;
 
-    // 1. Check Price List
     const activeList = priceLists.find(pl => 
-      pl.enabled && 
-      pl.productId === productId &&
-      new Date(pl.startDate) <= now &&
-      new Date(pl.endDate) >= now
+      pl.enabled && pl.productId === productId &&
+      new Date(pl.startDate) <= now && new Date(pl.endDate) >= now
     );
 
     if (activeList) {
-      const tier = activeList.tiers.find(t => quantity >= t.minQty && quantity <= t.maxQty);
+      const tier = activeList.tiers.find(t => quantity >= t.minQty && quantity <= (t.maxQty || Infinity));
       if (tier) {
         basePrice = tier.price;
         priceListId = activeList.id;
       }
     }
 
-    // 2. Check Promo Discount
     let finalPrice = basePrice;
     let promoId: string | undefined = undefined;
     let savings = 0;
 
     const activePromo = promoDiscounts.find(pd => 
-      pd.enabled && 
-      pd.productId === productId &&
-      new Date(pd.startDate) <= now &&
-      new Date(pd.endDate) >= now
+      pd.enabled && pd.productId === productId &&
+      new Date(pd.startDate) <= now && new Date(pd.endDate) >= now
     );
 
     if (activePromo) {
@@ -140,35 +123,23 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       finalPrice = Math.max(0, basePrice - savings);
     }
 
-    return { 
-      price: finalPrice, 
-      originalPrice: basePrice, 
-      savings, 
-      priceListId, 
-      promoId 
-    };
+    return { price: finalPrice, originalPrice: basePrice, savings, priceListId, promoId };
   }, [products, priceLists, promoDiscounts]);
 
   const openSession = (openingCash: number) => {
-    const newSession: Session = {
+    setCurrentSession({
       id: Math.random().toString(36).substr(2, 9).toUpperCase(),
       startTime: new Date().toISOString(),
       openingCash,
       status: 'Open',
       transactionIds: []
-    };
-    setCurrentSession(newSession);
+    });
     setLastClosedSession(null);
   };
 
   const closeSession = (closingCash: number) => {
     if (!currentSession) return;
-    const closed: Session = {
-      ...currentSession,
-      endTime: new Date().toISOString(),
-      closingCash,
-      status: 'Closed'
-    };
+    const closed: Session = { ...currentSession, endTime: new Date().toISOString(), closingCash, status: 'Closed' };
     setSessions(prev => [closed, ...prev]);
     setLastClosedSession(closed);
     setCurrentSession(null);
@@ -177,216 +148,96 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (product: Product) => {
     if (!product.available || !currentSession) return;
-    
     const existingInCart = cart.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
     const qtyInCart = existingInCart ? existingInCart.quantity : 0;
-    
     if (qtyInCart >= product.onHandQty) return;
 
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
       if (existing) {
         const newQty = existing.quantity + 1;
-        const { price: newPrice, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(product.id, newQty);
-        return prev.map(item =>
-          (item.productId === product.id && !item.isPackage && !item.isCombo) ? { 
-            ...item, 
-            quantity: newQty, 
-            price: newPrice, 
-            originalPrice, 
-            promoSavings: savings, 
-            priceListId,
-            promoId
-          } : item
-        );
+        const { price, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(product.id, newQty);
+        return prev.map(item => (item.productId === product.id && !item.isPackage && !item.isCombo) ? { ...item, quantity: newQty, price, originalPrice, promoSavings: savings, priceListId, promoId } : item);
       }
-      const { price: initialPrice, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(product.id, 1);
-      return [...prev, {
-        id: Math.random().toString(36).substr(2, 9),
-        productId: product.id,
-        name: product.name,
-        price: initialPrice,
-        originalPrice,
-        promoSavings: savings,
-        quantity: 1,
-        priceListId,
-        promoId,
-        isPackage: false,
-        isCombo: false
-      }];
+      const { price, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(product.id, 1);
+      return [...prev, { id: Math.random().toString(36).substr(2, 9), productId: product.id, name: product.name, price, originalPrice, promoSavings: savings, quantity: 1, priceListId, promoId, isPackage: false, isCombo: false }];
     });
   };
 
   const addPackageToCart = (pkg: Package) => {
     if (!pkg.enabled || !currentSession) return;
-
     setCart(prev => {
       const existing = prev.find(item => item.productId === pkg.id && item.isPackage);
-      if (existing) {
-        return prev.map(item =>
-          (item.productId === pkg.id && item.isPackage) ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      return [...prev, {
-        id: Math.random().toString(36).substr(2, 9),
-        productId: pkg.id,
-        name: pkg.name,
-        price: pkg.price,
-        originalPrice: pkg.price,
-        promoSavings: 0,
-        quantity: 1,
-        isPackage: true,
-        isCombo: false
-      }];
+      if (existing) return prev.map(item => (item.productId === pkg.id && item.isPackage) ? { ...item, quantity: item.quantity + 1 } : item);
+      return [...prev, { id: Math.random().toString(36).substr(2, 9), productId: pkg.id, name: pkg.name, price: pkg.price, originalPrice: pkg.price, promoSavings: 0, quantity: 1, isPackage: true, isCombo: false }];
     });
   };
 
   const addComboToCart = (combo: Combo, selections: OrderItem['comboSelections']) => {
     if (!combo.enabled || !currentSession) return;
-
     const extraTotal = (selections || []).reduce((acc, s) => acc + s.extraPrice, 0);
     const finalPrice = combo.basePrice + extraTotal;
-
-    setCart(prev => [...prev, {
-      id: Math.random().toString(36).substr(2, 9),
-      productId: combo.id,
-      name: combo.name,
-      price: finalPrice,
-      originalPrice: finalPrice,
-      promoSavings: 0,
-      quantity: 1,
-      isPackage: false,
-      isCombo: true,
-      comboSelections: selections
-    }]);
+    setCart(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), productId: combo.id, name: combo.name, price: finalPrice, originalPrice: finalPrice, promoSavings: 0, quantity: 1, isPackage: false, isCombo: true, comboSelections: selections }]);
   };
 
-  const removeFromCart = (itemId: string) => {
-    setCart(prev => prev.filter(item => item.id !== itemId));
-  };
+  const removeFromCart = (itemId: string) => setCart(prev => prev.filter(item => item.id !== itemId));
 
   const updateQuantity = (itemId: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.id === itemId) {
         const newQty = Math.max(1, item.quantity + delta);
-        
-        if (item.isPackage || item.isCombo) {
-          return { ...item, quantity: newQty };
-        } else {
-          const product = products.find(p => p.id === item.productId);
-          if (product && newQty > product.onHandQty) return item;
-          
-          const { price: newPrice, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(item.productId, newQty);
-          return { 
-            ...item, 
-            quantity: newQty, 
-            price: newPrice, 
-            originalPrice, 
-            promoSavings: savings, 
-            priceListId,
-            promoId
-          };
-        }
+        if (item.isPackage || item.isCombo) return { ...item, quantity: newQty };
+        const product = products.find(p => p.id === item.productId);
+        if (product && newQty > product.onHandQty) return item;
+        const { price, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(item.productId, newQty);
+        return { ...item, quantity: newQty, price, originalPrice, promoSavings: savings, priceListId, promoId };
       }
       return item;
     }));
   };
 
-  const updateNote = (itemId: string, note: string) => {
-    setCart(prev => prev.map(item => item.id === itemId ? { ...item, note } : item));
-  };
-
-  const clearCart = () => {
-    setCart([]);
-    setSelectedCustomerId(null);
-  };
+  const updateNote = (itemId: string, note: string) => setCart(prev => prev.map(item => item.id === itemId ? { ...item, note } : item));
+  const clearCart = () => { setCart([]); setSelectedCustomerId(null); };
 
   const addTransaction = (t: Transaction) => {
     setHistory(prev => [t, ...prev]);
-    
-    // Decrease stock for products and package components
     setProducts(prevProducts => {
-      let updatedProducts = [...prevProducts];
-      
+      let updated = [...prevProducts];
       t.items.forEach(item => {
         if (item.isPackage) {
           const pkg = packages.find(p => p.id === item.productId);
-          if (pkg) {
-            pkg.items.forEach(pkgItem => {
-              updatedProducts = updatedProducts.map(p => {
-                if (p.id === pkgItem.productId) {
-                  return { ...p, onHandQty: p.onHandQty - (pkgItem.quantity * item.quantity) };
-                }
-                return p;
-              });
-            });
-          }
+          pkg?.items.forEach(pkgItem => { updated = updated.map(p => p.id === pkgItem.productId ? { ...p, onHandQty: p.onHandQty - (pkgItem.quantity * item.quantity) } : p); });
         } else if (item.isCombo) {
-          if (item.comboSelections) {
-            item.comboSelections.forEach(sel => {
-              updatedProducts = updatedProducts.map(p => {
-                if (p.id === sel.productId) {
-                  return { ...p, onHandQty: p.onHandQty - item.quantity };
-                }
-                return p;
-              });
-            });
-          }
+          item.comboSelections?.forEach(sel => { updated = updated.map(p => p.id === sel.productId ? { ...p, onHandQty: p.onHandQty - item.quantity } : p); });
         } else {
-          updatedProducts = updatedProducts.map(p => {
-            if (p.id === item.productId) {
-              return { ...p, onHandQty: p.onHandQty - item.quantity };
-            }
-            return p;
-          });
+          updated = updated.map(p => p.id === item.productId ? { ...p, onHandQty: p.onHandQty - item.quantity } : p);
         }
       });
-      
-      return updatedProducts;
+      return updated;
     });
-
-    setCurrentSession(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        transactionIds: [...prev.transactionIds, t.id]
-      };
-    });
+    setCurrentSession(prev => prev ? { ...prev, transactionIds: [...prev.transactionIds, t.id] } : null);
   };
 
   const addCustomer = (customer: Omit<Customer, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9).toUpperCase();
-    const newCustomer: Customer = { id, ...customer };
-    setCustomers(prev => [...prev, newCustomer]);
+    setCustomers(prev => [...prev, { id, ...customer }]);
     return id;
   };
 
   return (
     <POSContext.Provider value={{
-      activeCategory, setActiveCategory,
-      searchQuery, setSearchQuery,
-      cart, addToCart, addPackageToCart, addComboToCart, removeFromCart, updateQuantity, updateNote, clearCart,
-      selectedCustomerId, setSelectedCustomerId,
-      history, addTransaction,
-      currentSession, sessions, openSession, closeSession, lastClosedSession,
-      view, setView,
-      products, setProducts,
-      categories, setCategories,
-      paymentMethods, setPaymentMethods,
-      fees, setFees,
-      customers, setCustomers, addCustomer,
-      priceLists, setPriceLists,
-      packages, setPackages,
-      combos, setCombos,
-      promoDiscounts, setPromoDiscounts
+      activeCategory, setActiveCategory, searchQuery, setSearchQuery, cart, addToCart, addPackageToCart, addComboToCart, removeFromCart, updateQuantity, updateNote, clearCart,
+      selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
+      products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
+      priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts
     }}>
       {children}
     </POSContext.Provider>
   );
 }
 
-export function usePOS() {
+export const usePOS = () => {
   const context = useContext(POSContext);
   if (!context) throw new Error('usePOS must be used within POSProvider');
   return context;
-}
+};
