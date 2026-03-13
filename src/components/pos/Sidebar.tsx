@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 
 export function Sidebar() {
   const { view, setView, currentSession, closeSession, history } = usePOS();
-  const [closingCash, setClosingCash] = useState('0');
+  const [closingCash, setClosingCash] = useState('');
 
   // Calculate expected cash in drawer (Best Practice: Opening Cash + Cash Sales)
   const expectedCash = useMemo(() => {
@@ -139,7 +139,7 @@ export function Sidebar() {
                   disabled={!isBalanced}
                   onClick={() => {
                     closeSession(currentClosingAmount);
-                    setClosingCash('0');
+                    setClosingCash('');
                   }}
                   className="rounded-2xl h-14 bg-primary hover:bg-primary/90 font-black px-8 disabled:opacity-50 disabled:grayscale"
                 >

@@ -261,6 +261,41 @@ export function SettingsView() {
         </TabsContent>
       </Tabs>
 
+      {/* Product Dialog */}
+      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+        <DialogContent className="max-w-2xl rounded-[2.5rem] p-8 overflow-y-auto max-h-[90vh]">
+          <DialogHeader><DialogTitle className="text-2xl font-black">Product Details</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+             <div className="space-y-4">
+                <div className="space-y-2"><Label>Product Name</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="rounded-xl" /></div>
+                <div className="space-y-2"><Label>Category</Label>
+                  <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}>
+                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent>{categories.filter(c => c !== 'All').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label>Description</Label><Input value={productForm.description || ''} onChange={(e) => setProductForm({...productForm, description: e.target.value})} className="rounded-xl" /></div>
+             </div>
+             <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2"><Label>SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} className="rounded-xl" /></div>
+                   <div className="space-y-2"><Label>Barcode</Label><Input value={productForm.barcode || ''} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} className="rounded-xl" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2"><Label>Price ($)</Label><Input type="number" value={productForm.price || ''} onChange={(e) => setProductForm({...productForm, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})} className="rounded-xl" /></div>
+                   <div className="space-y-2"><Label>Cost ($)</Label><Input type="number" value={productForm.costPrice || ''} onChange={(e) => setProductForm({...productForm, costPrice: e.target.value === '' ? 0 : parseFloat(e.target.value)})} className="rounded-xl" /></div>
+                </div>
+                <div className="space-y-2"><Label>On Hand Quantity</Label><Input type="number" value={productForm.onHandQty || ''} onChange={(e) => setProductForm({...productForm, onHandQty: e.target.value === '' ? 0 : parseInt(e.target.value)})} className="rounded-xl" /></div>
+             </div>
+          </div>
+          <DialogFooter><Button onClick={() => {
+            if (editingProduct) setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
+            else setProducts([...products, { id: Math.random().toString(36).substr(2, 9), ...productForm, available: true } as Product]);
+            setIsProductDialogOpen(false);
+          }} className="w-full h-12 rounded-xl bg-primary font-bold">Save Product</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Customer Dialog */}
       <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-8">
@@ -307,7 +342,7 @@ export function SettingsView() {
                   <div key={idx} className="flex gap-3 items-end p-4 bg-muted/20 rounded-2xl">
                     <div className="flex-1 space-y-1">
                       <Label className="text-[10px]">Min Qty</Label>
-                      <Input type="number" value={isNaN(tier.minQty) ? '' : tier.minQty} onChange={(e) => {
+                      <Input type="number" value={tier.minQty || ''} onChange={(e) => {
                         const newTiers = [...(priceListForm.tiers || [])];
                         newTiers[idx].minQty = e.target.value === '' ? 0 : parseInt(e.target.value);
                         setPriceListForm({...priceListForm, tiers: newTiers});
@@ -315,7 +350,7 @@ export function SettingsView() {
                     </div>
                     <div className="flex-1 space-y-1">
                       <Label className="text-[10px]">Max Qty</Label>
-                      <Input type="number" value={isNaN(tier.maxQty) ? '' : tier.maxQty} onChange={(e) => {
+                      <Input type="number" value={tier.maxQty || ''} onChange={(e) => {
                         const newTiers = [...(priceListForm.tiers || [])];
                         newTiers[idx].maxQty = e.target.value === '' ? 0 : parseInt(e.target.value);
                         setPriceListForm({...priceListForm, tiers: newTiers});
@@ -323,7 +358,7 @@ export function SettingsView() {
                     </div>
                     <div className="flex-1 space-y-1">
                       <Label className="text-[10px]">Tier Price ($)</Label>
-                      <Input type="number" value={isNaN(tier.price) ? '' : tier.price} onChange={(e) => {
+                      <Input type="number" value={tier.price || ''} onChange={(e) => {
                         const newTiers = [...(priceListForm.tiers || [])];
                         newTiers[idx].price = e.target.value === '' ? 0 : parseFloat(e.target.value);
                         setPriceListForm({...priceListForm, tiers: newTiers});

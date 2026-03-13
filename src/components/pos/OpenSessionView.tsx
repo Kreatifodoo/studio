@@ -11,7 +11,7 @@ import { usePOS } from './POSContext';
 
 export function OpenSessionView() {
   const { openSession } = usePOS();
-  const [cash, setCash] = useState('0');
+  const [cash, setCash] = useState('');
 
   const handleOpen = () => {
     openSession(parseFloat(cash) || 0);
