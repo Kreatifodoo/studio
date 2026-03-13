@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -24,7 +24,9 @@ import {
   LayoutGrid,
   ChevronRight,
   Check,
-  Ticket
+  Ticket,
+  Upload,
+  Download
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Product, PaymentMethod, Fee, Customer, PriceList, Package, PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount } from '@/types/pos';
@@ -56,6 +58,8 @@ export function SettingsView() {
   } = usePOS();
   
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importType, setImportType] = useState<'products' | 'pricelist' | 'promo' | 'package' | 'combo' | null>(null);
 
   const [activeTab, setActiveTab] = useState('general');
   const [packageSearch, setPackageSearch] = useState('');
@@ -115,6 +119,60 @@ export function SettingsView() {
       ]
     }
   ];
+
+  // Import Handler
+  const handleImportClick = (type: 'products' | 'pricelist' | 'promo' | 'package' | 'combo') => {
+    setImportType(type);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !importType) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const jsonData = JSON.parse(event.target?.result as string);
+        if (!Array.isArray(jsonData)) {
+          throw new Error("Data harus berupa array JSON.");
+        }
+
+        switch (importType) {
+          case 'products':
+            setProducts(prev => [...prev, ...jsonData]);
+            break;
+          case 'pricelist':
+            setPriceLists(prev => [...prev, ...jsonData]);
+            break;
+          case 'promo':
+            setPromoDiscounts(prev => [...prev, ...jsonData]);
+            break;
+          case 'package':
+            setPackages(prev => [...prev, ...jsonData]);
+            break;
+          case 'combo':
+            setCombos(prev => [...prev, ...jsonData]);
+            break;
+        }
+
+        toast({
+          title: "Import Berhasil",
+          description: `${jsonData.length} data telah ditambahkan ke master ${importType}.`,
+        });
+      } catch (err: any) {
+        toast({
+          variant: "destructive",
+          title: "Gagal Impor",
+          description: err.message || "Format file tidak valid.",
+        });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
+  };
 
   // Category Handlers
   const handleOpenAddCategory = () => {
@@ -338,6 +396,14 @@ export function SettingsView() {
 
   return (
     <div className="flex flex-col gap-8 h-full">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept=".json" 
+        onChange={handleFileUpload}
+      />
+      
       <div className="flex flex-col gap-1">
         <h2 className="text-3xl font-black">Settings</h2>
         <p className="text-muted-foreground">Manage your POS configuration and master data</p>
@@ -392,9 +458,12 @@ export function SettingsView() {
 
           {activeTab === 'products' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Product Master</CardTitle><CardDescription className="font-medium">Manage your items and inventory</CardDescription></div>
-                <Button onClick={() => { setEditingProduct(null); setProductForm({ onHandQty: '' as any, price: '' as any, costPrice: '' as any }); setIsProductDialogOpen(true); }} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Product</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => handleImportClick('products')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button onClick={() => { setEditingProduct(null); setProductForm({ onHandQty: '' as any, price: '' as any, costPrice: '' as any }); setIsProductDialogOpen(true); }} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Product</Button>
+                </div>
               </div>
               <div className="space-y-4">
                 {products.map((p) => (
@@ -415,9 +484,12 @@ export function SettingsView() {
 
           {activeTab === 'pricelist' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Price Lists</CardTitle><CardDescription className="font-medium">Tiered pricing and date-based promos</CardDescription></div>
-                <Button onClick={handleOpenAddPriceList} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Create Price List</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => handleImportClick('pricelist')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button onClick={handleOpenAddPriceList} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Create Price List</Button>
+                </div>
               </div>
               <div className="space-y-4">
                 {priceLists.map((pl) => (
@@ -438,9 +510,12 @@ export function SettingsView() {
 
           {activeTab === 'promo' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Master Promo Discount</CardTitle><CardDescription className="font-medium">Direct discounts per product</CardDescription></div>
-                <Button onClick={handleOpenAddPromo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Create Promo</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => handleImportClick('promo')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button onClick={handleOpenAddPromo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Create Promo</Button>
+                </div>
               </div>
               <div className="space-y-4">
                 {promoDiscounts.map((pd) => (
@@ -467,9 +542,12 @@ export function SettingsView() {
 
           {activeTab === 'package' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Master Package</CardTitle><CardDescription className="font-medium">Manage product bundles and packages</CardDescription></div>
-                <Button onClick={handleOpenAddPackage} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Package</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => handleImportClick('package')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button onClick={handleOpenAddPackage} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Package</Button>
+                </div>
               </div>
               <div className="rounded-[1.5rem] border overflow-hidden">
                 <Table>
@@ -495,9 +573,12 @@ export function SettingsView() {
 
           {activeTab === 'combo' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Master Combo</CardTitle><CardDescription className="font-medium">Manage flexible combo sets</CardDescription></div>
-                <Button onClick={handleOpenAddCombo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Combo</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => handleImportClick('combo')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button onClick={handleOpenAddCombo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Combo</Button>
+                </div>
               </div>
               <div className="rounded-[1.5rem] border overflow-hidden">
                 <Table>
@@ -620,6 +701,8 @@ export function SettingsView() {
         </div>
       </div>
 
+      {/* Dialogs... (Remaining UI code unchanged) */}
+      
       {/* Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
