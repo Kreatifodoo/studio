@@ -9,12 +9,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { CheckCircle2, CreditCard, Banknote, Smartphone, Wallet, ArrowRight, Coins, Hash } from 'lucide-react';
+import { CheckCircle2, CreditCard, Banknote, Smartphone, Wallet, ArrowRight, Coins, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePOS } from './POSContext';
 import { cn } from '@/lib/utils';
+import { ReceiptView } from './ReceiptView';
+import { Transaction } from '@/types/pos';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -24,13 +26,14 @@ interface PaymentDialogProps {
 }
 
 export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentDialogProps) {
-  const { paymentMethods } = usePOS();
+  const { paymentMethods, cart } = usePOS();
   const [stage, setStage] = useState<'method' | 'cash-input' | 'ref-input' | 'success'>('method');
   const [transactionId, setTransactionId] = useState<string>('');
   const [selectedMethod, setSelectedMethod] = useState<string>('');
   const [cashReceived, setCashReceived] = useState<string>('');
   const [paymentReference, setPaymentReference] = useState<string>('');
   const [change, setChange] = useState<number>(0);
+  const [currentTransaction, setCurrentTransaction] = useState<Transaction | null>(null);
 
   const enabledMethods = paymentMethods.filter(pm => pm.enabled);
 
@@ -41,6 +44,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setCashReceived('');
     setPaymentReference('');
     setChange(0);
+    setCurrentTransaction(null);
   }, []);
 
   useEffect(() => {
@@ -50,8 +54,9 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
   }, [open, reset]);
 
   const handleStartPayment = (methodName: string) => {
+    const newId = Math.random().toString(36).toUpperCase().slice(2, 10);
     setSelectedMethod(methodName);
-    setTransactionId(Math.random().toString(36).toUpperCase().slice(2, 10));
+    setTransactionId(newId);
     
     const method = paymentMethods.find(p => p.name === methodName);
     const isCash = methodName.toLowerCase().includes('cash') || method?.icon === 'Banknote';
@@ -62,16 +67,41 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     } else if (isCardOrDigital) {
       setStage('ref-input');
     } else {
-      setStage('success');
+      finalizeStage(methodName, '');
     }
   };
 
-  const handleConfirmCash = () => {
+  const finalizeStage = (methodName: string, ref: string) => {
+    const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const tax = total - subtotal; // Simplified for receipt logic
+    
+    const mockTransaction: Transaction = {
+      id: transactionId,
+      date: new Date().toISOString(),
+      items: [...cart],
+      subtotal,
+      tax,
+      total,
+      status: 'Completed',
+      paymentMethod: methodName,
+      paymentReference: ref
+    };
+
+    setCurrentTransaction(mockTransaction);
     setStage('success');
+
+    // Auto-print gimmick (opens print dialog)
+    setTimeout(() => {
+      window.print();
+    }, 500);
+  };
+
+  const handleConfirmCash = () => {
+    finalizeStage(selectedMethod, '');
   };
 
   const handleConfirmReference = () => {
-    setStage('success');
+    finalizeStage(selectedMethod, paymentReference);
   };
 
   const onCashInputChange = (val: string) => {
@@ -93,7 +123,10 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-8 rounded-[2.5rem] overflow-hidden border-none shadow-2xl">
+      <DialogContent className={cn(
+        "max-w-md p-8 rounded-[2.5rem] overflow-hidden border-none shadow-2xl transition-all",
+        stage === 'success' ? "max-w-2xl" : "max-w-md"
+      )}>
         {stage === 'method' && (
           <>
             <DialogHeader className="mb-6">
@@ -166,7 +199,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
               onClick={handleConfirmCash}
               className="h-16 rounded-2xl text-lg font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
             >
-              Complete Payment
+              Confirm & Print Receipt
               <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
@@ -200,38 +233,50 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
               onClick={handleConfirmReference}
               className="h-16 rounded-2xl text-lg font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
             >
-              Complete Payment
+              Confirm & Print Receipt
               <ArrowRight className="h-5 w-5" />
             </Button>
           </div>
         )}
 
         {stage === 'success' && (
-          <div className="py-12 flex flex-col items-center text-center gap-6">
-            <div className="bg-accent/10 p-6 rounded-full">
-              <CheckCircle2 className="h-20 w-20 text-accent animate-in zoom-in duration-500" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <div className="flex flex-col items-center text-center gap-6 py-6">
+              <div className="bg-accent/10 p-6 rounded-full">
+                <CheckCircle2 className="h-20 w-20 text-accent animate-in zoom-in duration-500" />
+              </div>
+              <DialogHeader>
+                <DialogTitle className="text-4xl font-black mb-2 text-primary">Done!</DialogTitle>
+                <DialogDescription className="text-lg font-medium">
+                  Transaction {transactionId} successful.
+                  {parseFloat(cashReceived) > 0 && (
+                    <span className="block mt-2 text-sm text-accent font-bold">
+                      Change: ${change.toFixed(2)}
+                    </span>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="flex flex-col gap-3 w-full">
+                <Button 
+                  variant="outline"
+                  onClick={() => window.print()} 
+                  className="h-14 rounded-2xl font-bold gap-2"
+                >
+                  <Printer className="h-5 w-5" /> Re-print Receipt
+                </Button>
+                <Button 
+                  onClick={() => onSuccess(selectedMethod, paymentReference)} 
+                  className="w-full h-16 rounded-2xl text-lg font-black shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90"
+                >
+                  Continue to Next Order
+                </Button>
+              </div>
             </div>
-            <DialogHeader>
-              <DialogTitle className="text-4xl font-black mb-2 text-primary">Success!</DialogTitle>
-              <DialogDescription className="text-lg font-medium">
-                The transaction via {selectedMethod} was completed successfully.
-                {parseFloat(cashReceived) > 0 && (
-                  <span className="block mt-2 text-sm text-accent font-bold">
-                    Change: ${change.toFixed(2)}
-                  </span>
-                )}
-                {paymentReference && (
-                  <span className="block mt-2 text-sm text-primary font-bold">
-                    Ref: {paymentReference}
-                  </span>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="bg-muted/30 w-full p-4 rounded-2xl">
-               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Transaction ID</p>
-               <p className="text-sm font-bold font-mono">{transactionId}</p>
+
+            <div className="bg-white border rounded-[2rem] p-2 shadow-inner overflow-hidden flex justify-center scale-90 origin-top">
+              <ReceiptView transaction={currentTransaction} />
             </div>
-            <Button onClick={() => onSuccess(selectedMethod, paymentReference)} className="w-full h-16 rounded-[1.5rem] text-lg font-black mt-4 shadow-xl shadow-primary/20 bg-primary hover:bg-primary/90">Print Receipt & Continue</Button>
           </div>
         )}
       </DialogContent>
