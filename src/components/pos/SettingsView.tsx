@@ -26,7 +26,8 @@ import {
   Check,
   Ticket,
   Upload,
-  Download
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Product, PaymentMethod, Fee, Customer, PriceList, Package, PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount } from '@/types/pos';
@@ -120,14 +121,40 @@ export function SettingsView() {
     }
   ];
 
-  // Import Handler
-  const handleImportClick = (type: 'products' | 'pricelist' | 'promo' | 'package' | 'combo') => {
-    setImportType(type);
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  // Template Download Handler
+  const handleDownloadTemplate = (type: string) => {
+    let headers: string[] = [];
+    let fileName = `Template_${type}.csv`;
+
+    switch (type) {
+      case 'products':
+        headers = ["sku", "barcode", "name", "price", "costPrice", "category", "image", "onHandQty", "description"];
+        break;
+      case 'pricelist':
+        headers = ["name", "productSku", "startDate", "endDate", "minQty", "maxQty", "price", "enabled"];
+        break;
+      case 'promo':
+        headers = ["name", "productSku", "type", "value", "startDate", "endDate", "enabled"];
+        break;
+      case 'package':
+        headers = ["sku", "name", "description", "price", "enabled", "items(sku1:qty1|sku2:qty2)"];
+        break;
+      case 'combo':
+        headers = ["sku", "name", "description", "basePrice", "enabled", "groups(name:required:sku:extra;sku:extra|name2...)"];
+        break;
     }
+
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
+  // CSV Import Handler
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !importType) return;
@@ -135,43 +162,147 @@ export function SettingsView() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const jsonData = JSON.parse(event.target?.result as string);
-        if (!Array.isArray(jsonData)) {
-          throw new Error("Data harus berupa array JSON.");
-        }
+        const text = event.target?.result as string;
+        const rows = text.split("\n").map(row => row.split(","));
+        const headers = rows[0].map(h => h.trim().toLowerCase());
+        const dataRows = rows.slice(1).filter(row => row.length === headers.length);
+
+        const parsedData = dataRows.map(row => {
+          const obj: any = {};
+          headers.forEach((header, index) => {
+            let val = row[index]?.trim();
+            // Basic type conversion
+            if (val === 'true') val = true;
+            else if (val === 'false') val = false;
+            else if (!isNaN(Number(val)) && val !== '') val = Number(val);
+            obj[header] = val;
+          });
+          return obj;
+        });
 
         switch (importType) {
           case 'products':
-            setProducts(prev => [...prev, ...jsonData]);
+            const newProducts = parsedData.map(d => ({
+              id: Math.random().toString(36).substr(2, 9),
+              sku: d.sku || '',
+              barcode: d.barcode || '',
+              name: d.name || 'Unknown',
+              price: Number(d.price) || 0,
+              costPrice: Number(d.costprice) || 0,
+              category: d.category || 'All',
+              image: d.image || 'https://picsum.photos/seed/default/400/300',
+              onHandQty: Number(d.onhandqty) || 0,
+              description: d.description || '',
+              available: true
+            }));
+            setProducts(prev => [...prev, ...newProducts]);
             break;
           case 'pricelist':
-            setPriceLists(prev => [...prev, ...jsonData]);
+            const newPriceLists = parsedData.map(d => {
+              const product = products.find(p => p.sku === d.productsku);
+              return {
+                id: Math.random().toString(36).substr(2, 9),
+                name: d.name || 'Promo',
+                productId: product?.id || '',
+                startDate: d.startdate || '',
+                endDate: d.enddate || '',
+                enabled: d.enabled === true,
+                tiers: [{ minQty: Number(d.minqty) || 1, maxQty: Number(d.maxqty) || 999, price: Number(d.price) || 0 }]
+              };
+            });
+            setPriceLists(prev => [...prev, ...newPriceLists]);
             break;
           case 'promo':
-            setPromoDiscounts(prev => [...prev, ...jsonData]);
+            const newPromos = parsedData.map(d => {
+              const product = products.find(p => p.sku === d.productsku);
+              return {
+                id: Math.random().toString(36).substr(2, 9),
+                productId: product?.id || '',
+                name: d.name || 'Discount',
+                type: d.type === 'Percentage' ? 'Percentage' : 'FixedAmount',
+                value: Number(d.value) || 0,
+                startDate: d.startdate || '',
+                endDate: d.enddate || '',
+                enabled: d.enabled === true
+              };
+            });
+            setPromoDiscounts(prev => [...prev, ...newPromos]);
             break;
           case 'package':
-            setPackages(prev => [...prev, ...jsonData]);
+            const newPackages = parsedData.map(d => {
+              const itemParts = (d['items(sku1:qty1|sku2:qty2)'] || '').split('|');
+              const items = itemParts.map((part: string) => {
+                const [sku, qty] = part.split(':');
+                const product = products.find(p => p.sku === sku);
+                return { productId: product?.id || '', quantity: Number(qty) || 1 };
+              }).filter((i: any) => i.productId !== '');
+
+              return {
+                id: Math.random().toString(36).substr(2, 9),
+                sku: d.sku || '',
+                name: d.name || '',
+                description: d.description || '',
+                price: Number(d.price) || 0,
+                enabled: d.enabled === true,
+                items
+              };
+            });
+            setPackages(prev => [...prev, ...newPackages]);
             break;
           case 'combo':
-            setCombos(prev => [...prev, ...jsonData]);
+            const newCombos = parsedData.map(d => {
+              const groupParts = (d['groups(name:required:sku:extra;sku:extra|name2...)'] || '').split('|');
+              const groups = groupParts.map((gPart: string) => {
+                const [gName, req, ...optParts] = gPart.split(':');
+                const options = optParts.join(':').split(';').map(oPart => {
+                  const [sku, extra] = oPart.split(':');
+                  const product = products.find(p => p.sku === sku);
+                  return { productId: product?.id || '', extraPrice: Number(extra) || 0 };
+                }).filter(o => o.productId !== '');
+
+                return {
+                  id: Math.random().toString(36).substr(2, 5),
+                  name: gName || 'Group',
+                  required: req === 'true',
+                  options
+                };
+              });
+
+              return {
+                id: Math.random().toString(36).substr(2, 9),
+                sku: d.sku || '',
+                name: d.name || '',
+                description: d.description || '',
+                basePrice: Number(d.baseprice) || 0,
+                enabled: d.enabled === true,
+                groups
+              };
+            });
+            setCombos(prev => [...prev, ...newCombos]);
             break;
         }
 
         toast({
           title: "Import Berhasil",
-          description: `${jsonData.length} data telah ditambahkan ke master ${importType}.`,
+          description: `${parsedData.length} data telah diproses dan ditambahkan ke sistem.`,
         });
       } catch (err: any) {
         toast({
           variant: "destructive",
           title: "Gagal Impor",
-          description: err.message || "Format file tidak valid.",
+          description: "Format file CSV tidak valid atau terjadi kesalahan pemrosesan.",
         });
       }
     };
     reader.readAsText(file);
     e.target.value = ''; // Reset input
+  };
+
+  const handleImportClick = (type: 'products' | 'pricelist' | 'promo' | 'package' | 'combo') => {
+    setImportType(type);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   // Category Handlers
@@ -400,7 +531,7 @@ export function SettingsView() {
         type="file" 
         ref={fileInputRef} 
         className="hidden" 
-        accept=".json" 
+        accept=".csv" 
         onChange={handleFileUpload}
       />
       
@@ -461,7 +592,8 @@ export function SettingsView() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Product Master</CardTitle><CardDescription className="font-medium">Manage your items and inventory</CardDescription></div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => handleImportClick('products')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button variant="outline" onClick={() => handleDownloadTemplate('products')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Download className="h-5 w-5" /> Template</Button>
+                  <Button variant="outline" onClick={() => handleImportClick('products')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import CSV</Button>
                   <Button onClick={() => { setEditingProduct(null); setProductForm({ onHandQty: '' as any, price: '' as any, costPrice: '' as any }); setIsProductDialogOpen(true); }} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Add Product</Button>
                 </div>
               </div>
@@ -487,7 +619,8 @@ export function SettingsView() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Price Lists</CardTitle><CardDescription className="font-medium">Tiered pricing and date-based promos</CardDescription></div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => handleImportClick('pricelist')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button variant="outline" onClick={() => handleDownloadTemplate('pricelist')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Download className="h-5 w-5" /> Template</Button>
+                  <Button variant="outline" onClick={() => handleImportClick('pricelist')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import CSV</Button>
                   <Button onClick={handleOpenAddPriceList} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Create Price List</Button>
                 </div>
               </div>
@@ -513,7 +646,8 @@ export function SettingsView() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Master Promo Discount</CardTitle><CardDescription className="font-medium">Direct discounts per product</CardDescription></div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => handleImportClick('promo')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button variant="outline" onClick={() => handleDownloadTemplate('promo')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Download className="h-5 w-5" /> Template</Button>
+                  <Button variant="outline" onClick={() => handleImportClick('promo')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import CSV</Button>
                   <Button onClick={handleOpenAddPromo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Create Promo</Button>
                 </div>
               </div>
@@ -545,7 +679,8 @@ export function SettingsView() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Master Package</CardTitle><CardDescription className="font-medium">Manage product bundles and packages</CardDescription></div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => handleImportClick('package')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button variant="outline" onClick={() => handleDownloadTemplate('package')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Download className="h-5 w-5" /> Template</Button>
+                  <Button variant="outline" onClick={() => handleImportClick('package')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import CSV</Button>
                   <Button onClick={handleOpenAddPackage} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Package</Button>
                 </div>
               </div>
@@ -576,7 +711,8 @@ export function SettingsView() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div><CardTitle className="text-2xl font-black">Master Combo</CardTitle><CardDescription className="font-medium">Manage flexible combo sets</CardDescription></div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => handleImportClick('combo')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import JSON</Button>
+                  <Button variant="outline" onClick={() => handleDownloadTemplate('combo')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Download className="h-5 w-5" /> Template</Button>
+                  <Button variant="outline" onClick={() => handleImportClick('combo')} className="h-14 rounded-2xl border-2 font-black px-6 gap-2 shadow-sm"><Upload className="h-5 w-5" /> Import CSV</Button>
                   <Button onClick={handleOpenAddCombo} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Combo</Button>
                 </div>
               </div>
@@ -701,8 +837,6 @@ export function SettingsView() {
         </div>
       </div>
 
-      {/* Dialogs... (Remaining UI code unchanged) */}
-      
       {/* Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
