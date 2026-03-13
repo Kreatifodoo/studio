@@ -153,6 +153,18 @@ export function SettingsView() {
 
   const handleDeleteCategory = (cat: Category) => {
     if (cat === 'All') return; 
+
+    // Validation: Block delete if category is used by any products
+    const hasProducts = products.some(p => p.category === cat);
+    if (hasProducts) {
+      toast({
+        title: "Cannot Delete Category",
+        description: `The category "${cat}" is currently being used by products. Please reassign or delete the products first.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     setCategories(prev => prev.filter(c => c !== cat));
     toast({
       title: "Deleted",
