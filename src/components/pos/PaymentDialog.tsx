@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -25,7 +26,7 @@ interface PaymentDialogProps {
 }
 
 export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentDialogProps) {
-  const { paymentMethods, cart } = usePOS();
+  const { paymentMethods, cart, printer, printViaBluetooth } = usePOS();
   const [stage, setStage] = useState<'method' | 'cash-input' | 'ref-input' | 'success'>('method');
   const [transactionId, setTransactionId] = useState<string>('');
   const [selectedMethod, setSelectedMethod] = useState<string>('');
@@ -74,7 +75,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     }
   };
 
-  const finalizeStage = (methodName: string, ref: string) => {
+  const finalizeStage = async (methodName: string, ref: string) => {
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
     const tax = total - subtotal; 
     
@@ -94,9 +95,15 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     setCurrentTransaction(mockTransaction);
     setStage('success');
 
-    setTimeout(() => {
-      window.print();
-    }, 500);
+    // Jika printer Bluetooth terhubung, lakukan Direct Print
+    if (printer.status === 'connected') {
+      await printViaBluetooth(mockTransaction);
+    } else {
+      // Jika tidak ada Bluetooth, buka dialog print sistem (bisa ke PDF)
+      setTimeout(() => {
+        window.print();
+      }, 500);
+    }
   };
 
   const handleConfirmCash = () => {
@@ -130,12 +137,16 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
         "max-w-md p-8 rounded-[2.5rem] overflow-hidden border-none shadow-2xl transition-all",
         stage === 'success' ? "max-w-2xl" : "max-w-md"
       )}>
+        <DialogHeader className="sr-only">
+          <DialogTitle>Proses Pembayaran</DialogTitle>
+        </DialogHeader>
+
         {stage === 'method' && (
           <>
-            <DialogHeader className="mb-6">
-              <DialogTitle className="text-2xl font-black">Pilih Metode Pembayaran</DialogTitle>
-              <DialogDescription>Total yang harus dibayar: <span className="text-primary font-black text-xl ml-1">{formatCurrency(total)}</span></DialogDescription>
-            </DialogHeader>
+            <div className="mb-6">
+              <h3 className="text-2xl font-black">Pilih Metode Pembayaran</h3>
+              <p className="text-sm text-muted-foreground">Total yang harus dibayar: <span className="text-primary font-black text-xl ml-1">{formatCurrency(total)}</span></p>
+            </div>
             <div className="grid grid-cols-1 gap-4">
               {enabledMethods.length > 0 ? (
                 enabledMethods.map((pm) => (
@@ -162,10 +173,10 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
 
         {stage === 'cash-input' && (
           <div className="flex flex-col gap-6">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black">Pembayaran Tunai</DialogTitle>
-              <DialogDescription>Masukkan jumlah uang yang diterima dari pelanggan.</DialogDescription>
-            </DialogHeader>
+            <div>
+              <h3 className="text-2xl font-black">Pembayaran Tunai</h3>
+              <p className="text-sm text-muted-foreground">Masukkan jumlah uang yang diterima dari pelanggan.</p>
+            </div>
 
             <div className="bg-primary/5 p-6 rounded-[2rem] flex flex-col items-center gap-2">
               <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Total Tagihan</span>
@@ -210,10 +221,10 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
 
         {stage === 'ref-input' && (
           <div className="flex flex-col gap-6">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black">{selectedMethod}</DialogTitle>
-              <DialogDescription>Masukkan referensi pembayaran atau catatan (misal: 4 digit terakhir kartu).</DialogDescription>
-            </DialogHeader>
+            <div>
+              <h3 className="text-2xl font-black">{selectedMethod}</h3>
+              <p className="text-sm text-muted-foreground">Masukkan referensi pembayaran atau catatan.</p>
+            </div>
 
             <div className="bg-primary/5 p-6 rounded-[2rem] flex flex-col items-center gap-2">
               <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Total Tagihan</span>
@@ -248,22 +259,28 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
               <div className="bg-accent/10 p-6 rounded-full">
                 <CheckCircle2 className="h-20 w-20 text-accent animate-in zoom-in duration-500" />
               </div>
-              <DialogHeader>
-                <DialogTitle className="text-4xl font-black mb-2 text-primary">Berhasil!</DialogTitle>
-                <DialogDescription className="text-lg font-medium">
+              <div>
+                <h3 className="text-4xl font-black mb-2 text-primary">Berhasil!</h3>
+                <p className="text-lg font-medium text-muted-foreground">
                   Transaksi {transactionId} selesai.
                   {parseFloat(cashReceived) > 0 && (
                     <span className="block mt-2 text-sm text-accent font-bold">
                       Kembalian: {formatCurrency(change)}
                     </span>
                   )}
-                </DialogDescription>
-              </DialogHeader>
+                </p>
+              </div>
               
               <div className="flex flex-col gap-3 w-full">
                 <Button 
                   variant="outline"
-                  onClick={() => window.print()} 
+                  onClick={async () => {
+                    if (printer.status === 'connected' && currentTransaction) {
+                      await printViaBluetooth(currentTransaction);
+                    } else {
+                      window.print();
+                    }
+                  }} 
                   className="h-14 rounded-2xl font-bold gap-2"
                 >
                   <Printer className="h-5 w-5" /> Cetak Ulang Struk

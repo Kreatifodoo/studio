@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
@@ -67,6 +68,7 @@ interface POSContextType {
   printer: PrinterConfig;
   connectPrinter: () => Promise<void>;
   disconnectPrinter: () => void;
+  printViaBluetooth: (transaction: Transaction) => Promise<boolean>;
 }
 
 const INITIAL_ROLES: Role[] = [
@@ -125,6 +127,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsersState] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: 'system' });
+  const [btCharacteristic, setBtCharacteristic] = useState<any>(null);
   const [btDevice, setBtDevice] = useState<any>(null);
 
   useEffect(() => {
@@ -174,38 +177,50 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     try {
       const nav = navigator as any;
       if (!nav.bluetooth) {
-        alert("Browser Anda tidak mendukung Bluetooth. Pastikan menggunakan Google Chrome di Android dan nyalakan fitur Bluetooth.");
+        alert("Browser Anda tidak mendukung Bluetooth.");
         return;
       }
       
       setPrinter({ ...printer, status: 'connecting' });
       
-      // requestDevice akan memicu dialog asli browser/Chrome
       const device = await nav.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: [
-          '000018f0-0000-1000-8000-00805f9b34fb', 
-          '00001101-0000-1000-8000-00805f9b34fb',
-          '0000180a-0000-1000-8000-00805f9b34fb'
+          '000018f0-0000-1000-8000-00805f9b34fb',
+          '0000ff00-0000-1000-8000-00805f9b34fb',
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455'
         ]
-      }).catch((e: any) => {
-        if (e.name === 'NotFoundError') {
-          throw new Error("Pencarian dibatalkan atau izin tidak diberikan. Pastikan GPS/Lokasi HP Samsung Anda aktif.");
-        }
-        if (e.name === 'SecurityError') {
-          throw new Error("Keamanan browser memblokir Bluetooth. Coba reset izin situs di ikon Gembok Chrome.");
-        }
-        throw e;
       });
 
+      const server = await device.gatt.connect();
+      const services = await server.getPrimaryServices();
+      
+      let writeChar = null;
+      for (const service of services) {
+        const characteristics = await service.getCharacteristics();
+        for (const char of characteristics) {
+          if (char.properties.write || char.properties.writeWithoutResponse) {
+            writeChar = char;
+            break;
+          }
+        }
+        if (writeChar) break;
+      }
+
+      if (!writeChar) {
+        throw new Error("Tidak dapat menemukan jalur tulis (write characteristic) pada printer ini.");
+      }
+
       setBtDevice(device);
+      setBtCharacteristic(writeChar);
       setPrinter({ name: device.name || 'Printer Bluetooth', status: 'connected', type: 'bluetooth' });
       
       device.addEventListener('gattserverdisconnected', () => {
         setPrinter({ name: null, status: 'disconnected', type: 'system' });
+        setBtCharacteristic(null);
       });
     } catch (e: any) {
-      alert(e.message || "Gagal menghubungkan printer. Periksa Izin Lokasi dan Bluetooth Anda.");
+      alert(e.message || "Gagal menghubungkan printer.");
       setPrinter({ name: null, status: 'disconnected', type: 'system' });
     }
   };
@@ -214,7 +229,78 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     if (btDevice && btDevice.gatt.connected) {
       btDevice.gatt.disconnect();
     }
+    setBtDevice(null);
+    setBtCharacteristic(null);
     setPrinter({ name: null, status: 'disconnected', type: 'system' });
+  };
+
+  const printViaBluetooth = async (transaction: Transaction): Promise<boolean> => {
+    if (!btCharacteristic || printer.status !== 'connected') return false;
+
+    try {
+      const encoder = new TextEncoder();
+      const formatCurrency = (val: number) => `Rp ${new Intl.NumberFormat('id-ID').format(val)}`;
+      
+      // ESC/POS Commands
+      const init = "\x1b\x40";
+      const center = "\x1b\x61\x01";
+      const left = "\x1b\x61\x00";
+      const boldOn = "\x1b\x45\x01";
+      const boldOff = "\x1b\x45\x00";
+      const newLine = "\n";
+      const separator = "--------------------------------\n";
+
+      let receipt = init + center + boldOn + storeSettings.name.toUpperCase() + boldOff + newLine;
+      if (storeSettings.address) receipt += storeSettings.address + newLine;
+      receipt += separator + left;
+      receipt += `Order: #${transaction.id}` + newLine;
+      receipt += `Waktu: ${new Date(transaction.date).toLocaleString('id-ID')}` + newLine;
+      receipt += separator;
+
+      transaction.items.forEach(item => {
+        receipt += item.name.substring(0, 32).toUpperCase() + newLine;
+        const qtyPrice = `${item.quantity} x ${formatCurrency(item.price)}`;
+        const total = formatCurrency(item.price * item.quantity);
+        const padding = 32 - qtyPrice.length - total.length;
+        receipt += qtyPrice + " ".repeat(Math.max(1, padding)) + total + newLine;
+      });
+
+      receipt += separator;
+      const subLabel = "Subtotal:";
+      const subVal = formatCurrency(transaction.subtotal);
+      receipt += subLabel + " ".repeat(32 - subLabel.length - subVal.length) + subVal + newLine;
+
+      const taxLabel = "Pajak (11%):";
+      const taxVal = formatCurrency(transaction.tax);
+      receipt += taxLabel + " ".repeat(32 - taxLabel.length - taxVal.length) + taxVal + newLine;
+
+      receipt += boldOn;
+      const totalLabel = "TOTAL:";
+      const totalVal = formatCurrency(transaction.total);
+      receipt += totalLabel + " ".repeat(32 - totalLabel.length - totalVal.length) + totalVal + newLine;
+      receipt += boldOff;
+
+      receipt += separator + center;
+      if (storeSettings.headerNote) receipt += storeSettings.headerNote + newLine;
+      receipt += "Terima Kasih!" + newLine;
+      receipt += newLine + newLine + newLine + newLine; // Feed paper
+
+      const chunks = [];
+      const data = encoder.encode(receipt);
+      const CHUNK_SIZE = 20; // Some BT printers need small chunks
+      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        chunks.push(data.slice(i, i + CHUNK_SIZE));
+      }
+
+      for (const chunk of chunks) {
+        await btCharacteristic.writeValue(chunk);
+      }
+
+      return true;
+    } catch (e) {
+      console.error("Gagal cetak Bluetooth", e);
+      return false;
+    }
   };
 
   const setProducts = useCallback((data: Product[]) => { setProductsState(data); db.products.clear().then(() => db.products.bulkPut(data)); }, []);
@@ -419,7 +505,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
       users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded,
-      printer, connectPrinter, disconnectPrinter
+      printer, connectPrinter, disconnectPrinter, printViaBluetooth
     }}>
       {children}
     </POSContext.Provider>
