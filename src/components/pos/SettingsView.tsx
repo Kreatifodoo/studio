@@ -34,7 +34,9 @@ import {
   Search,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Barcode as BarcodeIcon,
+  Printer
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -77,6 +79,7 @@ export function SettingsView() {
   
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const productImageInputRef = useRef<HTMLInputElement>(null);
   const dbImportRef = useRef<HTMLInputElement>(null);
   const productImportRef = useRef<HTMLInputElement>(null);
   const priceListImportRef = useRef<HTMLInputElement>(null);
@@ -164,8 +167,8 @@ export function SettingsView() {
 
   // --- CSV TEMPLATES ---
   const downloadProductTemplate = () => {
-    const headers = "sku,name,category,price,costPrice,onHandQty,description,image\n";
-    const sample = "MU-001,Nasi Goreng Spesial,Makanan Utama,25000,12000,50,Nasi goreng lezat,https://picsum.photos/seed/1/400/300\nMN-001,Es Teh Manis,Minuman,5000,1500,100,Teh seduh segar,https://picsum.photos/seed/2/400/300";
+    const headers = "sku,barcode,name,category,price,costPrice,onHandQty,description,image\n";
+    const sample = "MU-001,888001,Nasi Goreng Spesial,Makanan Utama,25000,12000,50,Nasi goreng lezat,https://picsum.photos/seed/1/400/300\nMN-001,888002,Es Teh Manis,Minuman,5000,1500,100,Teh seduh segar,https://picsum.photos/seed/2/400/300";
     downloadFile(headers + sample, "template_produk.csv");
   };
 
@@ -214,11 +217,11 @@ export function SettingsView() {
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        const [sku, name, category, price, costPrice, onHandQty, description, image] = line.split(',');
+        const [sku, barcode, name, category, price, costPrice, onHandQty, description, image] = line.split(',');
         newProducts.push({
           id: Math.random().toString(36).substr(2, 9),
           sku: sku || `SKU-${Date.now()}`,
-          barcode: sku || '',
+          barcode: barcode || sku || '',
           name: name || 'Produk Tanpa Nama',
           category: category || (categories.length > 0 ? categories[0] : 'Umum'),
           price: parseFloat(price) || 0,
@@ -374,7 +377,7 @@ export function SettingsView() {
     if (editingProduct) {
       setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
     } else {
-      setProducts([...products, { ...productForm, id: Math.random().toString(36).substr(2, 9), available: true, onHandQty: productForm.onHandQty || 0 } as Product]);
+      setProducts([...products, { ...productForm, id: Math.random().toString(36).substr(2, 9), available: true, onHandQty: productForm.onHandQty || 0, barcode: productForm.barcode || productForm.sku } as Product]);
     }
     setIsProductDialogOpen(false);
   };
@@ -469,6 +472,35 @@ export function SettingsView() {
     setIsComboDialogOpen(false);
   };
 
+  const handlePrintBarcode = (product: Product) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Cetak Barcode - ${product.name}</title>
+          <style>
+            body { font-family: 'Poppins', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+            .barcode-container { border: 2px solid black; padding: 20px; text-align: center; }
+            .name { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
+            .barcode { font-size: 32px; letter-spacing: 5px; margin: 10px 0; font-family: 'Libre Barcode 39', cursive; }
+            .sku { font-size: 12px; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body onload="window.print()">
+          <div class="barcode-container">
+            <div class="name">${product.name}</div>
+            <div class="barcode">${product.barcode || product.sku}</div>
+            <div class="sku">${product.sku}</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':
@@ -526,6 +558,7 @@ export function SettingsView() {
                     <div><p className="font-black text-lg leading-tight">{p.name}</p><div className="flex gap-2 items-center mt-1"><span className="text-primary font-black text-sm">{formatCurrencyValue(p.price)}</span><Badge variant="outline" className="text-[9px] font-bold px-2 py-0">{p.sku}</Badge></div></div>
                   </div>
                   <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" title="Cetak Barcode" onClick={() => handlePrintBarcode(p)}><Printer className="h-5 w-5" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(p); setProductForm(p); setIsProductDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setProducts(products.filter(item => item.id !== p.id))}><Trash2 className="h-5 w-5" /></Button>
                   </div>
@@ -847,6 +880,14 @@ export function SettingsView() {
           reader.readAsDataURL(file);
         }
       }} />
+      <input type="file" ref={productImageInputRef} className="hidden" accept="image/*" onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => setProductForm({ ...productForm, image: event.target?.result as string });
+          reader.readAsDataURL(file);
+        }
+      }} />
       <input type="file" ref={dbImportRef} className="hidden" accept=".json" onChange={(e) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -902,6 +943,8 @@ export function SettingsView() {
           <div className="grid grid-cols-2 gap-6 py-4">
             <div className="space-y-2"><Label className="text-xs font-black">Nama Produk</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} /></div>
             <div className="space-y-2"><Label className="text-xs font-black">SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-xs font-black">Barcode</Label><Input value={productForm.barcode || ''} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} placeholder="Scan atau ketik kode batang" /></div>
+            <div className="space-y-2"><Label className="text-xs font-black">Stok Awal</Label><Input type="number" value={productForm.onHandQty || ''} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value)})} /></div>
             <div className="space-y-2"><Label className="text-xs font-black">Harga Jual (Rp)</Label><Input type="number" value={productForm.price || ''} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} /></div>
             <div className="space-y-2"><Label className="text-xs font-black">Harga Modal (Rp)</Label><Input type="number" value={productForm.costPrice || ''} onChange={(e) => setProductForm({...productForm, costPrice: parseFloat(e.target.value)})} /></div>
             <div className="space-y-2">
@@ -911,8 +954,18 @@ export function SettingsView() {
                 <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label className="text-xs font-black">Stok Awal</Label><Input type="number" value={productForm.onHandQty || ''} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value)})} /></div>
-            <div className="col-span-2 space-y-2"><Label className="text-xs font-black">URL Gambar</Label><Input value={productForm.image || ''} onChange={(e) => setProductForm({...productForm, image: e.target.value})} placeholder="https://..." /></div>
+            <div className="col-span-2 space-y-2">
+              <Label className="text-xs font-black">Gambar Produk</Label>
+              <div className="flex gap-4 items-center p-4 bg-muted/20 rounded-2xl border-2 border-dashed">
+                <div className="h-20 w-20 rounded-xl overflow-hidden bg-white border flex items-center justify-center">
+                  {productForm.image ? <img src={productForm.image} className="h-full w-full object-cover" /> : <ImageIcon className="text-muted-foreground/30" />}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <Input value={productForm.image || ''} onChange={(e) => setProductForm({...productForm, image: e.target.value})} placeholder="Atau tempel URL gambar di sini" className="h-9 text-xs" />
+                  <Button variant="outline" size="sm" onClick={() => productImageInputRef.current?.click()} className="h-8 w-full text-[10px] font-black gap-2"><Upload className="h-3.5 w-3.5" /> Unggah dari Galeri</Button>
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter><Button onClick={saveProduct} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Produk</Button></DialogFooter>
         </DialogContent>
