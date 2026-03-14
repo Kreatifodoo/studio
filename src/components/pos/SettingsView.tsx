@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -116,7 +115,6 @@ export function SettingsView() {
   }, [checkPermission]);
 
   useEffect(() => {
-    // Ensure activeTab is a valid permitted tab
     const allPermittedIds = navGroups.flatMap(g => g.items.map(i => i.id));
     if (allPermittedIds.length > 0 && !allPermittedIds.includes(activeTab)) {
       setActiveTab(allPermittedIds[0]);
@@ -626,14 +624,8 @@ export function SettingsView() {
     toast({ title: "Password Berhasil Di-reset", description: `Password untuk ${resetPasswordUser.name} telah diperbarui.` });
   };
 
-  const handleValueChange = (setter: any) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setter(val === '' ? '' : parseFloat(val));
-  };
-
   const filteredPackages = packages.filter(p => p.name.toLowerCase().includes(packageSearch.toLowerCase()) || p.sku.toLowerCase().includes(packageSearch.toLowerCase()));
   const filteredCombos = combos.filter(c => c.name.toLowerCase().includes(comboSearch.toLowerCase()) || c.sku.toLowerCase().includes(comboSearch.toLowerCase()));
-  const filteredCategories = categories.filter(c => c !== 'Semua' && c.toLowerCase().includes(categorySearch.toLowerCase()));
 
   const getPaymentIcon = (iconName: string) => {
     switch (iconName) {
@@ -735,7 +727,10 @@ export function SettingsView() {
                           <AvatarFallback className="bg-primary text-white font-black">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-black text-lg">{user.name} <Badge className="bg-primary/10 text-primary border-none ml-2">{role?.name}</Badge></p>
+                          <div className="font-black text-lg flex items-center gap-2">
+                            {user.name} 
+                            <Badge className="bg-primary/10 text-primary border-none ml-2">{role?.name}</Badge>
+                          </div>
                           <p className="text-xs font-bold text-muted-foreground mt-1">@{user.username}</p>
                         </div>
                       </div>
@@ -940,8 +935,6 @@ export function SettingsView() {
               </div>
             </Card>
           )}
-          
-          {/* Missing Payment/Fee Tabs if they become the active tab but are hidden in sidebar filter - though our useEffect handles redirection */}
         </div>
       </div>
 
