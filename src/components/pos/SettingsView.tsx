@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -54,7 +55,7 @@ export function SettingsView() {
     addCustomer,
     storeSettings, setStoreSettings,
     checkPermission,
-    printer, connectPrinter, disconnectPrinter
+    printer, connectPrinter, disconnectPrinter, printBarcodeViaBluetooth
   } = usePOS();
   
   const { toast } = useToast();
@@ -108,7 +109,16 @@ export function SettingsView() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
 
-  const handlePrintBarcode = (product: Product) => {
+  const handlePrintBarcode = async (product: Product) => {
+    if (printer.status === 'connected') {
+      const success = await printBarcodeViaBluetooth(product);
+      if (success) {
+        toast({ title: "Barcode dicetak ke Bluetooth" });
+        return;
+      }
+    }
+
+    // Fallback ke sistem print PDF
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     

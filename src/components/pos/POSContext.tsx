@@ -70,6 +70,7 @@ interface POSContextType {
   disconnectPrinter: () => void;
   printViaBluetooth: (transaction: Transaction) => Promise<boolean>;
   printSessionSummaryViaBluetooth: (session: Session) => Promise<boolean>;
+  printBarcodeViaBluetooth: (product: Product) => Promise<boolean>;
 }
 
 const INITIAL_ROLES: Role[] = [
@@ -359,6 +360,41 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const printBarcodeViaBluetooth = async (product: Product): Promise<boolean> => {
+    if (!btCharacteristic || printer.status !== 'connected') return false;
+
+    try {
+      const encoder = new TextEncoder();
+      const formatCurrency = (val: number) => `Rp ${new Intl.NumberFormat('id-ID').format(val)}`;
+      
+      const init = "\x1b\x40";
+      const center = "\x1b\x61\x01";
+      const boldOn = "\x1b\x45\x01";
+      const boldOff = "\x1b\x45\x00";
+      const barcodeHeight = "\x1d\x68\x60"; // Tinggi 96 dots
+      const barcodeWidth = "\x1d\x77\x03"; // Lebar 3
+      const barcodeHri = "\x1d\x48\x02"; // Teks HRI di bawah
+      const barcodeData = `\x1d\x6b\x04${product.barcode || product.sku}\x00`; // CODE39
+      const newLine = "\n";
+      
+      let label = init + center + boldOn + product.name.toUpperCase() + boldOff + newLine;
+      label += barcodeHeight + barcodeWidth + barcodeHri + barcodeData + newLine;
+      label += boldOn + formatCurrency(product.price) + boldOff + newLine;
+      label += newLine + newLine + newLine + newLine;
+
+      const data = encoder.encode(label);
+      const CHUNK_SIZE = 20;
+      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        await btCharacteristic.writeValue(data.slice(i, i + CHUNK_SIZE));
+      }
+
+      return true;
+    } catch (e) {
+      console.error("Gagal cetak Barcode Bluetooth", e);
+      return false;
+    }
+  };
+
   const setProducts = useCallback((data: Product[]) => { setProductsState(data); db.products.clear().then(() => db.products.bulkPut(data)); }, []);
   const setCategories = useCallback((data: Category[]) => { setCategoriesState(data); db.config.put({ key: 'categories', value: data }); }, []);
   const setPaymentMethods = useCallback((data: PaymentMethod[]) => { setPaymentMethodsState(data); db.paymentMethods.clear().then(() => db.paymentMethods.bulkPut(data)); }, []);
@@ -561,7 +597,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
       users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded,
-      printer, connectPrinter, disconnectPrinter, printViaBluetooth, printSessionSummaryViaBluetooth
+      printer, connectPrinter, disconnectPrinter, printViaBluetooth, printSessionSummaryViaBluetooth, printBarcodeViaBluetooth
     }}>
       {children}
     </POSContext.Provider>
