@@ -178,18 +178,27 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         alert("Bluetooth tidak didukung di browser ini. Gunakan Chrome di Android.");
         return;
       }
+      
       setPrinter({ ...printer, status: 'connecting' });
+      
       const device = await nav.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '00001101-0000-1000-8000-00805f9b34fb']
+      }).catch((e: any) => {
+        if (e.name === 'NotFoundError') {
+          throw new Error("Izin ditolak atau dibatalkan. Pastikan Bluetooth dan Lokasi (GPS) Anda menyala.");
+        }
+        throw e;
       });
+
       setBtDevice(device);
       setPrinter({ name: device.name, status: 'connected', type: 'bluetooth' });
+      
       device.addEventListener('gattserverdisconnected', () => {
         setPrinter({ name: null, status: 'disconnected', type: 'system' });
       });
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      alert(e.message || "Gagal menghubungkan printer.");
       setPrinter({ name: null, status: 'disconnected', type: 'system' });
     }
   };
