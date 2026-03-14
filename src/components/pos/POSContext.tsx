@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
@@ -175,30 +174,38 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     try {
       const nav = navigator as any;
       if (!nav.bluetooth) {
-        alert("Bluetooth tidak didukung di browser ini. Gunakan Chrome di Android.");
+        alert("Browser Anda tidak mendukung Bluetooth. Pastikan menggunakan Google Chrome di Android dan nyalakan fitur Bluetooth.");
         return;
       }
       
       setPrinter({ ...printer, status: 'connecting' });
       
+      // requestDevice akan memicu dialog asli browser/Chrome
       const device = await nav.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '00001101-0000-1000-8000-00805f9b34fb']
+        optionalServices: [
+          '000018f0-0000-1000-8000-00805f9b34fb', 
+          '00001101-0000-1000-8000-00805f9b34fb',
+          '0000180a-0000-1000-8000-00805f9b34fb'
+        ]
       }).catch((e: any) => {
         if (e.name === 'NotFoundError') {
-          throw new Error("Izin ditolak atau dibatalkan. Pastikan Bluetooth dan Lokasi (GPS) Anda menyala.");
+          throw new Error("Pencarian dibatalkan atau izin tidak diberikan. Pastikan GPS/Lokasi HP Samsung Anda aktif.");
+        }
+        if (e.name === 'SecurityError') {
+          throw new Error("Keamanan browser memblokir Bluetooth. Coba reset izin situs di ikon Gembok Chrome.");
         }
         throw e;
       });
 
       setBtDevice(device);
-      setPrinter({ name: device.name, status: 'connected', type: 'bluetooth' });
+      setPrinter({ name: device.name || 'Printer Bluetooth', status: 'connected', type: 'bluetooth' });
       
       device.addEventListener('gattserverdisconnected', () => {
         setPrinter({ name: null, status: 'disconnected', type: 'system' });
       });
     } catch (e: any) {
-      alert(e.message || "Gagal menghubungkan printer.");
+      alert(e.message || "Gagal menghubungkan printer. Periksa Izin Lokasi dan Bluetooth Anda.");
       setPrinter({ name: null, status: 'disconnected', type: 'system' });
     }
   };
@@ -385,9 +392,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     const updatedProducts = products.map(p => {
       let qtyToRemove = 0;
       t.items.forEach(item => {
-        if (item.isPackage && item.productId === p.id) { /* logic p-id di package items */ }
-        else if (item.isCombo) { /* logic p-id di combo selections */ }
-        else if (item.productId === p.id) qtyToRemove += item.quantity;
+        if (item.productId === p.id) qtyToRemove += item.quantity;
       });
       return qtyToRemove > 0 ? { ...p, onHandQty: p.onHandQty - qtyToRemove } : p;
     });
