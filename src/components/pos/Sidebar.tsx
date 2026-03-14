@@ -21,11 +21,13 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 import { Permission } from '@/types/pos';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function Sidebar() {
   const { view, setView, currentSession, closeSession, history, lastClosedSession, logout, currentUser, checkPermission } = usePOS();
   const [closingCash, setClosingCash] = useState('');
   const [showSummaryPreview, setShowSummaryPreview] = useState(false);
+  const isMobile = useIsMobile();
 
   const expectedCash = useMemo(() => {
     if (!currentSession) return 0;
@@ -72,15 +74,15 @@ export function Sidebar() {
 
   return (
     <aside className="w-20 md:w-28 bg-[#1a1f2b] flex flex-col items-center py-6 md:py-10 justify-between h-screen fixed left-0 top-0 z-50">
-      <div className="flex flex-col items-center gap-8 md:gap-16 w-full">
+      <div className="flex flex-col items-center gap-8 md:gap-12 w-full">
         <div 
           onClick={() => setView('pos')}
-          className="bg-[#3D8AF5] p-3 rounded-[1.25rem] shadow-lg shadow-[#3D8AF5]/20 cursor-pointer hover:scale-105 transition-transform"
+          className="bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20 cursor-pointer hover:scale-105 active:scale-95 transition-all"
         >
           <UtensilsCrossed className="text-white h-6 w-6 md:h-7 md:w-7" />
         </div>
 
-        <nav className="flex flex-col gap-4 md:gap-6 w-full px-2 md:px-3">
+        <nav className="flex flex-col gap-3 md:gap-4 w-full px-2">
           {navItems.map((item) => {
             const isActive = view === item.id;
             return (
@@ -88,10 +90,10 @@ export function Sidebar() {
                 key={item.id}
                 onClick={() => setView(item.id as any)}
                 className={cn(
-                  "relative p-3 md:p-4 rounded-[1.5rem] transition-all duration-300 flex flex-col items-center gap-1 group w-full",
+                  "relative p-3 md:p-4 rounded-2xl transition-all duration-300 flex flex-col items-center gap-1 group w-full",
                   isActive 
-                    ? "bg-[#3D8AF5] text-white shadow-xl shadow-[#3D8AF5]/30 scale-105" 
-                    : "text-white/40 hover:bg-white/5 hover:text-white"
+                    ? "bg-primary text-white shadow-xl shadow-primary/30 scale-105" 
+                    : "text-white/40 hover:bg-white/5 hover:text-white active:scale-90"
                 )}
               >
                 <item.icon className={cn("h-5 w-5 md:h-6 md:w-6", isActive ? "stroke-[2.5px]" : "stroke-[2px]")} />
@@ -105,64 +107,64 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <div className="flex flex-col items-center gap-4 md:gap-6 w-full px-2 md:px-3">
+      <div className="flex flex-col items-center gap-3 md:gap-4 w-full px-2">
         {currentSession && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="p-3 md:p-4 rounded-2xl bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 w-full flex flex-col items-center group">
+              <button className="p-3 md:p-4 rounded-2xl bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white active:scale-90 transition-all duration-300 w-full flex flex-col items-center group">
                 <XCircle className="h-5 w-5 md:h-6 md:w-6" />
                 <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest mt-1 hidden md:block">Tutup Sesi</span>
               </button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-[2.5rem] p-6 md:p-8 border-none max-w-[90vw] md:max-w-lg">
+            <AlertDialogContent className="rounded-[2.5rem] p-6 border-none max-w-[95vw] md:max-w-lg">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-xl md:text-2xl font-black">Tutup Sesi Kasir?</AlertDialogTitle>
-                <AlertDialogDescription className="text-sm md:text-base">
-                  Harap hitung semua uang tunai di laci dengan teliti. Sesi hanya dapat ditutup jika saldo sesuai dengan catatan sistem.
+                <AlertDialogTitle className="text-xl font-black">Tutup Sesi Kasir?</AlertDialogTitle>
+                <AlertDialogDescription className="text-sm">
+                  Harap hitung semua uang tunai di laci dengan teliti. Sesi hanya dapat ditutup jika saldo sesuai.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               
-              <div className="py-4 md:py-6 space-y-4 md:space-y-6">
+              <div className="py-4 space-y-4">
                  <div className="space-y-3">
-                    <Label className="text-xs md:text-sm font-black uppercase tracking-widest text-muted-foreground ml-1">Saldo Kas Akhir (Rp)</Label>
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Saldo Kas Akhir (Rp)</Label>
                     <Input 
                       type="number" 
                       value={closingCash}
                       onChange={(e) => setClosingCash(e.target.value)}
-                      className="h-14 md:h-16 rounded-2xl text-xl md:text-2xl font-black focus-visible:ring-primary/20 border-2"
+                      className="h-14 rounded-2xl text-xl font-black focus-visible:ring-primary/20 border-2"
                       placeholder="0"
                       autoFocus
                     />
                  </div>
 
                  <div className={cn(
-                   "p-4 md:p-5 rounded-2xl border-2 flex items-center gap-3 md:gap-4 transition-all duration-300",
+                   "p-4 rounded-2xl border-2 flex items-center gap-3 transition-all duration-300",
                    isBalanced ? "bg-green-50 border-green-200" : "bg-orange-50 border-orange-200"
                  )}>
                    {isBalanced ? (
-                     <CheckCircle2 className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
+                     <CheckCircle2 className="h-5 w-5 text-green-600" />
                    ) : (
-                     <AlertCircle className="h-5 w-5 md:h-6 md:w-6 text-orange-600" />
+                     <AlertCircle className="h-5 w-5 text-orange-600" />
                    )}
                    <div className="flex-1">
-                     <p className={cn("text-xs md:text-sm font-black uppercase tracking-wider", isBalanced ? "text-green-800" : "text-orange-800")}>
+                     <p className={cn("text-xs font-black uppercase tracking-wider", isBalanced ? "text-green-800" : "text-orange-800")}>
                        {isBalanced ? "Saldo Sesuai" : "Selisih Terdeteksi"}
                      </p>
-                     <p className={cn("text-[10px] md:text-xs font-medium", isBalanced ? "text-green-600" : "text-orange-600")}>
+                     <p className={cn("text-[10px]", isBalanced ? "text-green-600" : "text-orange-600")}>
                        {isBalanced 
-                         ? "Jumlah sesuai dengan total laci yang diharapkan." 
-                         : `Input tidak sesuai dengan ekspektasi sistem ${formatCurrency(expectedCash)}.`}
+                         ? "Jumlah sesuai dengan ekspektasi laci." 
+                         : `Input tidak sesuai (${formatCurrency(expectedCash)}).`}
                      </p>
                    </div>
                  </div>
               </div>
 
-              <AlertDialogFooter className="gap-2 md:gap-3 flex-col md:flex-row">
-                <AlertDialogCancel className="rounded-2xl h-12 md:h-14 font-bold border-2">Batal</AlertDialogCancel>
+              <AlertDialogFooter className="gap-2 sm:gap-0">
+                <AlertDialogCancel className="rounded-xl h-12 font-bold border-2">Batal</AlertDialogCancel>
                 <AlertDialogAction 
                   disabled={!isBalanced}
                   onClick={handleCloseSession}
-                  className="rounded-2xl h-12 md:h-14 bg-primary hover:bg-primary/90 font-black px-6 md:px-8 disabled:opacity-50 disabled:grayscale"
+                  className="rounded-xl h-12 bg-primary hover:bg-primary/90 font-black px-6 disabled:opacity-50"
                 >
                   Tutup & Cetak
                 </AlertDialogAction>
@@ -173,7 +175,7 @@ export function Sidebar() {
         
         <button 
           onClick={logout}
-          className="p-3 md:p-4 rounded-2xl text-white/30 hover:bg-destructive/10 hover:text-destructive transition-all duration-300 w-full flex flex-col items-center"
+          className="p-3 md:p-4 rounded-2xl text-white/30 hover:bg-destructive/10 hover:text-destructive active:scale-90 transition-all duration-300 w-full flex flex-col items-center"
         >
           <LogOut className="h-5 w-5 md:h-6 md:w-6" />
           <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest mt-1 hidden md:block">Keluar</span>

@@ -14,38 +14,42 @@ import { OpenSessionView } from '@/components/pos/OpenSessionView';
 import { SessionReportView } from '@/components/pos/SessionReportView';
 import { LoginView } from '@/components/pos/LoginView';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ShoppingBag } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 function POSLayout() {
-  const { view, currentSession, currentUser, isDbLoaded } = usePOS();
+  const { view, currentSession, currentUser, isDbLoaded, cart } = usePOS();
   const [isClient, setIsClient] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Prevent hydration issues and wait for DB
   if (!isClient || !isDbLoaded) {
     return (
       <div className="min-h-screen bg-[#F9FBFF] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-          <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Memuat Database...</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Memuat Database...</p>
         </div>
       </div>
     );
   }
 
-  // Step 1: Check if user is logged in
   if (!currentUser) {
     return <LoginView />;
   }
 
-  // Step 2: Check if session is open for POS view
-  if (!currentSession && view === 'pos') {
+  const isPOSView = view === 'pos';
+
+  if (!currentSession && isPOSView) {
     return (
       <div className="flex min-h-screen bg-[#F9FBFF] font-poppins">
         <Sidebar />
-        <main className="flex-1 ml-24 md:ml-32 p-8 flex items-center justify-center">
+        <main className="flex-1 ml-20 md:ml-28 p-4 md:p-8 flex items-center justify-center">
           <OpenSessionView />
         </main>
       </div>
@@ -54,39 +58,54 @@ function POSLayout() {
 
   const renderView = () => {
     switch (view) {
-      case 'pos':
-        return <ProductGrid />;
-      case 'history':
-        return <HistoryView />;
-      case 'dashboard':
-        return <DashboardView />;
-      case 'settings':
-        return <SettingsView />;
-      case 'reports':
-        return <SessionReportView />;
-      default:
-        return <ProductGrid />;
+      case 'pos': return <ProductGrid />;
+      case 'history': return <HistoryView />;
+      case 'dashboard': return <DashboardView />;
+      case 'settings': return <SettingsView />;
+      case 'reports': return <SessionReportView />;
+      default: return <ProductGrid />;
     }
   };
 
-  const isPOSView = view === 'pos';
-
   return (
-    <div className="flex min-h-screen bg-background text-foreground font-poppins overflow-hidden">
+    <div className="flex min-h-screen bg-background text-foreground font-poppins overflow-hidden selection:bg-primary/10">
       <Sidebar />
       
       <main className={cn(
-        "flex-1 ml-24 md:ml-32 p-8 min-h-screen overflow-y-auto bg-[#F9FBFF] transition-all duration-300 ease-in-out",
-        isPOSView ? "mr-[400px]" : "mr-0"
+        "flex-1 ml-20 md:ml-28 p-4 md:p-8 min-h-screen overflow-y-auto bg-[#F9FBFF] transition-all duration-300 ease-in-out",
+        isPOSView && !isMobile ? "mr-[400px]" : "mr-0"
       )}>
         <SearchHeader />
         
-        <div className="max-w-[1400px] mx-auto">
+        <div className="max-w-[1400px] mx-auto pb-24 md:pb-8">
           {renderView()}
         </div>
       </main>
 
-      {isPOSView && <OrderPanel />}
+      {/* Desktop Order Panel */}
+      {isPOSView && !isMobile && <OrderPanel />}
+
+      {/* Mobile Floating Cart Button & Drawer */}
+      {isPOSView && isMobile && cart.length > 0 && (
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button 
+              className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 z-50 flex items-center justify-center group active:scale-90 transition-all"
+            >
+              <ShoppingBag className="h-7 w-7 text-white" />
+              <div className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black h-6 w-6 rounded-full flex items-center justify-center border-2 border-white">
+                {cart.reduce((a, b) => a + b.quantity, 0)}
+              </div>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[90vh] p-0 border-none rounded-t-[3rem] overflow-hidden">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Detail Pesanan</SheetTitle>
+            </SheetHeader>
+            <OrderPanel isMobile={true} />
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }
