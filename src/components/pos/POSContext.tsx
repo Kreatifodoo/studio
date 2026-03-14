@@ -70,7 +70,7 @@ interface POSContextType {
 const INITIAL_ROLES: Role[] = [
   { id: 'admin', name: 'Administrator', permissions: ['view_pos', 'view_history', 'view_dashboard', 'view_reports', 'manage_products', 'manage_customers', 'manage_settings', 'manage_users'] },
   { id: 'manager', name: 'Manajer', permissions: ['view_pos', 'view_history', 'view_dashboard', 'view_reports', 'manage_products', 'manage_customers'] },
-  { id: 'cashier', name: 'Kasir', permissions: ['view_pos', 'view_history'] },
+  { id: 'cashier', name: 'Kasir', permissions: ['view_pos', 'view_history', 'manage_customers'] },
 ];
 
 const INITIAL_USERS: User[] = [
@@ -123,7 +123,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsersState] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Load Data from IndexedDB on Mount
   useEffect(() => {
     async function initDb() {
       try {
@@ -167,7 +166,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     initDb();
   }, []);
 
-  // Sync wrappers to write to IndexedDB
   const setProducts = useCallback((data: Product[]) => { setProductsState(data); db.products.clear().then(() => db.products.bulkPut(data)); }, []);
   const setCategories = useCallback((data: Category[]) => { setCategoriesState(data); db.config.put({ key: 'categories', value: data }); }, []);
   const setPaymentMethods = useCallback((data: PaymentMethod[]) => { setPaymentMethodsState(data); db.paymentMethods.clear().then(() => db.paymentMethods.bulkPut(data)); }, []);
