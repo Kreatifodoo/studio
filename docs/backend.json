@@ -1,0 +1,260 @@
+{
+  "entities": {
+    "MenuCategory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MenuCategory",
+      "type": "object",
+      "description": "Represents a category for organizing menu items (e.g., 'Main Course', 'Drinks').",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MenuCategory entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the menu category, e.g., 'Main Course', 'Beverages'."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description for the menu category."
+        },
+        "iconUrl": {
+          "type": "string",
+          "description": "URL or path to the icon representing this category.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "MenuItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MenuItem",
+      "type": "object",
+      "description": "Represents an individual item available for sale on the menu.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MenuItem entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the menu item, e.g., 'Espresso', 'Caesar Salad'."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the menu item, including ingredients or preparation."
+        },
+        "price": {
+          "type": "number",
+          "description": "The current selling price of the menu item."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL or path to the image of the menu item.",
+          "format": "uri"
+        },
+        "isAvailable": {
+          "type": "boolean",
+          "description": "Indicates whether the menu item is currently available for ordering."
+        },
+        "menuCategoryId": {
+          "type": "string",
+          "description": "Reference to MenuCategory. (Relationship: MenuCategory 1:N MenuItem)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "price",
+        "isAvailable",
+        "menuCategoryId"
+      ]
+    },
+    "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Order",
+      "type": "object",
+      "description": "Represents a completed or pending customer transaction containing multiple menu items.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Order entity."
+        },
+        "orderDateTime": {
+          "type": "string",
+          "description": "The date and time when the order was placed.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the order (e.g., 'pending', 'completed', 'canceled')."
+        },
+        "subtotalAmount": {
+          "type": "number",
+          "description": "The sum of prices of all items in the order before any discounts or taxes."
+        },
+        "discountAmount": {
+          "type": "number",
+          "description": "The total amount of discount applied to the order."
+        },
+        "taxAmount": {
+          "type": "number",
+          "description": "The total amount of tax applied to the order."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The final grand total amount for the order, including subtotal, discounts, and taxes."
+        },
+        "notes": {
+          "type": "string",
+          "description": "General notes or special instructions for the entire order."
+        }
+      },
+      "required": [
+        "id",
+        "orderDateTime",
+        "status",
+        "subtotalAmount",
+        "discountAmount",
+        "taxAmount",
+        "totalAmount"
+      ]
+    },
+    "OrderItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrderItem",
+      "type": "object",
+      "description": "Represents a specific menu item included in an order, along with its quantity and any customizations.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the OrderItem entity."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Reference to Order. (Relationship: Order 1:N OrderItem)"
+        },
+        "menuItemId": {
+          "type": "string",
+          "description": "Reference to MenuItem. (Relationship: MenuItem 1:N OrderItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of this menu item ordered."
+        },
+        "priceAtOrder": {
+          "type": "number",
+          "description": "The price of the menu item at the time the order was placed (important for historical accuracy if menu prices change)."
+        },
+        "customizationNotes": {
+          "type": "string",
+          "description": "Specific notes or customization requests for this particular menu item (e.g., 'no onions', 'extra cheese')."
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "menuItemId",
+        "quantity",
+        "priceAtOrder"
+      ]
+    },
+    "AppConfiguration": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AppConfiguration",
+      "type": "object",
+      "description": "Stores application-wide settings and preferences, such as printer configuration and tax rates.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AppConfiguration entity. Expected to be a singleton with a fixed ID (e.g., 'global_settings')."
+        },
+        "printerConnected": {
+          "type": "boolean",
+          "description": "Indicates whether a printer is currently configured and marked as connected."
+        },
+        "printerName": {
+          "type": "string",
+          "description": "The name or identifier of the last configured printer."
+        },
+        "printerAddress": {
+          "type": "string",
+          "description": "The network address or specific connection detail (e.g., Bluetooth address) for the last configured printer."
+        },
+        "taxRatePercentage": {
+          "type": "number",
+          "description": "The global tax rate applied to orders, expressed as a percentage (e.g., 10.0 for 10%)."
+        }
+      },
+      "required": [
+        "id",
+        "printerConnected",
+        "taxRatePercentage"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/app_configurations/{appConfigurationId}",
+        "definition": {
+          "entityName": "AppConfiguration",
+          "schema": {
+            "$ref": "#/backend/entities/AppConfiguration"
+          },
+          "description": "Stores global application settings for a single POS instance, including printer configuration (persistent across sessions) and tax rates. Accessible by any authenticated staff member. The document ID is typically 'global_settings'."
+        }
+      },
+      {
+        "path": "/menu_categories/{menuCategoryId}",
+        "definition": {
+          "entityName": "MenuCategory",
+          "schema": {
+            "$ref": "#/backend/entities/MenuCategory"
+          },
+          "description": "Contains definitions for menu categories (e.g., 'Main Course', 'Drinks'). Accessible to all authenticated staff for read, and specific roles for write (assuming all authenticated can write if no explicit roles are defined)."
+        }
+      },
+      {
+        "path": "/menu_items/{menuItemId}",
+        "definition": {
+          "entityName": "MenuItem",
+          "schema": {
+            "$ref": "#/backend/entities/MenuItem"
+          },
+          "description": "Contains all individual menu items, allowing easy querying and filtering by category or availability. Accessible to all authenticated staff for read, and specific roles for write."
+        }
+      },
+      {
+        "path": "/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Manages all customer orders, including their status and financial summaries. Accessible to all authenticated staff for read/write. Includes a 'status' field for explicit state modeling."
+        }
+      },
+      {
+        "path": "/orders/{orderId}/order_items/{orderItemId}",
+        "definition": {
+          "entityName": "OrderItem",
+          "schema": {
+            "$ref": "#/backend/entities/OrderItem"
+          },
+          "description": "Details of individual items within a specific order. Access is implicitly tied to the parent Order's authorization, which for this app means all authenticated staff."
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure for NextPOS Order prioritizes security, scalability, and debuggability by adhering to the core design principles, especially Authorization Independence and enabling Query-as-Permissions (QAPs).\n\n**Overall Authorization Model:**\nGiven the application's context as a Point-of-Sale (POS) system for a single business, the authorization model is simplified. All operational data (MenuCategories, MenuItems, Orders, OrderItems) and global AppConfiguration are considered 'business-owned' and are accessible by any authenticated staff member. This means the primary security rule across most collections will be `request.auth.uid != null` (or `request.auth.uid in get(/databases/$(database)/documents/staff_roles_active/$(request.auth.uid)).data.roles` if explicit roles were to be introduced).\n\n**Authorization Independence via Denormalization:**\nFor this application, Authorization Independence is achieved primarily by *avoiding* hierarchical authorization dependencies. Since all authenticated staff can access all business data, there's no need to inspect parent document attributes (like `ownerId` or `members` maps) to grant access to subcollection documents. For instance, `OrderItem` documents' access doesn't depend on a specific `owner` field on their parent `Order` document that needs to be denormalized. The simple `request.auth.uid != null` rule applies uniformly across the hierarchy, eliminating complex `get()` calls in security rules and enabling atomic operations.\n\n**Query-as-Permissions (QAPs):**\n1.  **Top-level Collections (`/app_configurations`, `/menu_categories`, `/menu_items`, `/orders`):** Each of these collections represents a homogeneous security posture (all documents accessible by authenticated staff). This allows direct, efficient queries (e.g., `firestore.collection('menu_items').where('isAvailable', '==', true).get()`) without requiring security rules to filter the results. Rules will simply `allow read: if request.auth.uid != null;`, ensuring that only authorized users receive any documents, fulfilling the QAP principle.\n2.  **Subcollections (`/orders/{orderId}/order_items`):** The `order_items` subcollection inherits the security context of its parent `Order`. Since an `Order` is accessible to any authenticated staff, its `order_items` are also implicitly accessible. Queries on this subcollection (e.g., `firestore.collection('orders').doc(orderId).collection('order_items').get()`) are naturally scoped and secure, again, without needing rules to filter. This structure simplifies rule writing and debugging.\n\n**Specific Data Structure Considerations:**\n*   **`AppConfiguration`:** Stored as a singleton document (`/app_configurations/global_settings`). This centralizes app-wide settings like printer configurations and tax rates, making them persistently available across app refreshes and user logins as requested. Its singleton nature means no complex query patterns or multi-user authorization are needed.\n*   **`MenuCategory` & `MenuItem`:** These are top-level collections. `MenuItem` is not a subcollection of `MenuCategory` to allow for flexible cross-category queries and avoid hierarchical rule dependencies. Filtering `MenuItem` by `menuCategoryId` will be a standard field-based query, which is performant and QAP-compliant.\n*   **`Order` & `OrderItem`:** Orders are top-level, and OrderItems are a subcollection of their respective Order. This represents a natural hierarchical relationship. As discussed, the simple uniform authorization for authenticated staff makes this structure secure and debuggable without denormalization for authorization purposes."
+  }
+}

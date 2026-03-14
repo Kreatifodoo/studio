@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * NEXTPOS ORDER SECURITY RULES
+     *
+     * Core Philosophy:
+     * This ruleset implements a "Shared Business Access" model suitable for a Point-of-Sale (POS) 
+     * environment. In this model, all authenticated staff members (authorized via password or 
+     * anonymous login) are granted full operational access to the business data.
+     *
+     * Data Structure:
+     * The database is organized into top-level collections representing the business's
+     * persistent state: /app_configurations (singleton), /menu_categories, /menu_items, 
+     * and /orders. Order details are nested as subcollections under individual orders.
+     *
+     * Key Security Decisions:
+     * 1. Shared Authorization: Because this is a single-tenant business application, 
+     *    we prioritize operational speed. Any valid 'staff' (authenticated user) can 
+     *    view the menu, place orders, and update configurations.
+     * 2. Persistence: Application configurations, including printer settings, are 
+     *    stored in a dedicated singleton document to ensure they survive app 
+     *    refreshes and session changes.
+     * 3. Relational Integrity: While data shapes are flexible for prototyping, 
+     *    the rules strictly enforce that document IDs within the data match the 
+     *    Firestore path IDs to prevent data misalignment.
+     */
+
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the request is made by an authenticated user.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Validates that the document being modified actually exists.
+     * Used for update and delete operations to prevent orphaned requests.
+     */
+    function documentExists() {
+      return resource != null;
+    }
+
+    /**
+     * @description Ensures that the ID field in the document matches the ID in the path.
+     * Used during creation to maintain relational integrity.
+     */
+    function isPathConsistent(pathId) {
+      return request.resource.data.id == pathId;
+    }
+
+    /**
+     * @description Ensures that the unique identifier of a document cannot be changed.
+     */
+    function isIdImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Global application settings including printer and tax configurations.
+     * @path /app_configurations/{appConfigurationId}
+     * @allow Authenticated staff member (create) with ID 'global_settings'.
+     * @deny Unauthenticated user (read/write).
+     * @principle Singleton configuration management for persistent app state.
+     */
+    match /app_configurations/{appConfigurationId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isPathConsistent(appConfigurationId);
+      allow update: if isSignedIn() && documentExists() && isIdImmutable();
+      allow delete: if isSignedIn() && documentExists();
+    }
+
+    /**
+     * @description Definitions for categories of menu items.
+     * @path /menu_categories/{menuCategoryId}
+     * @allow Any staff member (list) to populate the menu UI.
+     * @deny Any write (create/update) by a user who is not logged in.
+     * @principle Shared business-wide access for staff.
+     */
+    match /menu_categories/{menuCategoryId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isPathConsistent(menuCategoryId);
+      allow update: if isSignedIn() && documentExists() && isIdImmutable();
+      allow delete: if isSignedIn() && documentExists();
+    }
+
+    /**
+     * @description Individual items available for sale in the POS.
+     * @path /menu_items/{menuItemId}
+     * @allow Staff (get) an item to check availability or price.
+     * @deny Modification of an item ID during update.
+     * @principle Operational data accessibility for authenticated personnel.
+     */
+    match /menu_items/{menuItemId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isPathConsistent(menuItemId);
+      allow update: if isSignedIn() && documentExists() && isIdImmutable();
+      allow delete: if isSignedIn() && documentExists();
+    }
+
+    /**
+     * @description Customer transaction records.
+     * @path /orders/{orderId}
+     * @allow Staff (create) a new order for a customer.
+     * @deny Deleting an order that does not exist.
+     * @principle Shared write access for transaction management.
+     */
+    match /orders/{orderId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isPathConsistent(orderId);
+      allow update: if isSignedIn() && documentExists() && isIdImmutable();
+      allow delete: if isSignedIn() && documentExists();
+
+      /**
+       * @description Line items associated with a specific order.
+       * @path /orders/{orderId}/order_items/{orderItemId}
+       * @allow Staff (list) all items for a specific order receipt.
+       * @deny Unauthenticated users (read/write).
+       * @principle Hierarchical access inherited from parent order context.
+       */
+      match /order_items/{orderItemId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn() && isPathConsistent(orderItemId);
+        allow update: if isSignedIn() && documentExists() && isIdImmutable();
+        allow delete: if isSignedIn() && documentExists();
+      }
+    }
+  }
+}
