@@ -76,10 +76,13 @@ export function SettingsView() {
   } = usePOS();
   
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const dbImportRef = useRef<HTMLInputElement>(null);
   const productImportRef = useRef<HTMLInputElement>(null);
+  const priceListImportRef = useRef<HTMLInputElement>(null);
+  const promoImportRef = useRef<HTMLInputElement>(null);
+  const packageImportRef = useRef<HTMLInputElement>(null);
+  const comboImportRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState('products');
 
@@ -159,33 +162,58 @@ export function SettingsView() {
 
   const isAdmin = useMemo(() => currentUser?.roleId === 'admin', [currentUser]);
 
+  // --- CSV TEMPLATES ---
   const downloadProductTemplate = () => {
     const headers = "sku,name,category,price,costPrice,onHandQty,description,image\n";
     const sample = "MU-001,Nasi Goreng Spesial,Makanan Utama,25000,12000,50,Nasi goreng lezat,https://picsum.photos/seed/1/400/300\nMN-001,Es Teh Manis,Minuman,5000,1500,100,Teh seduh segar,https://picsum.photos/seed/2/400/300";
-    const blob = new Blob([headers + sample], { type: 'text/csv' });
+    downloadFile(headers + sample, "template_produk.csv");
+  };
+
+  const downloadPriceListTemplate = () => {
+    const headers = "product_sku,rule_name,min_qty,price,start_date,end_date\n";
+    const sample = "MU-001,Harga Grosir Nasi Goreng,10,20000,2024-01-01,2024-12-31";
+    downloadFile(headers + sample, "template_grosir.csv");
+  };
+
+  const downloadPromoTemplate = () => {
+    const headers = "product_sku,promo_name,type,value,start_date,end_date\n";
+    const sample = "MU-001,Promo Ramadan,Percentage,10,2024-03-01,2024-04-30\nMN-001,Diskon Flat,FixedAmount,2000,2024-01-01,2024-12-31";
+    downloadFile(headers + sample, "template_promo.csv");
+  };
+
+  const downloadPackageTemplate = () => {
+    const headers = "package_sku,package_name,package_price,item_sku,item_qty\n";
+    const sample = "PK-001,Paket Kenyang,30000,MU-001,1\nPK-001,Paket Kenyang,30000,MN-001,1";
+    downloadFile(headers + sample, "template_paket.csv");
+  };
+
+  const downloadComboTemplate = () => {
+    const headers = "combo_sku,combo_name,base_price,group_name,is_required,option_sku,extra_price\n";
+    const sample = "CB-001,Combo Hemat,25000,Pilih Minum,true,MN-001,0\nCB-001,Combo Hemat,25000,Pilih Minum,true,MN-002,2000";
+    downloadFile(headers + sample, "template_pilihan_menu.csv");
+  };
+
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = "template_produk_nextpos.csv";
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
   };
 
+  // --- CSV IMPORTERS ---
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split('\n');
+      const lines = (event.target?.result as string).split('\n');
       const newProducts: Product[] = [];
-      
-      // Skip header
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
-        
         const [sku, name, category, price, costPrice, onHandQty, description, image] = line.split(',');
         newProducts.push({
           id: Math.random().toString(36).substr(2, 9),
@@ -201,20 +229,143 @@ export function SettingsView() {
           available: true
         });
       }
-
       if (newProducts.length > 0) {
         setProducts([...products, ...newProducts]);
-        toast({
-          title: "Berhasil!",
-          description: `${newProducts.length} produk berhasil diimpor ke database.`,
-        });
+        toast({ title: "Berhasil!", description: `${newProducts.length} produk diimpor.` });
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    e.target.value = '';
   };
 
-  const formatCurrency = (val: number) => {
+  const handleImportPriceListCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const lines = (event.target?.result as string).split('\n');
+      const newPriceLists: PriceList[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const [sku, name, minQty, price, start, end] = line.split(',');
+        const product = products.find(p => p.sku === sku);
+        if (product) {
+          newPriceLists.push({
+            id: Math.random().toString(36).substr(2, 9),
+            productId: product.id,
+            name: name || "Aturan Grosir",
+            startDate: start || new Date().toISOString().split('T')[0],
+            endDate: end || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+            enabled: true,
+            tiers: [{ minQty: parseInt(minQty) || 1, maxQty: 0, price: parseFloat(price) || product.price }]
+          });
+        }
+      }
+      setPriceLists([...priceLists, ...newPriceLists]);
+      toast({ title: "Berhasil!", description: "Data grosir diimpor." });
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleImportPromoCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const lines = (event.target?.result as string).split('\n');
+      const newPromos: PromoDiscount[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const [sku, name, type, value, start, end] = line.split(',');
+        const product = products.find(p => p.sku === sku);
+        if (product) {
+          newPromos.push({
+            id: Math.random().toString(36).substr(2, 9),
+            productId: product.id,
+            name: name || "Promo Baru",
+            type: (type as any) === 'FixedAmount' ? 'FixedAmount' : 'Percentage',
+            value: parseFloat(value) || 0,
+            startDate: start || new Date().toISOString().split('T')[0],
+            endDate: end || new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
+            enabled: true
+          });
+        }
+      }
+      setPromoDiscounts([...promoDiscounts, ...newPromos]);
+      toast({ title: "Berhasil!", description: "Data promo diimpor." });
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleImportPackageCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const lines = (event.target?.result as string).split('\n');
+      const pkgMap = new Map<string, Package>();
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const [sku, name, price, itemSku, itemQty] = line.split(',');
+        const itemProd = products.find(p => p.sku === itemSku);
+        if (!itemProd) continue;
+        if (!pkgMap.has(sku)) {
+          pkgMap.set(sku, {
+            id: Math.random().toString(36).substr(2, 9),
+            sku, name, description: "", price: parseFloat(price) || 0, enabled: true, items: []
+          });
+        }
+        pkgMap.get(sku)!.items.push({ productId: itemProd.id, quantity: parseInt(itemQty) || 1 });
+      }
+      setPackages([...packages, ...Array.from(pkgMap.values())]);
+      toast({ title: "Berhasil!", description: "Data paket diimpor." });
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleImportComboCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const lines = (event.target?.result as string).split('\n');
+      const comboMap = new Map<string, Combo>();
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const [sku, name, basePrice, groupName, required, optionSku, extraPrice] = line.split(',');
+        const optProd = products.find(p => p.sku === optionSku);
+        if (!optProd) continue;
+
+        if (!comboMap.has(sku)) {
+          comboMap.set(sku, {
+            id: Math.random().toString(36).substr(2, 9),
+            sku, name, description: "", basePrice: parseFloat(basePrice) || 0, enabled: true, groups: []
+          });
+        }
+        const combo = comboMap.get(sku)!;
+        let group = combo.groups.find(g => g.name === groupName);
+        if (!group) {
+          group = { id: Math.random().toString(36).substr(2, 9), name: groupName, required: required === 'true', options: [] };
+          combo.groups.push(group);
+        }
+        group.options.push({ productId: optProd.id, extraPrice: parseFloat(extraPrice) || 0 });
+      }
+      setCombos([...combos, ...Array.from(comboMap.values())]);
+      toast({ title: "Berhasil!", description: "Data pilihan menu diimpor." });
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // --- SAVE HELPERS ---
+  const formatCurrencyValue = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
 
@@ -361,23 +512,9 @@ export function SettingsView() {
                 <CardDescription className="font-medium">Kelola item dan stok inventaris</CardDescription>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={downloadProductTemplate}
-                  className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
-                >
-                  <Download className="h-4 w-4" /> Template
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => productImportRef.current?.click()}
-                  className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
-                >
-                  <Upload className="h-4 w-4" /> Impor CSV
-                </Button>
-                <Button onClick={() => { setEditingProduct(null); setProductForm({ category: categories[0], image: 'https://picsum.photos/seed/new/400/300' }); setIsProductDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                  <Plus className="h-5 w-5" /> Tambah Produk
-                </Button>
+                <Button variant="outline" onClick={downloadProductTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => productImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button onClick={() => { setEditingProduct(null); setProductForm({ category: categories[0], image: 'https://picsum.photos/seed/new/400/300' }); setIsProductDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Produk</Button>
                 <input type="file" ref={productImportRef} className="hidden" accept=".csv" onChange={handleImportCSV} />
               </div>
             </div>
@@ -386,7 +523,7 @@ export function SettingsView() {
                 <div key={p.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
                   <div className="flex items-center gap-5">
                     <div className="h-14 w-14 rounded-2xl overflow-hidden bg-white border shadow-sm"><img src={p.image} className="h-full w-full object-cover" alt={p.name} /></div>
-                    <div><p className="font-black text-lg leading-tight">{p.name}</p><div className="flex gap-2 items-center mt-1"><span className="text-primary font-black text-sm">{formatCurrency(p.price)}</span><Badge variant="outline" className="text-[9px] font-bold px-2 py-0">{p.sku}</Badge></div></div>
+                    <div><p className="font-black text-lg leading-tight">{p.name}</p><div className="flex gap-2 items-center mt-1"><span className="text-primary font-black text-sm">{formatCurrencyValue(p.price)}</span><Badge variant="outline" className="text-[9px] font-bold px-2 py-0">{p.sku}</Badge></div></div>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(p); setProductForm(p); setIsProductDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
@@ -401,9 +538,14 @@ export function SettingsView() {
       case 'pricelist':
         return (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div><CardTitle className="text-2xl font-black">Harga Grosir</CardTitle><CardDescription className="font-medium">Atur harga diskon untuk pembelian jumlah banyak</CardDescription></div>
-              <Button onClick={() => { setEditingPriceList(null); setPriceListForm({ tiers: [], startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0] }); setIsPriceListDialogOpen(true); }} className="h-14 rounded-2xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Grosir</Button>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" onClick={downloadPriceListTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => priceListImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button onClick={() => { setEditingPriceList(null); setPriceListForm({ tiers: [], startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0] }); setIsPriceListDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Grosir</Button>
+                <input type="file" ref={priceListImportRef} className="hidden" accept=".csv" onChange={handleImportPriceListCSV} />
+              </div>
             </div>
             <div className="space-y-4">
               {priceLists.map((pl) => (
@@ -414,7 +556,7 @@ export function SettingsView() {
                       <p className="font-black text-lg leading-tight">{pl.name}</p>
                       <p className="text-xs text-muted-foreground font-bold mt-1">Produk: {products.find(p => p.id === pl.productId)?.name || 'Produk dihapus'}</p>
                       <div className="flex gap-2 mt-2">
-                        {pl.tiers.map((t, idx) => <Badge key={idx} variant="outline" className="text-[10px] font-bold">Qty {t.minQty}+ : {formatCurrency(t.price)}</Badge>)}
+                        {pl.tiers.map((t, idx) => <Badge key={idx} variant="outline" className="text-[10px] font-bold">Qty {t.minQty}+ : {formatCurrencyValue(t.price)}</Badge>)}
                       </div>
                     </div>
                   </div>
@@ -432,9 +574,14 @@ export function SettingsView() {
       case 'promo':
         return (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div><CardTitle className="text-2xl font-black">Promo Diskon</CardTitle><CardDescription className="font-medium">Potongan harga produk untuk periode tertentu</CardDescription></div>
-              <Button onClick={() => { setEditingPromo(null); setPromoForm({ type: 'Percentage', value: 0, startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0] }); setIsPromoDialogOpen(true); }} className="h-14 rounded-2xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Promo</Button>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" onClick={downloadPromoTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => promoImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button onClick={() => { setEditingPromo(null); setPromoForm({ type: 'Percentage', value: 0, startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0] }); setIsPromoDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Promo</Button>
+                <input type="file" ref={promoImportRef} className="hidden" accept=".csv" onChange={handleImportPromoCSV} />
+              </div>
             </div>
             <div className="space-y-4">
               {promoDiscounts.map((pd) => (
@@ -445,7 +592,7 @@ export function SettingsView() {
                       <p className="font-black text-lg leading-tight">{pd.name}</p>
                       <p className="text-xs text-muted-foreground font-bold mt-1">Produk: {products.find(p => p.id === pd.productId)?.name}</p>
                       <div className="flex gap-2 mt-1">
-                        <Badge className="bg-rose-500 text-white font-black">{pd.type === 'Percentage' ? `${pd.value}%` : formatCurrency(pd.value)} Off</Badge>
+                        <Badge className="bg-rose-500 text-white font-black">{pd.type === 'Percentage' ? `${pd.value}%` : formatCurrencyValue(pd.value)} Off</Badge>
                         <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> s/d {pd.endDate}</span>
                       </div>
                     </div>
@@ -464,9 +611,14 @@ export function SettingsView() {
       case 'package':
         return (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div><CardTitle className="text-2xl font-black">Paket Bundel</CardTitle><CardDescription className="font-medium">Gabungkan beberapa produk menjadi satu paket hemat</CardDescription></div>
-              <Button onClick={() => { setEditingPackage(null); setPackageForm({ items: [] }); setIsPackageDialogOpen(true); }} className="h-14 rounded-2xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Paket</Button>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" onClick={downloadPackageTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => packageImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button onClick={() => { setEditingPackage(null); setPackageForm({ items: [] }); setIsPackageDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Paket</Button>
+                <input type="file" ref={packageImportRef} className="hidden" accept=".csv" onChange={handleImportPackageCSV} />
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {packages.map((pkg) => (
@@ -476,7 +628,7 @@ export function SettingsView() {
                       <div className="bg-accent/10 text-accent p-3 rounded-2xl"><Box /></div>
                       <div>
                         <p className="font-black text-lg">{pkg.name}</p>
-                        <p className="font-black text-primary">{formatCurrency(pkg.price)}</p>
+                        <p className="font-black text-primary">{formatCurrencyValue(pkg.price)}</p>
                       </div>
                     </div>
                     <div className="flex gap-1">
@@ -496,9 +648,14 @@ export function SettingsView() {
       case 'combo':
         return (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div><CardTitle className="text-2xl font-black">Pilihan Menu (Combo)</CardTitle><CardDescription className="font-medium">Menu kustom dengan pilihan grup (misal: pilih minum, pilih snack)</CardDescription></div>
-              <Button onClick={() => { setEditingCombo(null); setComboForm({ groups: [] }); setIsComboDialogOpen(true); }} className="h-14 rounded-2xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Pilihan</Button>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" onClick={downloadComboTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => comboImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button onClick={() => { setEditingCombo(null); setComboForm({ groups: [] }); setIsComboDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Pilihan</Button>
+                <input type="file" ref={comboImportRef} className="hidden" accept=".csv" onChange={handleImportComboCSV} />
+              </div>
             </div>
             <div className="space-y-4">
               {combos.map((c) => (
@@ -507,7 +664,7 @@ export function SettingsView() {
                     <div className="bg-primary/10 text-primary p-4 rounded-2xl border shadow-sm"><LayoutGrid /></div>
                     <div>
                       <p className="font-black text-lg leading-tight">{c.name}</p>
-                      <p className="text-xs text-muted-foreground font-bold mt-1">Mulai dari {formatCurrency(c.basePrice)} • {c.groups.length} Grup Pilihan</p>
+                      <p className="text-xs text-muted-foreground font-bold mt-1">Mulai dari {formatCurrencyValue(c.basePrice)} • {c.groups.length} Grup Pilihan</p>
                     </div>
                   </div>
                   <div className="flex gap-3 items-center">
@@ -898,7 +1055,6 @@ export function SettingsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Other common dialogs */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] p-10">
           <DialogHeader><DialogTitle className="text-2xl font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
