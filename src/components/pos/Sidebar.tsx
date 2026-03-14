@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -19,10 +20,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
-import { Permission } from '@/types/pos';
+import { Permission, Session } from '@/types/pos';
 
 export function Sidebar() {
-  const { view, setView, currentSession, closeSession, history, lastClosedSession, logout, currentUser, checkPermission } = usePOS();
+  const { 
+    view, setView, currentSession, closeSession, history, 
+    lastClosedSession, logout, currentUser, checkPermission, 
+    printer, printSessionSummaryViaBluetooth 
+  } = usePOS();
   const [closingCash, setClosingCash] = useState('');
   const [showSummaryPreview, setShowSummaryPreview] = useState(false);
 
@@ -37,7 +42,7 @@ export function Sidebar() {
   }, [currentSession, history]);
 
   const currentClosingAmount = parseFloat(closingCash) || 0;
-  const isBalanced = Math.abs(currentClosingAmount - expectedCash) < 100; // Toleransi 100 rupiah
+  const isBalanced = Math.abs(currentClosingAmount - expectedCash) < 100;
 
   const navItems = useMemo(() => {
     const allItems = [
@@ -56,17 +61,27 @@ export function Sidebar() {
     });
   }, [checkPermission]);
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
-  };
+  const handleCloseSession = async () => {
+    if (!currentSession) return;
 
-  const handleCloseSession = () => {
+    const sessionToPrint: Session = {
+      ...currentSession,
+      endTime: new Date().toISOString(),
+      closingCash: currentClosingAmount,
+      status: 'Closed'
+    };
+
     closeSession(currentClosingAmount);
     setClosingCash('');
     setShowSummaryPreview(true);
-    setTimeout(() => {
-      window.print();
-    }, 800);
+
+    if (printer.status === 'connected') {
+      await printSessionSummaryViaBluetooth(sessionToPrint);
+    } else {
+      setTimeout(() => {
+        window.print();
+      }, 800);
+    }
   };
 
   return (

@@ -69,6 +69,7 @@ interface POSContextType {
   connectPrinter: () => Promise<void>;
   disconnectPrinter: () => void;
   printViaBluetooth: (transaction: Transaction) => Promise<boolean>;
+  printSessionSummaryViaBluetooth: (session: Session) => Promise<boolean>;
 }
 
 const INITIAL_ROLES: Role[] = [
@@ -241,7 +242,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       const encoder = new TextEncoder();
       const formatCurrency = (val: number) => `Rp ${new Intl.NumberFormat('id-ID').format(val)}`;
       
-      // ESC/POS Commands
       const init = "\x1b\x40";
       const center = "\x1b\x61\x01";
       const left = "\x1b\x61\x00";
@@ -266,39 +266,95 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       });
 
       receipt += separator;
-      const subLabel = "Subtotal:";
-      const subVal = formatCurrency(transaction.subtotal);
-      receipt += subLabel + " ".repeat(32 - subLabel.length - subVal.length) + subVal + newLine;
-
-      const taxLabel = "Pajak (11%):";
-      const taxVal = formatCurrency(transaction.tax);
-      receipt += taxLabel + " ".repeat(32 - taxLabel.length - taxVal.length) + taxVal + newLine;
-
-      receipt += boldOn;
-      const totalLabel = "TOTAL:";
-      const totalVal = formatCurrency(transaction.total);
-      receipt += totalLabel + " ".repeat(32 - totalLabel.length - totalVal.length) + totalVal + newLine;
-      receipt += boldOff;
-
+      receipt += `SUBTOTAL: ${formatCurrency(transaction.subtotal)}` + newLine;
+      receipt += `PAJAK: ${formatCurrency(transaction.tax)}` + newLine;
+      receipt += boldOn + `TOTAL: ${formatCurrency(transaction.total)}` + boldOff + newLine;
       receipt += separator + center;
       if (storeSettings.headerNote) receipt += storeSettings.headerNote + newLine;
       receipt += "Terima Kasih!" + newLine;
-      receipt += newLine + newLine + newLine + newLine; // Feed paper
+      receipt += newLine + newLine + newLine + newLine;
 
-      const chunks = [];
       const data = encoder.encode(receipt);
-      const CHUNK_SIZE = 20; // Some BT printers need small chunks
+      const CHUNK_SIZE = 20;
       for (let i = 0; i < data.length; i += CHUNK_SIZE) {
-        chunks.push(data.slice(i, i + CHUNK_SIZE));
-      }
-
-      for (const chunk of chunks) {
-        await btCharacteristic.writeValue(chunk);
+        await btCharacteristic.writeValue(data.slice(i, i + CHUNK_SIZE));
       }
 
       return true;
     } catch (e) {
       console.error("Gagal cetak Bluetooth", e);
+      return false;
+    }
+  };
+
+  const printSessionSummaryViaBluetooth = async (session: Session): Promise<boolean> => {
+    if (!btCharacteristic || printer.status !== 'connected') return false;
+
+    try {
+      const sessionTransactions = history.filter(t => session.transactionIds.includes(t.id));
+      const stats = {
+        totalSales: sessionTransactions.reduce((acc, t) => acc + t.total, 0),
+        count: sessionTransactions.length
+      };
+
+      const paymentsByMethod = sessionTransactions.reduce((acc: Record<string, number>, t) => {
+        const method = t.paymentMethod || 'Lainnya';
+        acc[method] = (acc[method] || 0) + t.total;
+        return acc;
+      }, {});
+
+      const cashExpected = session.openingCash + (paymentsByMethod['Tunai'] || 0);
+      const cashActual = session.closingCash || 0;
+      const cashDiff = cashActual - cashExpected;
+
+      const encoder = new TextEncoder();
+      const formatCurrency = (val: number) => `Rp ${new Intl.NumberFormat('id-ID').format(val)}`;
+      
+      const init = "\x1b\x40";
+      const center = "\x1b\x61\x01";
+      const left = "\x1b\x61\x00";
+      const boldOn = "\x1b\x45\x01";
+      const boldOff = "\x1b\x45\x00";
+      const newLine = "\n";
+      const separator = "--------------------------------\n";
+
+      let receipt = init + center + boldOn + "LAPORAN SESI KASIR" + boldOff + newLine;
+      receipt += storeSettings.name.toUpperCase() + newLine;
+      receipt += separator + left;
+      receipt += `ID Sesi: ${session.id}` + newLine;
+      receipt += `Mulai: ${new Date(session.startTime).toLocaleString('id-ID')}` + newLine;
+      if (session.endTime) receipt += `Tutup: ${new Date(session.endTime).toLocaleString('id-ID')}` + newLine;
+      receipt += separator;
+
+      receipt += boldOn + "REKAPITULASI KAS" + boldOff + newLine;
+      receipt += `Modal Awal: ${formatCurrency(session.openingCash)}` + newLine;
+      receipt += `Sales Tunai: ${formatCurrency(paymentsByMethod['Tunai'] || 0)}` + newLine;
+      receipt += `Ekspektasi: ${formatCurrency(cashExpected)}` + newLine;
+      receipt += `Kas Aktual: ${formatCurrency(cashActual)}` + newLine;
+      receipt += `Selisih: ${formatCurrency(cashDiff)}` + newLine;
+      receipt += separator;
+
+      receipt += boldOn + "RINGKASAN PENJUALAN" + boldOff + newLine;
+      receipt += `Total Transaksi: ${stats.count}` + newLine;
+      receipt += `TOTAL OMSET: ${formatCurrency(stats.totalSales)}` + newLine;
+      receipt += separator;
+
+      receipt += "METODE PEMBAYARAN" + newLine;
+      Object.entries(paymentsByMethod).forEach(([method, amount]) => {
+        receipt += `${method}: ${formatCurrency(amount)}` + newLine;
+      });
+
+      receipt += newLine + newLine + newLine + newLine;
+
+      const data = encoder.encode(receipt);
+      const CHUNK_SIZE = 20;
+      for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+        await btCharacteristic.writeValue(data.slice(i, i + CHUNK_SIZE));
+      }
+
+      return true;
+    } catch (e) {
+      console.error("Gagal cetak Bluetooth Sesi", e);
       return false;
     }
   };
@@ -505,7 +561,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
       users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded,
-      printer, connectPrinter, disconnectPrinter, printViaBluetooth
+      printer, connectPrinter, disconnectPrinter, printViaBluetooth, printSessionSummaryViaBluetooth
     }}>
       {children}
     </POSContext.Provider>
