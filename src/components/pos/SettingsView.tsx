@@ -203,6 +203,7 @@ export function SettingsView() {
               padding: 1.5mm 1mm;
               box-sizing: border-box;
               text-align: center;
+              overflow: hidden;
             }
             .name {
               font-family: 'Poppins', sans-serif;
@@ -220,11 +221,13 @@ export function SettingsView() {
             }
             .barcode {
               font-family: 'Libre Barcode 39', cursive;
-              font-size: 38pt;
+              font-size: 32pt;
               margin: 0;
               padding: 0;
               line-height: 1;
               white-space: nowrap;
+              max-width: 36mm;
+              overflow: hidden;
             }
             .sku {
               font-family: 'Poppins', sans-serif;
