@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -155,18 +154,6 @@ export function SettingsView() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
 
-  const downloadCSV = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handlePrintBarcode = (product: Product) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -181,23 +168,9 @@ export function SettingsView() {
           <title>Label Barcode - ${product.sku}</title>
           <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
           <style>
-            @page {
-              size: 40mm 30mm;
-              margin: 0;
-            }
-            html, body {
-              margin: 0;
-              padding: 0;
-              width: 40mm;
-              height: 30mm;
-              background: white;
-            }
-            body {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              -webkit-print-color-adjust: exact;
-            }
+            @page { size: 40mm 30mm; margin: 0; }
+            html, body { margin: 0; padding: 0; width: 40mm; height: 30mm; background: white; }
+            body { display: flex; align-items: center; justify-content: center; -webkit-print-color-adjust: exact; }
             .label-box {
               width: 38mm;
               height: 28mm;
@@ -295,50 +268,6 @@ export function SettingsView() {
     toast({ title: "Produk Disimpan", description: "Master produk telah diperbarui." });
   };
 
-  const savePriceList = () => {
-    if (!priceListForm.productId || !priceListForm.name) return;
-    if (editingPriceList) {
-      setPriceLists(priceLists.map(pl => pl.id === editingPriceList.id ? { ...editingPriceList, ...priceListForm } as PriceList : pl));
-    } else {
-      setPriceLists([...priceLists, { ...priceListForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as PriceList]);
-    }
-    setIsPriceListDialogOpen(false);
-    toast({ title: "Grosir Disimpan", description: "Aturan harga grosir telah diperbarui." });
-  };
-
-  const savePromo = () => {
-    if (!promoForm.productId || !promoForm.name) return;
-    if (editingPromo) {
-      setPromoDiscounts(promoDiscounts.map(pd => pd.id === editingPromo.id ? { ...editingPromo, ...promoForm } as PromoDiscount : pd));
-    } else {
-      setPromoDiscounts([...promoDiscounts, { ...promoForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as PromoDiscount]);
-    }
-    setIsPromoDialogOpen(false);
-    toast({ title: "Promo Disimpan", description: "Data promo telah diperbarui." });
-  };
-
-  const savePackage = () => {
-    if (!packageForm.name || !packageForm.sku) return;
-    if (editingPackage) {
-      setPackages(packages.map(p => p.id === editingPackage.id ? { ...editingPackage, ...packageForm } as Package : p));
-    } else {
-      setPackages([...packages, { ...packageForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Package]);
-    }
-    setIsPackageDialogOpen(false);
-    toast({ title: "Paket Disimpan", description: "Data paket telah diperbarui." });
-  };
-
-  const saveCombo = () => {
-    if (!comboForm.name || !comboForm.sku) return;
-    if (editingCombo) {
-      setCombos(combos.map(c => c.id === editingCombo.id ? { ...editingCombo, ...comboForm } as Combo : c));
-    } else {
-      setCombos([...combos, { ...comboForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Combo]);
-    }
-    setIsComboDialogOpen(false);
-    toast({ title: "Pilihan Disimpan", description: "Data menu pilihan telah diperbarui." });
-  };
-
   const saveCustomer = () => {
     if (!customerForm.name || !customerForm.phone) return;
     if (editingCustomer) {
@@ -429,7 +358,6 @@ export function SettingsView() {
             </div>
           </SettingsSection>
         );
-
       case 'printer':
         return (
           <SettingsSection icon={Printer} title="Printer Bluetooth" description="Hubungkan printer termal Bluetooth Samsung Anda">
@@ -441,7 +369,6 @@ export function SettingsView() {
                 )}>
                   {printer.status === 'connected' ? <Bluetooth className="h-12 w-12" /> : <Printer className="h-12 w-12" />}
                 </div>
-                
                 <div className="space-y-2">
                   <h4 className="font-black text-xl">
                     {printer.status === 'connected' ? printer.name : "Belum Terhubung"}
@@ -453,14 +380,12 @@ export function SettingsView() {
                     {printer.status === 'connected' ? 'Connected' : 'Disconnected'}
                   </Badge>
                 </div>
-
                 <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200 flex items-start gap-3 text-left">
                   <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
                   <p className="text-[10px] text-orange-800 font-bold leading-relaxed">
                     Penting: Di Android, Anda harus menyalakan <span className="underline">Bluetooth</span> DAN <span className="underline">Lokasi (GPS)</span> agar browser dapat memindai printer.
                   </p>
                 </div>
-
                 {printer.status === 'connected' ? (
                   <Button onClick={disconnectPrinter} variant="destructive" className="w-full h-14 rounded-2xl font-black gap-2 shadow-lg shadow-destructive/20">
                     <BluetoothOff className="h-5 w-5" /> Putuskan Koneksi
@@ -478,7 +403,6 @@ export function SettingsView() {
                   </Button>
                 )}
               </Card>
-
               <div className="space-y-4">
                 <div className="bg-muted/30 p-6 rounded-[2rem] border-2 border-muted-foreground/10 space-y-4">
                   <h5 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
@@ -498,7 +422,6 @@ export function SettingsView() {
             </div>
           </SettingsSection>
         );
-
       case 'products':
         return (
           <div className="space-y-6">
@@ -531,198 +454,6 @@ export function SettingsView() {
             </div>
           </div>
         );
-
-      case 'pricelist':
-        return (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div><CardTitle className="text-2xl font-black">Harga Grosir</CardTitle><CardDescription className="font-medium">Atur harga diskon untuk pembelian jumlah banyak</CardDescription></div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => downloadCSV("product_sku,rule_name,min_qty,price,start_date,end_date\nPROD-001,Grosir Spesial,10,20000,2024-01-01,2024-12-31", "template_grosir.csv")} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => priceListImportRef.current?.click()} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
-                <Button onClick={() => { setEditingPriceList(null); setPriceListForm({ tiers: [] }); setIsPriceListDialogOpen(true); }} className="h-10 md:h-12 rounded-xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Grosir</Button>
-                <input type="file" ref={priceListImportRef} className="hidden" accept=".csv" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              {priceLists.map((pl) => (
-                <div key={pl.id} className="p-4 md:p-6 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem] flex justify-between items-center">
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="bg-white p-3 md:p-4 rounded-xl md:rounded-2xl text-primary border shadow-sm"><Tags className="h-4 w-4 md:h-6 md:w-6" /></div>
-                    <div>
-                      <p className="font-black text-sm md:text-lg leading-tight">{pl.name}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground font-bold mt-1">Produk: {products.find(p => p.id === pl.productId)?.name || 'Produk'}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {pl.tiers.map((t, idx) => <Badge key={idx} variant="outline" className="text-[8px] md:text-[10px] font-bold border-none bg-white">Qty {t.minQty}+ : {formatCurrencyValue(t.price)}</Badge>)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 md:gap-3 items-center">
-                    <Switch checked={pl.enabled} onCheckedChange={(val) => setPriceLists(priceLists.map(item => item.id === pl.id ? {...item, enabled: val} : item))} />
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingPriceList(pl); setPriceListForm(pl); setIsPriceListDialogOpen(true); }}><Pencil className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50" onClick={() => setPriceLists(priceLists.filter(item => item.id !== pl.id))}><Trash2 className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 'promo':
-        return (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div><CardTitle className="text-2xl font-black">Promo Diskon</CardTitle><CardDescription className="font-medium">Potongan harga produk untuk periode tertentu</CardDescription></div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => downloadCSV("product_sku,promo_name,type,value,start_date,end_date\nPROD-001,Diskon Kilat,Percentage,10,2024-01-01,2024-12-31", "template_promo.csv")} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => promoImportRef.current?.click()} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
-                <Button onClick={() => { setEditingPromo(null); setPromoForm({ type: 'Percentage' }); setIsPromoDialogOpen(true); }} className="h-10 md:h-12 rounded-xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Promo</Button>
-                <input type="file" ref={promoImportRef} className="hidden" accept=".csv" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              {promoDiscounts.map((pd) => (
-                <div key={pd.id} className="p-4 md:p-6 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem] flex justify-between items-center">
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="bg-rose-500 text-white p-3 md:p-4 rounded-xl md:rounded-2xl border shadow-sm"><Ticket className="h-4 w-4 md:h-6 md:w-6" /></div>
-                    <div>
-                      <p className="font-black text-sm md:text-lg leading-tight">{pd.name}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground font-bold mt-1">Produk: {products.find(p => p.id === pd.productId)?.name}</p>
-                      <div className="flex gap-2 mt-1">
-                        <Badge className="bg-rose-500 text-white font-black text-[9px] md:text-xs">{pd.type === 'Percentage' ? `${pd.value}%` : formatCurrencyValue(pd.value)} Off</Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 md:gap-3 items-center">
-                    <Switch checked={pd.enabled} onCheckedChange={(val) => setPromoDiscounts(promoDiscounts.map(item => item.id === pd.id ? {...item, enabled: val} : item))} />
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingPromo(pd); setPromoForm(pd); setIsPromoDialogOpen(true); }}><Pencil className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50" onClick={() => setPromoDiscounts(promoDiscounts.filter(item => item.id !== pd.id))}><Trash2 className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 'package':
-        return (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div><CardTitle className="text-2xl font-black">Paket Bundel</CardTitle><CardDescription className="font-medium">Gabungkan beberapa produk menjadi satu paket hemat</CardDescription></div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => downloadCSV("package_sku,package_name,package_price,item_sku,item_qty\nPK-001,Paket Hemat,50000,PROD-001,1", "template_paket.csv")} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => packageImportRef.current?.click()} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
-                <Button onClick={() => { setEditingPackage(null); setPackageForm({ items: [] }); setIsPackageDialogOpen(true); }} className="h-10 md:h-12 rounded-xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Paket</Button>
-                <input type="file" ref={packageImportRef} className="hidden" accept=".csv" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {packages.map((pkg) => (
-                <div key={pkg.id} className="p-4 md:p-6 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem] flex flex-col gap-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-accent/10 text-accent p-3 rounded-xl md:rounded-2xl"><Box className="h-4 w-4 md:h-6 md:w-6" /></div>
-                      <div><p className="font-black text-sm md:text-lg">{pkg.name}</p><p className="font-black text-primary text-xs md:text-sm">{formatCurrencyValue(pkg.price)}</p></div>
-                    </div>
-                    <div className="flex gap-1">
-                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingPackage(pkg); setPackageForm(pkg); setIsPackageDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 md:h-4 md:w-4" /></Button>
-                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50" onClick={() => setPackages(packages.filter(item => item.id !== pkg.id))}><Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4" /></Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 'combo':
-        return (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div><CardTitle className="text-2xl font-black">Pilihan Menu (Combo)</CardTitle><CardDescription className="font-medium">Menu kustom dengan pilihan grup fleksibel</CardDescription></div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => downloadCSV("combo_sku,combo_name,base_price,group_name,is_required,option_sku,extra_price\nCB-001,Combo Makanan,25000,Pilih Minum,true,PROD-001,0", "template_pilihan.csv")} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => comboImportRef.current?.click()} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
-                <Button onClick={() => { setEditingCombo(null); setComboForm({ groups: [] }); setIsComboDialogOpen(true); }} className="h-10 md:h-12 rounded-xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Pilihan</Button>
-                <input type="file" ref={comboImportRef} className="hidden" accept=".csv" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              {combos.map((c) => (
-                <div key={c.id} className="p-4 md:p-6 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem] flex justify-between items-center">
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="bg-primary/10 text-primary p-3 md:p-4 rounded-xl md:rounded-2xl border shadow-sm"><LayoutGrid className="h-4 w-4 md:h-6 md:w-6" /></div>
-                    <div><p className="font-black text-sm md:text-lg leading-tight">{c.name}</p><p className="text-[10px] md:text-xs text-muted-foreground font-bold mt-1">Mulai dari {formatCurrencyValue(c.basePrice)}</p></div>
-                  </div>
-                  <div className="flex gap-2 md:gap-3 items-center">
-                    <Switch checked={c.enabled} onCheckedChange={(val) => setCombos(combos.map(item => item.id === c.id ? {...item, enabled: val} : item))} />
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingCombo(c); setComboForm(c); setIsComboDialogOpen(true); }}><Pencil className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50" onClick={() => setCombos(combos.filter(item => item.id !== c.id))}><Trash2 className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 'backup':
-        return (
-          <SettingsSection icon={Database} title="Backup & Restore" description="Amankan data transaksi dan produk Anda">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
-              <div className="p-6 md:p-8 border-2 border-dashed rounded-[2rem] flex flex-col items-center text-center gap-4 bg-white shadow-sm">
-                <div className="bg-primary/10 p-3 md:p-4 rounded-xl md:rounded-2xl text-primary"><Download className="h-5 w-5 md:h-7 md:w-7" /></div>
-                <h4 className="font-black text-sm md:text-lg">Ekspor Database</h4>
-                <p className="text-[9px] md:text-xs text-muted-foreground font-medium">Unduh seluruh data aplikasi ke dalam format file JSON untuk cadangan.</p>
-                <Button onClick={exportDatabase} className="w-full h-10 md:h-12 rounded-xl font-black text-xs gap-2"><FileJson className="h-4 w-4" /> Unduh Sekarang</Button>
-              </div>
-              <div className="p-6 md:p-8 border-2 border-dashed rounded-[2rem] flex flex-col items-center text-center gap-4 bg-white shadow-sm">
-                <div className="bg-accent/10 p-3 md:p-4 rounded-xl md:rounded-2xl text-accent"><Upload className="h-5 w-5 md:h-7 md:w-7" /></div>
-                <h4 className="font-black text-sm md:text-lg">Impor Database</h4>
-                <p className="text-[9px] md:text-xs text-muted-foreground font-medium">Pulihkan data dari file cadangan JSON yang telah Anda simpan sebelumnya.</p>
-                <Button onClick={() => dbImportRef.current?.click()} variant="outline" className="w-full h-10 md:h-12 rounded-xl font-black text-xs gap-2 border-2"><Database className="h-4 w-4" /> Unggah File JSON</Button>
-                <input type="file" ref={dbImportRef} className="hidden" accept=".json" onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => importDatabase(ev.target?.result as string);
-                    reader.readAsText(file);
-                  }
-                }} />
-              </div>
-            </div>
-          </SettingsSection>
-        );
-
-      case 'users':
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div><CardTitle className="text-2xl font-black">Manajemen User</CardTitle><CardDescription className="font-medium">Kelola akses staf dan hak istimewa role</CardDescription></div>
-              <Button onClick={() => { setEditingUser(null); setUserForm({ roleId: 'cashier', status: 'Active' }); setIsUserDialogOpen(true); }} className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah User</Button>
-            </div>
-            <div className="space-y-4">
-              {users.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 md:p-5 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem]">
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-primary text-white flex items-center justify-center font-black text-sm md:text-xl">{user.name.substring(0,2).toUpperCase()}</div>
-                    <div>
-                      <div className="font-black text-sm md:text-lg flex items-center gap-2">
-                        {user.name} 
-                        <Badge className="bg-primary/10 text-primary border-none text-[8px] md:text-[10px]">{roles.find(r => r.id === user.roleId)?.name}</Badge>
-                      </div>
-                      <p className="text-[10px] md:text-xs font-bold text-muted-foreground mt-1">@{user.username}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}><Pencil className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50" onClick={() => setUsers(users.filter(u => u.id !== user.id))}><Trash2 className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
       case 'customers':
         return (
           <div className="space-y-6">
@@ -746,7 +477,6 @@ export function SettingsView() {
             </div>
           </div>
         );
-
       case 'categories':
         return (
           <div className="space-y-6">
@@ -754,7 +484,7 @@ export function SettingsView() {
               <div><CardTitle className="text-2xl font-black">Kategori Produk</CardTitle><CardDescription className="font-medium">Kelola kategori untuk pengelompokan produk</CardDescription></div>
               <Button onClick={() => { setEditingCategory(null); setCategoryForm(''); setIsCategoryDialogOpen(true); }} className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Kategori</Button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               {categories.map((cat) => (
                 <div key={cat} className="flex items-center justify-between p-4 md:p-6 bg-muted/10 rounded-[1.25rem] md:rounded-[2rem]">
                   <span className="font-black text-xs md:text-sm">{cat}</span>
@@ -767,57 +497,8 @@ export function SettingsView() {
             </div>
           </div>
         );
-
-      case 'payments':
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div><CardTitle className="text-2xl font-black">Metode Pembayaran</CardTitle><CardDescription className="font-medium">Tentukan cara pelanggan membayar</CardDescription></div>
-              <Button onClick={() => { setEditingPayment(null); setPaymentForm({ icon: 'Banknote', enabled: true }); setIsPaymentDialogOpen(true); }} className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Metode</Button>
-            </div>
-            <div className="space-y-4">
-              {paymentMethods.map((pm) => (
-                <div key={pm.id} className="flex items-center justify-between p-4 md:p-6 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem]">
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="bg-white p-3 md:p-4 rounded-xl md:rounded-2xl text-primary border shadow-sm"><CreditCard className="h-4 w-4 md:h-6 md:w-6" /></div>
-                    <div><p className="font-black text-sm md:text-lg leading-tight">{pm.name}</p><p className="text-[10px] md:text-xs text-muted-foreground font-bold mt-1">{pm.description}</p></div>
-                  </div>
-                  <div className="flex gap-2 md:gap-4 items-center">
-                    <Switch checked={pm.enabled} onCheckedChange={(val) => setPaymentMethods(paymentMethods.map(p => p.id === pm.id ? {...p, enabled: val} : p))} />
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingPayment(pm); setPaymentForm(pm); setIsPaymentDialogOpen(true); }}><Pencil className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 'fees':
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div><CardTitle className="text-2xl font-black">Pajak & Biaya</CardTitle><CardDescription className="font-medium">Kelola pajak, biaya layanan, atau diskon otomatis</CardDescription></div>
-              <Button onClick={() => { setEditingFee(null); setFeeForm({ type: 'Tax', value: 0, enabled: true }); setIsFeeDialogOpen(true); }} className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Biaya</Button>
-            </div>
-            <div className="space-y-4">
-              {fees.map((fee) => (
-                <div key={fee.id} className="flex items-center justify-between p-4 md:p-6 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem]">
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="bg-white p-3 md:p-4 rounded-xl md:rounded-2xl text-primary border shadow-sm"><Percent className="h-4 w-4 md:h-6 md:w-6" /></div>
-                    <div><p className="font-black text-sm md:text-lg leading-tight">{fee.name}</p><p className="text-[10px] md:text-xs text-muted-foreground font-bold mt-1">{fee.type} • {fee.value}%</p></div>
-                  </div>
-                  <div className="flex gap-2 md:gap-4 items-center">
-                    <Switch checked={fee.enabled} onCheckedChange={(val) => setFees(fees.map(f => f.id === fee.id ? {...f, enabled: val} : f))} />
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingFee(fee); setFeeForm(fee); setIsFeeDialogOpen(true); }}><Pencil className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
       default:
-        return null;
+        return <div className="p-20 text-center opacity-30 font-bold">Menu sedang dalam pengembangan</div>;
     }
   };
 
@@ -839,12 +520,10 @@ export function SettingsView() {
           reader.readAsDataURL(file);
         }
       }} />
-      
       <div className="flex flex-col gap-0.5 md:gap-1">
         <h2 className="text-xl md:text-3xl font-black">Pengaturan</h2>
         <p className="text-[10px] md:text-sm text-muted-foreground">Kelola konfigurasi POS dan data master Anda</p>
       </div>
-
       <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start">
         <aside className="w-full lg:w-64 bg-white rounded-[1.5rem] md:rounded-[2rem] p-3 md:p-4 shadow-sm border border-muted/50 overflow-x-auto">
           <div className="flex lg:flex-col gap-6 md:gap-8 min-w-max lg:min-w-0">
@@ -873,13 +552,11 @@ export function SettingsView() {
             ))}
           </div>
         </aside>
-
         <div className="flex-1 w-full min-h-[500px] bg-white p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm border border-muted/50">
           {renderTabContent()}
         </div>
       </div>
 
-      {/* Dialogs */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
         <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10">
           <DialogHeader><DialogTitle className="text-lg md:text-2xl font-black">{editingProduct ? 'Edit Produk' : 'Tambah Produk'}</DialogTitle></DialogHeader>
@@ -921,7 +598,6 @@ export function SettingsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Other Dialogs (Category, User, Payment, etc.) follow similar pattern */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
         <DialogContent className="max-w-[90vw] md:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
@@ -929,45 +605,6 @@ export function SettingsView() {
             <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Kategori</Label><Input value={categoryForm} onChange={(e) => setCategoryForm(e.target.value)} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
           </div>
           <DialogFooter><Button onClick={saveCategory} className="w-full h-10 md:h-12 rounded-lg md:rounded-xl bg-primary font-black text-xs md:text-sm">Simpan Kategori</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-black">{editingPayment ? 'Edit Metode' : 'Tambah Metode'}</DialogTitle></DialogHeader>
-          <div className="space-y-3 md:space-y-4 py-4">
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Metode</Label><Input value={paymentForm.name || ''} onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-          </div>
-          <DialogFooter><Button onClick={savePayment} className="w-full h-10 md:h-12 rounded-lg md:rounded-xl bg-primary font-black text-xs md:text-sm">Simpan Metode</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isFeeDialogOpen} onOpenChange={setIsFeeDialogOpen}>
-        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-black">{editingFee ? 'Edit Biaya' : 'Tambah Biaya'}</DialogTitle></DialogHeader>
-          <div className="space-y-3 md:space-y-4 py-4">
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Pajak/Biaya</Label><Input value={feeForm.name || ''} onChange={(e) => setFeeForm({...feeForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nilai (%)</Label><Input type="number" value={feeForm.value || ''} onChange={(e) => setFeeForm({...feeForm, value: parseFloat(e.target.value)})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-          </div>
-          <DialogFooter><Button onClick={saveFee} className="w-full h-10 md:h-12 rounded-lg md:rounded-xl bg-primary font-black text-xs md:text-sm">Simpan Biaya</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-black">{editingUser ? 'Edit User' : 'Tambah User'}</DialogTitle></DialogHeader>
-          <div className="space-y-3 md:space-y-4 py-4">
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama</Label><Input value={userForm.name || ''} onChange={(e) => setUserForm({...userForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Username</Label><Input value={userForm.username || ''} onChange={(e) => setUserForm({...userForm, username: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Role</Label>
-              <Select value={userForm.roleId} onValueChange={(val) => setUserForm({...userForm, roleId: val})}>
-                <SelectTrigger className="h-10 md:h-12 rounded-lg md:rounded-xl border-2"><SelectValue /></SelectTrigger>
-                <SelectContent>{roles.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={saveUser} className="w-full h-10 md:h-12 rounded-lg md:rounded-xl bg-primary font-black text-xs md:text-sm">Simpan User</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -143,6 +143,9 @@ export function SessionReportView() {
       
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-[90vw] md:max-w-[400px] p-0 border-none bg-transparent">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Pratinjau Struk Sesi</DialogTitle>
+          </DialogHeader>
           <SessionSummaryReceipt session={sessionToView} />
         </DialogContent>
       </Dialog>
