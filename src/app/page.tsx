@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -31,9 +30,9 @@ function POSLayout() {
   if (!isClient || !isDbLoaded) {
     return (
       <div className="min-h-screen bg-[#F9FBFF] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Memuat Database...</p>
+        <div className="flex flex-col items-center gap-3 md:gap-4">
+          <div className="h-10 w-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Memuat Database...</p>
         </div>
       </div>
     );
@@ -49,7 +48,7 @@ function POSLayout() {
     return (
       <div className="flex min-h-screen bg-[#F9FBFF] font-poppins">
         <Sidebar />
-        <main className="flex-1 ml-20 md:ml-28 p-4 md:p-8 flex items-center justify-center">
+        <main className="flex-1 ml-16 md:ml-24 p-4 md:p-8 flex items-center justify-center">
           <OpenSessionView />
         </main>
       </div>
@@ -72,8 +71,8 @@ function POSLayout() {
       <Sidebar />
       
       <main className={cn(
-        "flex-1 ml-20 md:ml-28 p-4 md:p-8 min-h-screen overflow-y-auto bg-[#F9FBFF] transition-all duration-300 ease-in-out",
-        isPOSView && !isMobile ? "mr-[400px]" : "mr-0"
+        "flex-1 ml-16 md:ml-24 p-3 md:p-8 min-h-screen overflow-y-auto bg-[#F9FBFF] transition-all duration-300 ease-in-out",
+        isPOSView && !isMobile ? "mr-[320px] md:mr-[400px]" : "mr-0"
       )}>
         <SearchHeader />
         
@@ -90,15 +89,15 @@ function POSLayout() {
         <Sheet>
           <SheetTrigger asChild>
             <Button 
-              className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 z-50 flex items-center justify-center group active:scale-90 transition-all"
+              className="fixed bottom-4 right-4 h-12 w-12 md:h-16 md:w-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 z-50 flex items-center justify-center group active:scale-90 transition-all"
             >
-              <ShoppingBag className="h-7 w-7 text-white" />
-              <div className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black h-6 w-6 rounded-full flex items-center justify-center border-2 border-white">
+              <ShoppingBag className="h-5 w-5 md:h-7 md:w-7 text-white" />
+              <div className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] md:text-[10px] font-black h-5 w-5 md:h-6 md:w-6 rounded-full flex items-center justify-center border-2 border-white">
                 {cart.reduce((a, b) => a + b.quantity, 0)}
               </div>
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[90vh] p-0 border-none rounded-t-[3rem] overflow-hidden">
+          <SheetContent side="bottom" className="h-[85vh] p-0 border-none rounded-t-[2rem] md:rounded-t-[3rem] overflow-hidden">
             <SheetHeader className="sr-only">
               <SheetTitle>Detail Pesanan</SheetTitle>
             </SheetHeader>

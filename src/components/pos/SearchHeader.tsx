@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -13,32 +12,32 @@ export function SearchHeader() {
   const currentRole = roles.find(r => r.id === currentUser?.roleId);
 
   return (
-    <header className="flex items-center justify-between gap-4 md:gap-10 py-4 md:py-8 mb-2">
-      <div className="relative flex-1 max-w-2xl">
-        <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 h-5 w-5 md:h-6 md:w-6 text-muted-foreground/60" />
+    <header className="flex items-center justify-between gap-3 md:gap-8 py-3 md:py-6 mb-1">
+      <div className="relative flex-1 max-w-xl">
+        <Search className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-muted-foreground/60" />
         <Input
           placeholder="Cari..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-12 md:pl-16 h-12 md:h-16 bg-white border-none shadow-sm rounded-2xl md:rounded-[1.5rem] text-sm md:text-lg font-medium placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 transition-all"
+          className="pl-10 md:pl-14 h-10 md:h-14 bg-white border-none shadow-sm rounded-xl md:rounded-2xl text-xs md:text-base font-medium placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 transition-all"
         />
       </div>
 
-      <div className="flex items-center gap-3 md:gap-6">
-        <button className="p-3 md:p-5 bg-white rounded-xl md:rounded-[1.25rem] shadow-sm text-muted-foreground hover:text-primary active:scale-90 transition-all">
-          <Bell className="h-5 w-5 md:h-7 md:w-7" />
+      <div className="flex items-center gap-2 md:gap-4">
+        <button className="p-2.5 md:p-4 bg-white rounded-lg md:rounded-xl shadow-sm text-muted-foreground hover:text-primary active:scale-90 transition-all">
+          <Bell className="h-4.5 w-4.5 md:h-6 md:w-6" />
         </button>
         
-        <div className="flex items-center gap-3 bg-white p-2 pr-4 md:pr-6 rounded-xl md:rounded-[1.5rem] shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95">
-          <Avatar className="h-10 w-10 md:h-12 md:w-12 border-2 md:border-[3px] border-primary/10 rounded-xl md:rounded-2xl">
+        <div className="flex items-center gap-2 bg-white p-1.5 pr-3 md:pr-5 rounded-lg md:rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-95">
+          <Avatar className="h-8 w-8 md:h-11 md:w-11 border-2 md:border-3 border-primary/10 rounded-lg md:rounded-xl">
             <AvatarImage src={currentUser?.avatarUrl} />
-            <AvatarFallback className="rounded-xl md:rounded-2xl bg-primary text-white font-black text-xs md:text-sm">
+            <AvatarFallback className="rounded-lg md:rounded-xl bg-primary text-white font-black text-[10px] md:text-xs">
               {currentUser?.name?.substring(0, 2).toUpperCase() || '??'}
             </AvatarFallback>
           </Avatar>
           <div className="text-left hidden lg:block">
-            <p className="text-xs md:text-sm font-black leading-tight">{currentUser?.name || 'User'}</p>
-            <p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{currentRole?.name || 'Staff'}</p>
+            <p className="text-[10px] md:text-xs font-black leading-tight">{currentUser?.name || 'User'}</p>
+            <p className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">{currentRole?.name || 'Staff'}</p>
           </div>
         </div>
       </div>
