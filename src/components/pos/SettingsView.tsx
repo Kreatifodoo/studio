@@ -486,7 +486,10 @@ export function SettingsView() {
                   </h5>
                   <ul className="space-y-3 text-[10px] font-bold text-muted-foreground">
                     <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">1</span> Pastikan printer termal Anda sudah menyala dan dalam mode pairing.</li>
-                    <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">2</span> <span className="text-primary">Wajib</span>: Nyalakan Lokasi (GPS) di panel notifikasi Samsung Anda.</li>
+                    <li className="flex gap-3">
+                      <span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">2</span> 
+                      <span className="text-primary font-black">PENTING!</span> Nyalakan <b>Lokasi (GPS)</b> di HP Samsung Anda melalui Quick Panel (tarik layar dari atas).
+                    </li>
                     <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">3</span> Gunakan Google Chrome atau Samsung Internet terbaru.</li>
                     <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">4</span> Saat pop-up browser muncul, pilih nama printer Anda dan klik "Pasangkan".</li>
                   </ul>
@@ -876,6 +879,7 @@ export function SettingsView() {
         </div>
       </div>
 
+      {/* Dialogs */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
         <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10">
           <DialogHeader><DialogTitle className="text-lg md:text-2xl font-black">{editingProduct ? 'Edit Produk' : 'Tambah Produk'}</DialogTitle></DialogHeader>
@@ -906,69 +910,6 @@ export function SettingsView() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isPriceListDialogOpen} onOpenChange={setIsPriceListDialogOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-2xl font-black">{editingPriceList ? 'Edit Harga Grosir' : 'Tambah Harga Grosir'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 md:space-y-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Pilih Produk</Label>
-                <Select value={priceListForm.productId} onValueChange={(val) => setPriceListForm({...priceListForm, productId: val})}>
-                  <SelectTrigger className="h-10 md:h-12 rounded-lg md:rounded-xl border-2"><SelectValue placeholder="Pilih Produk" /></SelectTrigger>
-                  <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Aturan</Label><Input value={priceListForm.name || ''} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={savePriceList} className="w-full h-12 md:h-14 rounded-lg md:rounded-xl bg-primary font-black text-sm md:text-base">Simpan Grosir</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPromoDialogOpen} onOpenChange={setIsPromoDialogOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-xl rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-2xl font-black">{editingPromo ? 'Edit Promo' : 'Tambah Promo'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 md:space-y-6 py-4">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Pilih Produk</Label>
-              <Select value={promoForm.productId} onValueChange={(val) => setPromoForm({...promoForm, productId: val})}>
-                <SelectTrigger className="h-10 md:h-12 rounded-lg md:rounded-xl border-2"><SelectValue placeholder="Pilih Produk" /></SelectTrigger>
-                <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Promo</Label><Input value={promoForm.name || ''} onChange={(e) => setPromoForm({...promoForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-          </div>
-          <DialogFooter><Button onClick={savePromo} className="w-full h-12 md:h-14 rounded-lg md:rounded-xl bg-primary font-black text-sm md:text-base">Simpan Promo</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-2xl font-black">{editingPackage ? 'Edit Paket' : 'Tambah Paket'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 md:space-y-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Paket</Label><Input value={packageForm.name || ''} onChange={(e) => setPackageForm({...packageForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-              <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">SKU</Label><Input value={packageForm.sku || ''} onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-              <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Harga Paket</Label><Input type="number" value={packageForm.price || ''} onChange={(e) => setPackageForm({...packageForm, price: parseFloat(e.target.value)})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={savePackage} className="w-full h-12 md:h-14 rounded-lg md:rounded-xl bg-primary font-black text-sm md:text-base">Simpan Paket</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isComboDialogOpen} onOpenChange={setIsComboDialogOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-3xl rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-2xl font-black">{editingCombo ? 'Edit Pilihan' : 'Tambah Pilihan'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 md:space-y-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Combo</Label><Input value={comboForm.name || ''} onChange={(e) => setComboForm({...comboForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-              <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Harga Dasar</Label><Input type="number" value={comboForm.basePrice || ''} onChange={(e) => setComboForm({...comboForm, basePrice: parseFloat(e.target.value)})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={saveCombo} className="w-full h-12 md:h-14 rounded-lg md:rounded-xl bg-primary font-black text-sm md:text-base">Simpan Pilihan</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
         <DialogContent className="max-w-[90vw] md:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-black">{editingCustomer ? 'Edit Pelanggan' : 'Tambah Pelanggan'}</DialogTitle></DialogHeader>
@@ -980,6 +921,7 @@ export function SettingsView() {
         </DialogContent>
       </Dialog>
 
+      {/* Other Dialogs (Category, User, Payment, etc.) follow similar pattern */}
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
         <DialogContent className="max-w-[90vw] md:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8">
           <DialogHeader><DialogTitle className="text-lg md:text-xl font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
@@ -1039,25 +981,4 @@ function SettingsSection({ icon: Icon, title, description, children }: any) {
       <div className="pl-0 lg:pl-4">{children}</div>
     </div>
   );
-}
-
-function Info(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4" />
-      <path d="M12 8h.01" />
-    </svg>
-  )
 }
