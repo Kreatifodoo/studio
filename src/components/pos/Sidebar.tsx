@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { LayoutDashboard, ShoppingCart, Clock, Settings, LogOut, UtensilsCrossed, FileText, XCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Clock, Settings, LogOut, UtensilsCrossed, FileText, XCircle, AlertCircle, CheckCircle2, DollarSign, ArrowRight } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { cn } from '@/lib/utils';
 import {
@@ -31,18 +31,27 @@ export function Sidebar() {
   const [closingCash, setClosingCash] = useState('');
   const [showSummaryPreview, setShowSummaryPreview] = useState(false);
 
-  const expectedCash = useMemo(() => {
-    if (!currentSession) return 0;
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
+  const sessionStats = useMemo(() => {
+    if (!currentSession) return { expected: 0, sales: 0, count: 0 };
     const sessionTransactions = history.filter(t => currentSession.transactionIds.includes(t.id));
     const cashSales = sessionTransactions
       .filter(t => t.paymentMethod === 'Tunai')
       .reduce((acc, t) => acc + t.total, 0);
     
-    return currentSession.openingCash + cashSales;
+    return {
+      expected: currentSession.openingCash + cashSales,
+      sales: cashSales,
+      count: sessionTransactions.length
+    };
   }, [currentSession, history]);
 
   const currentClosingAmount = parseFloat(closingCash) || 0;
-  const isBalanced = Math.abs(currentClosingAmount - expectedCash) < 100;
+  const cashDiff = currentClosingAmount - sessionStats.expected;
+  const isBalanced = Math.abs(cashDiff) < 100;
 
   const navItems = useMemo(() => {
     const allItems = [
@@ -123,57 +132,87 @@ export function Sidebar() {
         {currentSession && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="p-2 md:p-3 rounded-lg md:rounded-xl bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 w-full flex flex-col items-center">
+              <button className="p-2 md:p-3 rounded-lg md:rounded-xl bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 w-full flex flex-col items-center group">
                 <XCircle className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="text-[6px] md:text-[8px] font-black uppercase tracking-tighter mt-0.5 hidden md:block text-orange-500/50 group-hover:text-white">Tutup</span>
               </button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-2xl p-4 border-none max-w-[90vw] md:max-w-md">
+            <AlertDialogContent className="rounded-[2rem] p-6 border-none max-w-[95vw] md:max-w-md shadow-2xl">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-sm md:text-lg font-black">Tutup Sesi Kasir?</AlertDialogTitle>
-                <AlertDialogDescription className="text-[10px] md:text-xs">
-                  Harap hitung semua uang tunai di laci dengan teliti.
+                <AlertDialogTitle className="text-xl font-black">Tutup Sesi Kasir</AlertDialogTitle>
+                <AlertDialogDescription className="text-xs font-medium">
+                  Harap hitung semua uang tunai di laci dengan teliti sebelum menutup sesi.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               
-              <div className="py-2 space-y-3">
-                 <div className="space-y-1">
-                    <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Saldo Kas Akhir (Rp)</Label>
-                    <Input 
-                      type="number" 
-                      value={closingCash}
-                      onChange={(e) => setClosingCash(e.target.value)}
-                      className="h-10 rounded-lg text-base font-black border-2"
-                      placeholder="0"
-                      autoFocus
-                    />
+              <div className="py-4 space-y-6">
+                 {/* Summary Cards */}
+                 <div className="grid grid-cols-2 gap-3">
+                   <div className="bg-muted/30 p-3 rounded-2xl">
+                     <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Modal Awal</p>
+                     <p className="text-xs font-black">{formatCurrency(currentSession.openingCash)}</p>
+                   </div>
+                   <div className="bg-muted/30 p-3 rounded-2xl">
+                     <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Tunai</p>
+                     <p className="text-xs font-black">{formatCurrency(sessionStats.sales)}</p>
+                   </div>
+                 </div>
+
+                 <div className="bg-primary/5 p-4 rounded-2xl border-2 border-primary/10 flex flex-col items-center">
+                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Ekspektasi Saldo Akhir</p>
+                   <p className="text-2xl font-black text-primary">{formatCurrency(sessionStats.expected)}</p>
+                 </div>
+
+                 <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Saldo Kas Aktual (Fisik)</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30" />
+                      <Input 
+                        type="number" 
+                        value={closingCash}
+                        onChange={(e) => setClosingCash(e.target.value)}
+                        className="h-14 rounded-2xl text-xl font-black border-2 focus-visible:ring-primary/20 pl-12"
+                        placeholder="0"
+                        autoFocus
+                      />
+                    </div>
                  </div>
 
                  <div className={cn(
-                   "p-2 rounded-lg border flex items-center gap-2 transition-all duration-300",
-                   isBalanced ? "bg-green-50 border-green-200" : "bg-orange-50 border-orange-200"
+                   "p-4 rounded-2xl border-2 flex items-center justify-between transition-all duration-300",
+                   isBalanced ? "bg-green-50 border-green-100" : "bg-orange-50 border-orange-100"
                  )}>
-                   {isBalanced ? (
-                     <CheckCircle2 className="h-3 w-3 text-green-600" />
-                   ) : (
-                     <AlertCircle className="h-3 w-3 text-orange-600" />
-                   )}
-                   <div className="flex-1">
-                     <p className={cn("text-[8px] font-black uppercase", isBalanced ? "text-green-800" : "text-orange-800")}>
-                       {isBalanced ? "Saldo Sesuai" : "Selisih Terdeteksi"}
-                     </p>
+                   <div className="flex items-center gap-3">
+                     {isBalanced ? (
+                       <CheckCircle2 className="h-6 w-6 text-green-500" />
+                     ) : (
+                       <AlertCircle className="h-6 w-6 text-orange-500" />
+                     )}
+                     <div>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", isBalanced ? "text-green-700" : "text-orange-700")}>
+                          {isBalanced ? "Saldo Sesuai" : "Selisih Terdeteksi"}
+                        </p>
+                        <p className={cn("text-[8px] font-bold", isBalanced ? "text-green-600" : "text-orange-600")}>
+                          {isBalanced ? "Uang di laci cocok dengan sistem." : `Selisih: ${formatCurrency(cashDiff)}`}
+                        </p>
+                     </div>
                    </div>
+                   {!isBalanced && (
+                     <Badge variant="outline" className="bg-white border-orange-200 text-orange-700 font-black text-[10px]">
+                        {cashDiff > 0 ? 'Surplus' : 'Minus'}
+                     </Badge>
+                   )}
                  </div>
               </div>
 
-              <AlertDialogFooter className="gap-2">
-                <AlertDialogCancel className="rounded-lg h-9 font-bold border-2 text-[10px]">Batal</AlertDialogCancel>
+              <AlertDialogFooter className="gap-3 sm:flex-col sm:gap-3">
+                <AlertDialogCancel className="rounded-xl h-12 font-bold border-2 text-sm mt-0">Kembali</AlertDialogCancel>
                 <AlertDialogAction 
-                  disabled={!isBalanced}
                   onClick={handleCloseSession}
-                  className="rounded-lg h-9 bg-primary hover:bg-primary/90 font-black px-4 disabled:opacity-50 text-[10px]"
+                  className="rounded-xl h-14 bg-primary hover:bg-primary/90 font-black px-6 shadow-xl shadow-primary/20 text-sm gap-2"
                 >
-                  Tutup & Cetak
+                  Tutup & Cetak Laporan
+                  <ArrowRight className="h-4 w-4" />
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
