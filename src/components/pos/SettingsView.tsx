@@ -166,6 +166,7 @@ export function SettingsView() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
+    // Standard Code 39 uses * as start/stop character
     const barcodeValue = `*${product.barcode || product.sku}*`;
     
     printWindow.document.write(`
@@ -219,6 +220,14 @@ export function SettingsView() {
               -webkit-line-clamp: 2;
               -webkit-box-orient: vertical;
             }
+            .barcode-container {
+               flex: 1;
+               display: flex;
+               align-items: center;
+               justify-content: center;
+               width: 100%;
+               padding: 0 2mm; /* Quiet zone! Crucial for scanners */
+            }
             .barcode {
               font-family: 'Libre Barcode 39', cursive;
               font-size: 32pt;
@@ -226,7 +235,7 @@ export function SettingsView() {
               padding: 0;
               line-height: 1;
               white-space: nowrap;
-              max-width: 36mm;
+              max-width: 34mm;
               overflow: hidden;
             }
             .sku {
@@ -241,7 +250,9 @@ export function SettingsView() {
         <body onload="setTimeout(() => { window.print(); window.close(); }, 500)">
           <div class="label-box">
             <div class="name">${product.name}</div>
-            <div class="barcode">${barcodeValue}</div>
+            <div class="barcode-container">
+              <div class="barcode">${barcodeValue}</div>
+            </div>
             <div class="sku">${product.barcode || product.sku}</div>
           </div>
         </body>
@@ -258,6 +269,7 @@ export function SettingsView() {
       setProducts([...products, { ...productForm, id: Math.random().toString(36).substr(2, 9), available: true, onHandQty: productForm.onHandQty || 0, barcode: productForm.barcode || productForm.sku, image: productForm.image || 'https://picsum.photos/seed/default/400/300' } as Product]);
     }
     setIsProductDialogOpen(false);
+    toast({ title: "Produk Disimpan", description: "Master produk telah diperbarui." });
   };
 
   const savePriceList = () => {
@@ -268,6 +280,7 @@ export function SettingsView() {
       setPriceLists([...priceLists, { ...priceListForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as PriceList]);
     }
     setIsPriceListDialogOpen(false);
+    toast({ title: "Grosir Disimpan", description: "Aturan harga grosir telah diperbarui." });
   };
 
   const savePromo = () => {
@@ -278,6 +291,7 @@ export function SettingsView() {
       setPromoDiscounts([...promoDiscounts, { ...promoForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as PromoDiscount]);
     }
     setIsPromoDialogOpen(false);
+    toast({ title: "Promo Disimpan", description: "Data promo telah diperbarui." });
   };
 
   const savePackage = () => {
@@ -288,6 +302,7 @@ export function SettingsView() {
       setPackages([...packages, { ...packageForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Package]);
     }
     setIsPackageDialogOpen(false);
+    toast({ title: "Paket Disimpan", description: "Data paket telah diperbarui." });
   };
 
   const saveCombo = () => {
@@ -298,6 +313,7 @@ export function SettingsView() {
       setCombos([...combos, { ...comboForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Combo]);
     }
     setIsComboDialogOpen(false);
+    toast({ title: "Pilihan Disimpan", description: "Data menu pilihan telah diperbarui." });
   };
 
   const saveCustomer = () => {
@@ -308,6 +324,7 @@ export function SettingsView() {
       addCustomer(customerForm as Omit<Customer, 'id'>);
     }
     setIsCustomerDialogOpen(false);
+    toast({ title: "Pelanggan Disimpan", description: "Data pelanggan telah diperbarui." });
   };
 
   const saveCategory = () => {
@@ -320,6 +337,7 @@ export function SettingsView() {
       }
     }
     setIsCategoryDialogOpen(false);
+    toast({ title: "Kategori Disimpan", description: "Daftar kategori telah diperbarui." });
   };
 
   const savePayment = () => {
@@ -330,6 +348,7 @@ export function SettingsView() {
       setPaymentMethods([...paymentMethods, { ...paymentForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as PaymentMethod]);
     }
     setIsPaymentDialogOpen(false);
+    toast({ title: "Metode Disimpan", description: "Metode pembayaran telah diperbarui." });
   };
 
   const saveFee = () => {
@@ -340,6 +359,7 @@ export function SettingsView() {
       setFees([...fees, { ...feeForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Fee]);
     }
     setIsFeeDialogOpen(false);
+    toast({ title: "Biaya Disimpan", description: "Data pajak/biaya telah diperbarui." });
   };
 
   const saveUser = () => {
@@ -350,6 +370,7 @@ export function SettingsView() {
       setUsers([...users, { ...userForm, id: Math.random().toString(36).substr(2, 9), status: 'Active' } as User]);
     }
     setIsUserDialogOpen(false);
+    toast({ title: "User Disimpan", description: "Data user telah diperbarui." });
   };
 
   const renderTabContent = () => {
