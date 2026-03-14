@@ -59,6 +59,7 @@ export function SettingsView() {
     paymentMethods, setPaymentMethods,
     fees, setFees,
     customers, setCustomers,
+    addCustomer,
     priceLists, setPriceLists,
     packages, setPackages,
     combos, setCombos,
@@ -135,6 +136,7 @@ export function SettingsView() {
   const [packageForm, setPackageForm] = useState<Partial<Package>>({ items: [] });
   const [editingCombo, setEditingCombo] = useState<Combo | null>(null);
   const [comboForm, setComboForm] = useState<Partial<Combo>>({ groups: [] });
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState('');
   const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
   const [paymentForm, setPaymentForm] = useState<Partial<PaymentMethod>>({});
@@ -164,7 +166,6 @@ export function SettingsView() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
-    // Libre Barcode 39 requires * wrappers to render as barcode bars
     const barcodeValue = `*${product.barcode || product.sku}*`;
     
     printWindow.document.write(`
@@ -251,7 +252,7 @@ export function SettingsView() {
     if (editingProduct) {
       setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
     } else {
-      setProducts([...products, { ...productForm, id: Math.random().toString(36).substr(2, 9), available: true, onHandQty: productForm.onHandQty || 0, barcode: productForm.barcode || productForm.sku } as Product]);
+      setProducts([...products, { ...productForm, id: Math.random().toString(36).substr(2, 9), available: true, onHandQty: productForm.onHandQty || 0, barcode: productForm.barcode || productForm.sku, image: productForm.image || 'https://picsum.photos/seed/default/400/300' } as Product]);
     }
     setIsProductDialogOpen(false);
   };
@@ -294,6 +295,58 @@ export function SettingsView() {
       setCombos([...combos, { ...comboForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Combo]);
     }
     setIsComboDialogOpen(false);
+  };
+
+  const saveCustomer = () => {
+    if (!customerForm.name || !customerForm.phone) return;
+    if (editingCustomer) {
+      setCustomers(customers.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...customerForm } as Customer : c));
+    } else {
+      addCustomer(customerForm as Omit<Customer, 'id'>);
+    }
+    setIsCustomerDialogOpen(false);
+  };
+
+  const saveCategory = () => {
+    if (!categoryForm) return;
+    if (editingCategory) {
+      setCategories(categories.map(c => c === editingCategory ? categoryForm : c));
+    } else {
+      if (!categories.includes(categoryForm)) {
+        setCategories([...categories, categoryForm]);
+      }
+    }
+    setIsCategoryDialogOpen(false);
+  };
+
+  const savePayment = () => {
+    if (!paymentForm.name) return;
+    if (editingPayment) {
+      setPaymentMethods(paymentMethods.map(pm => pm.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : pm));
+    } else {
+      setPaymentMethods([...paymentMethods, { ...paymentForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as PaymentMethod]);
+    }
+    setIsPaymentDialogOpen(false);
+  };
+
+  const saveFee = () => {
+    if (!feeForm.name || feeForm.value === undefined) return;
+    if (editingFee) {
+      setFees(fees.map(f => f.id === editingFee.id ? { ...editingFee, ...feeForm } as Fee : f));
+    } else {
+      setFees([...fees, { ...feeForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Fee]);
+    }
+    setIsFeeDialogOpen(false);
+  };
+
+  const saveUser = () => {
+    if (!userForm.name || !userForm.username) return;
+    if (editingUser) {
+      setUsers(users.map(u => u.id === editingUser.id ? { ...editingUser, ...userForm } as User : u));
+    } else {
+      setUsers([...users, { ...userForm, id: Math.random().toString(36).substr(2, 9), status: 'Active' } as User]);
+    }
+    setIsUserDialogOpen(false);
   };
 
   const renderTabContent = () => {
