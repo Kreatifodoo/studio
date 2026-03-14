@@ -186,3 +186,9 @@ export interface User {
   avatarUrl?: string;
   password?: string;
 }
+
+export interface PrinterConfig {
+  name: string | null;
+  status: 'disconnected' | 'connecting' | 'connected';
+  type: 'bluetooth' | 'system';
+}

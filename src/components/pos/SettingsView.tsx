@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -32,7 +33,10 @@ import {
   Calendar as CalendarIcon,
   Lock,
   Printer,
-  Barcode as BarcodeIcon
+  Barcode as BarcodeIcon,
+  Bluetooth,
+  RefreshCw,
+  BluetoothOff
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -67,7 +71,8 @@ export function SettingsView() {
     storeSettings, setStoreSettings,
     users, setUsers,
     roles, checkPermission,
-    exportDatabase, importDatabase
+    exportDatabase, importDatabase,
+    printer, connectPrinter, disconnectPrinter
   } = usePOS();
   
   const { toast } = useToast();
@@ -99,6 +104,7 @@ export function SettingsView() {
         title: "Sistem",
         items: [
           { id: 'general', icon: Store, label: 'Informasi Toko', permission: 'manage_settings' as Permission },
+          { id: 'printer', icon: Printer, label: 'Printer Bluetooth', permission: 'manage_settings' as Permission },
           { id: 'backup', icon: Database, label: 'Backup & Restore', permission: 'manage_settings' as Permission },
           { id: 'users', icon: UserCog, label: 'Manajemen User', permission: 'manage_users' as Permission },
           { id: 'customers', icon: Users, label: 'Data Pelanggan', permission: 'manage_customers' as Permission },
@@ -223,7 +229,7 @@ export function SettingsView() {
                align-items: center;
                justify-content: center;
                width: 100%;
-               padding: 0 4mm; /* Quiet zone! */
+               padding: 0 4mm;
             }
             .barcode {
               font-family: 'Libre Barcode 39', cursive;
@@ -422,6 +428,69 @@ export function SettingsView() {
           </SettingsSection>
         );
 
+      case 'printer':
+        return (
+          <SettingsSection icon={Printer} title="Printer Bluetooth" description="Hubungkan printer termal Bluetooth Android Anda">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
+              <Card className="p-8 border-2 border-dashed rounded-[3rem] flex flex-col items-center text-center gap-6 bg-white shadow-sm">
+                <div className={cn(
+                  "p-6 rounded-full transition-all duration-500",
+                  printer.status === 'connected' ? "bg-green-500 text-white shadow-xl shadow-green-200" : "bg-primary/10 text-primary"
+                )}>
+                  {printer.status === 'connected' ? <Bluetooth className="h-12 w-12" /> : <Printer className="h-12 w-12" />}
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="font-black text-xl">
+                    {printer.status === 'connected' ? printer.name : "Belum Terhubung"}
+                  </h4>
+                  <Badge variant={printer.status === 'connected' ? 'default' : 'secondary'} className={cn(
+                    "font-black uppercase tracking-widest px-4 py-1",
+                    printer.status === 'connected' ? "bg-green-500" : ""
+                  )}>
+                    {printer.status === 'connected' ? 'Connected' : 'Disconnected'}
+                  </Badge>
+                </div>
+
+                <p className="text-xs text-muted-foreground font-medium px-4">
+                  Pastikan printer Bluetooth Anda sudah menyala dan terlihat oleh perangkat Samsung Anda.
+                </p>
+
+                {printer.status === 'connected' ? (
+                  <Button onClick={disconnectPrinter} variant="destructive" className="w-full h-14 rounded-2xl font-black gap-2 shadow-lg shadow-destructive/20">
+                    <BluetoothOff className="h-5 w-5" /> Putuskan Koneksi
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={connectPrinter} 
+                    disabled={printer.status === 'connecting'}
+                    className="w-full h-16 rounded-2xl font-black gap-3 bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20"
+                  >
+                    {printer.status === 'connecting' ? (
+                      <RefreshCw className="h-5 w-5 animate-spin" />
+                    ) : <Bluetooth className="h-5 w-5" />}
+                    {printer.status === 'connecting' ? "Menghubungkan..." : "Pindai & Sambungkan"}
+                  </Button>
+                )}
+              </Card>
+
+              <div className="space-y-6">
+                <div className="bg-muted/30 p-6 rounded-[2rem] border-2 border-muted-foreground/10">
+                  <h5 className="font-black text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Info className="h-4 w-4 text-primary" /> Panduan Android
+                  </h5>
+                  <ul className="space-y-3 text-xs font-medium text-muted-foreground">
+                    <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">1</span> Nyalakan Bluetooth di HP Samsung/Tablet Anda.</li>
+                    <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">2</span> Sandingkan (Pair) printer di menu Bluetooth Android.</li>
+                    <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">3</span> Klik tombol "Pindai" di atas dan pilih nama printer Anda.</li>
+                    <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">4</span> Gunakan ukuran kertas 58mm atau 80mm untuk hasil terbaik.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </SettingsSection>
+        );
+
       case 'products':
         return (
           <div className="space-y-6">
@@ -519,7 +588,7 @@ export function SettingsView() {
                   <div className="flex gap-3 items-center">
                     <Switch checked={pd.enabled} onCheckedChange={(val) => setPromoDiscounts(promoDiscounts.map(item => item.id === pd.id ? {...item, enabled: val} : item))} />
                     <Button variant="ghost" size="icon" onClick={() => { setEditingPromo(pd); setPromoForm(pd); setIsPromoDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setPromoDiscounts(promoDiscounts.filter(item => item.id !== pd.id))}><Trash2 className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => promoDiscounts.filter(item => item.id !== pd.id)}><Trash2 className="h-5 w-5" /></Button>
                   </div>
                 </div>
               ))}
@@ -965,4 +1034,25 @@ function SettingsSection({ icon: Icon, title, description, children }: any) {
       <div className="pl-0 lg:pl-4">{children}</div>
     </div>
   );
+}
+
+function Info(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </svg>
+  )
 }

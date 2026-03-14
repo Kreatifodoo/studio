@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { 
   Product, OrderItem, Transaction, Category, AppView, PaymentMethod, 
   Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount, 
-  StoreSettings, User, Role, Permission 
+  StoreSettings, User, Role, Permission, PrinterConfig 
 } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 import { db } from '@/lib/db';
@@ -65,6 +65,9 @@ interface POSContextType {
   exportDatabase: () => Promise<void>;
   importDatabase: (json: string) => Promise<boolean>;
   isDbLoaded: boolean;
+  printer: PrinterConfig;
+  connectPrinter: () => Promise<void>;
+  disconnectPrinter: () => void;
 }
 
 const INITIAL_ROLES: Role[] = [
@@ -122,6 +125,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [storeSettings, setStoreSettingsState] = useState<StoreSettings>(INITIAL_STORE_SETTINGS);
   const [users, setUsersState] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: 'system' });
+  const [btDevice, setBtDevice] = useState<any>(null);
 
   useEffect(() => {
     async function initDb() {
@@ -165,6 +170,36 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     }
     initDb();
   }, []);
+
+  const connectPrinter = async () => {
+    try {
+      const nav = navigator as any;
+      if (!nav.bluetooth) {
+        alert("Bluetooth tidak didukung di browser ini. Gunakan Chrome di Android.");
+        return;
+      }
+      setPrinter({ ...printer, status: 'connecting' });
+      const device = await nav.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '00001101-0000-1000-8000-00805f9b34fb']
+      });
+      setBtDevice(device);
+      setPrinter({ name: device.name, status: 'connected', type: 'bluetooth' });
+      device.addEventListener('gattserverdisconnected', () => {
+        setPrinter({ name: null, status: 'disconnected', type: 'system' });
+      });
+    } catch (e) {
+      console.error(e);
+      setPrinter({ name: null, status: 'disconnected', type: 'system' });
+    }
+  };
+
+  const disconnectPrinter = () => {
+    if (btDevice && btDevice.gatt.connected) {
+      btDevice.gatt.disconnect();
+    }
+    setPrinter({ name: null, status: 'disconnected', type: 'system' });
+  };
 
   const setProducts = useCallback((data: Product[]) => { setProductsState(data); db.products.clear().then(() => db.products.bulkPut(data)); }, []);
   const setCategories = useCallback((data: Category[]) => { setCategoriesState(data); db.config.put({ key: 'categories', value: data }); }, []);
@@ -369,7 +404,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
-      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded
+      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded,
+      printer, connectPrinter, disconnectPrinter
     }}>
       {children}
     </POSContext.Provider>
