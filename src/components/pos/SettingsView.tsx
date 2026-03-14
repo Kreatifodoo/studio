@@ -22,7 +22,6 @@ import {
   Box,
   LayoutGrid,
   ChevronRight,
-  Check,
   Ticket,
   Upload,
   Download,
@@ -31,34 +30,27 @@ import {
   Database,
   FileJson,
   Calendar as CalendarIcon,
-  Search,
   Lock,
-  Eye,
-  EyeOff,
-  Barcode as BarcodeIcon,
-  Printer
+  Printer,
+  Barcode as BarcodeIcon
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
-  Product, PaymentMethod, Fee, Customer, PriceList, Package, 
-  PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount, 
-  Permission, User
+  Product, PaymentMethod, Fee, Customer, PriceList, PromoDiscount, 
+  Package, Combo, User, Permission 
 } from '@/types/pos';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter,
-  DialogDescription
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format } from 'date-fns';
 
 export function SettingsView() {
   const { 
@@ -73,7 +65,7 @@ export function SettingsView() {
     promoDiscounts, setPromoDiscounts,
     storeSettings, setStoreSettings,
     users, setUsers,
-    roles, currentUser, checkPermission,
+    roles, checkPermission,
     exportDatabase, importDatabase
   } = usePOS();
   
@@ -81,6 +73,7 @@ export function SettingsView() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const productImageInputRef = useRef<HTMLInputElement>(null);
   const dbImportRef = useRef<HTMLInputElement>(null);
+  
   const productImportRef = useRef<HTMLInputElement>(null);
   const priceListImportRef = useRef<HTMLInputElement>(null);
   const promoImportRef = useRef<HTMLInputElement>(null);
@@ -117,13 +110,6 @@ export function SettingsView() {
     return groups.filter(g => g.items.length > 0);
   }, [checkPermission]);
 
-  useEffect(() => {
-    const allPermittedIds = navGroups.flatMap(g => g.items.map(i => i.id));
-    if (allPermittedIds.length > 0 && !allPermittedIds.includes(activeTab)) {
-      setActiveTab(allPermittedIds[0]);
-    }
-  }, [navGroups, activeTab]);
-
   // Dialog States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
@@ -135,7 +121,6 @@ export function SettingsView() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isFeeDialogOpen, setIsFeeDialogOpen] = useState(false);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
   // Form States
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -150,7 +135,6 @@ export function SettingsView() {
   const [packageForm, setPackageForm] = useState<Partial<Package>>({ items: [] });
   const [editingCombo, setEditingCombo] = useState<Combo | null>(null);
   const [comboForm, setComboForm] = useState<Partial<Combo>>({ groups: [] });
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState('');
   const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
   const [paymentForm, setPaymentForm] = useState<Partial<PaymentMethod>>({});
@@ -158,216 +142,108 @@ export function SettingsView() {
   const [feeForm, setFeeForm] = useState<Partial<Fee>>({});
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({});
-  
-  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
-  // --- CSV TEMPLATES ---
-  const downloadProductTemplate = () => {
-    const headers = "sku,barcode,name,category,price,costPrice,onHandQty,description,image\n";
-    const sample = "MU-001,888001,Nasi Goreng Spesial,Makanan Utama,25000,12000,50,Nasi goreng lezat,https://picsum.photos/seed/1/400/300\nMN-001,888002,Es Teh Manis,Minuman,5000,1500,100,Teh seduh segar,https://picsum.photos/seed/2/400/300";
-    downloadFile(headers + sample, "template_produk.csv");
-  };
-
-  const downloadPriceListTemplate = () => {
-    const headers = "product_sku,rule_name,min_qty,price,start_date,end_date\n";
-    const sample = "MU-001,Harga Grosir Nasi Goreng,10,20000,2024-01-01,2024-12-31";
-    downloadFile(headers + sample, "template_grosir.csv");
-  };
-
-  const downloadPromoTemplate = () => {
-    const headers = "product_sku,promo_name,type,value,start_date,end_date\n";
-    const sample = "MU-001,Promo Ramadan,Percentage,10,2024-03-01,2024-04-30\nMN-001,Diskon Flat,FixedAmount,2000,2024-01-01,2024-12-31";
-    downloadFile(headers + sample, "template_promo.csv");
-  };
-
-  const downloadPackageTemplate = () => {
-    const headers = "package_sku,package_name,package_price,item_sku,item_qty\n";
-    const sample = "PK-001,Paket Kenyang,30000,MU-001,1\nPK-001,Paket Kenyang,30000,MN-001,1";
-    downloadFile(headers + sample, "template_paket.csv");
-  };
-
-  const downloadComboTemplate = () => {
-    const headers = "combo_sku,combo_name,base_price,group_name,is_required,option_sku,extra_price\n";
-    const sample = "CB-001,Combo Hemat,25000,Pilih Minum,true,MN-001,0\nCB-001,Combo Hemat,25000,Pilih Minum,true,MN-002,2000";
-    downloadFile(headers + sample, "template_pilihan_menu.csv");
-  };
-
-  const downloadFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // --- CSV IMPORTERS ---
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const lines = (event.target?.result as string).split('\n');
-      const newProducts: Product[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const [sku, barcode, name, category, price, costPrice, onHandQty, description, image] = line.split(',');
-        newProducts.push({
-          id: Math.random().toString(36).substr(2, 9),
-          sku: sku || `SKU-${Date.now()}`,
-          barcode: barcode || sku || '',
-          name: name || 'Produk Tanpa Nama',
-          category: category || (categories.length > 0 ? categories[0] : 'Umum'),
-          price: parseFloat(price) || 0,
-          costPrice: parseFloat(costPrice) || 0,
-          onHandQty: parseInt(onHandQty) || 0,
-          description: description || '',
-          image: image || 'https://picsum.photos/seed/default/400/300',
-          available: true
-        });
-      }
-      if (newProducts.length > 0) {
-        setProducts([...products, ...newProducts]);
-        toast({ title: "Berhasil!", description: `${newProducts.length} produk diimpor.` });
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const handleImportPriceListCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const lines = (event.target?.result as string).split('\n');
-      const newPriceLists: PriceList[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const [sku, name, minQty, price, start, end] = line.split(',');
-        const product = products.find(p => p.sku === sku);
-        if (product) {
-          newPriceLists.push({
-            id: Math.random().toString(36).substr(2, 9),
-            productId: product.id,
-            name: name || "Aturan Grosir",
-            startDate: start || new Date().toISOString().split('T')[0],
-            endDate: end || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-            enabled: true,
-            tiers: [{ minQty: parseInt(minQty) || 1, maxQty: 0, price: parseFloat(price) || product.price }]
-          });
-        }
-      }
-      setPriceLists([...priceLists, ...newPriceLists]);
-      toast({ title: "Berhasil!", description: "Data grosir diimpor." });
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const handleImportPromoCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const lines = (event.target?.result as string).split('\n');
-      const newPromos: PromoDiscount[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const [sku, name, type, value, start, end] = line.split(',');
-        const product = products.find(p => p.sku === sku);
-        if (product) {
-          newPromos.push({
-            id: Math.random().toString(36).substr(2, 9),
-            productId: product.id,
-            name: name || "Promo Baru",
-            type: (type as any) === 'FixedAmount' ? 'FixedAmount' : 'Percentage',
-            value: parseFloat(value) || 0,
-            startDate: start || new Date().toISOString().split('T')[0],
-            endDate: end || new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
-            enabled: true
-          });
-        }
-      }
-      setPromoDiscounts([...promoDiscounts, ...newPromos]);
-      toast({ title: "Berhasil!", description: "Data promo diimpor." });
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const handleImportPackageCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const lines = (event.target?.result as string).split('\n');
-      const pkgMap = new Map<string, Package>();
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const [sku, name, price, itemSku, itemQty] = line.split(',');
-        const itemProd = products.find(p => p.sku === itemSku);
-        if (!itemProd) continue;
-        if (!pkgMap.has(sku)) {
-          pkgMap.set(sku, {
-            id: Math.random().toString(36).substr(2, 9),
-            sku, name, description: "", price: parseFloat(price) || 0, enabled: true, items: []
-          });
-        }
-        pkgMap.get(sku)!.items.push({ productId: itemProd.id, quantity: parseInt(itemQty) || 1 });
-      }
-      setPackages([...packages, ...Array.from(pkgMap.values())]);
-      toast({ title: "Berhasil!", description: "Data paket diimpor." });
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const handleImportComboCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const lines = (event.target?.result as string).split('\n');
-      const comboMap = new Map<string, Combo>();
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const [sku, name, basePrice, groupName, required, optionSku, extraPrice] = line.split(',');
-        const optProd = products.find(p => p.sku === optionSku);
-        if (!optProd) continue;
-
-        if (!comboMap.has(sku)) {
-          comboMap.set(sku, {
-            id: Math.random().toString(36).substr(2, 9),
-            sku, name, description: "", basePrice: parseFloat(basePrice) || 0, enabled: true, groups: []
-          });
-        }
-        const combo = comboMap.get(sku)!;
-        let group = combo.groups.find(g => g.name === groupName);
-        if (!group) {
-          group = { id: Math.random().toString(36).substr(2, 9), name: groupName, required: required === 'true', options: [] };
-          combo.groups.push(group);
-        }
-        group.options.push({ productId: optProd.id, extraPrice: parseFloat(extraPrice) || 0 });
-      }
-      setCombos([...combos, ...Array.from(comboMap.values())]);
-      toast({ title: "Berhasil!", description: "Data pilihan menu diimpor." });
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  // --- SAVE HELPERS ---
+  // --- HELPERS ---
   const formatCurrencyValue = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintBarcode = (product: Product) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    // Libre Barcode 39 requires * wrappers to render as barcode bars
+    const barcodeValue = `*${product.barcode || product.sku}*`;
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Label Barcode - ${product.sku}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+          <style>
+            @page {
+              size: 40mm 30mm;
+              margin: 0;
+            }
+            html, body {
+              margin: 0;
+              padding: 0;
+              width: 40mm;
+              height: 30mm;
+              background: white;
+            }
+            body {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              -webkit-print-color-adjust: exact;
+            }
+            .label-box {
+              width: 38mm;
+              height: 28mm;
+              border: 0.8mm solid black;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: space-between;
+              padding: 1.5mm 1mm;
+              box-sizing: border-box;
+              text-align: center;
+            }
+            .name {
+              font-family: 'Poppins', sans-serif;
+              font-weight: 800;
+              font-size: 7pt;
+              line-height: 1.1;
+              margin-top: 0;
+              text-transform: uppercase;
+              word-break: break-word;
+              max-width: 100%;
+              overflow: hidden;
+              display: -webkit-box;
+              -webkit-line-clamp: 2;
+              -webkit-box-orient: vertical;
+            }
+            .barcode {
+              font-family: 'Libre Barcode 39', cursive;
+              font-size: 38pt;
+              margin: 0;
+              padding: 0;
+              line-height: 1;
+              white-space: nowrap;
+            }
+            .sku {
+              font-family: 'Poppins', sans-serif;
+              font-weight: 700;
+              font-size: 7pt;
+              margin-bottom: 0;
+              letter-spacing: 1.5px;
+            }
+          </style>
+        </head>
+        <body onload="setTimeout(() => { window.print(); window.close(); }, 500)">
+          <div class="label-box">
+            <div class="name">${product.name}</div>
+            <div class="barcode">${barcodeValue}</div>
+            <div class="sku">${product.barcode || product.sku}</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const saveProduct = () => {
@@ -378,56 +254,6 @@ export function SettingsView() {
       setProducts([...products, { ...productForm, id: Math.random().toString(36).substr(2, 9), available: true, onHandQty: productForm.onHandQty || 0, barcode: productForm.barcode || productForm.sku } as Product]);
     }
     setIsProductDialogOpen(false);
-  };
-
-  const saveCustomer = () => {
-    if (!customerForm.name || !customerForm.phone) return;
-    if (editingCustomer) {
-      setCustomers(customers.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...customerForm } as Customer : c));
-    } else {
-      setCustomers([...customers, { ...customerForm, id: Math.random().toString(36).substr(2, 9) } as Customer]);
-    }
-    setIsCustomerDialogOpen(false);
-  };
-
-  const saveCategory = () => {
-    if (!categoryForm.trim()) return;
-    if (editingCategory) {
-      setCategories(categories.map(c => c === editingCategory ? categoryForm : c));
-    } else {
-      setCategories([...categories, categoryForm]);
-    }
-    setIsCategoryDialogOpen(false);
-  };
-
-  const savePayment = () => {
-    if (!paymentForm.name) return;
-    if (editingPayment) {
-      setPaymentMethods(paymentMethods.map(pm => pm.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : pm));
-    } else {
-      setPaymentMethods([...paymentMethods, { ...paymentForm, id: Math.random().toString(36).substr(2, 9) } as PaymentMethod]);
-    }
-    setIsPaymentDialogOpen(false);
-  };
-
-  const saveFee = () => {
-    if (!feeForm.name) return;
-    if (editingFee) {
-      setFees(fees.map(f => f.id === editingFee.id ? { ...editingFee, ...feeForm } as Fee : f));
-    } else {
-      setFees([...fees, { ...feeForm, id: Math.random().toString(36).substr(2, 9) } as Fee]);
-    }
-    setIsFeeDialogOpen(false);
-  };
-
-  const saveUser = () => {
-    if (!userForm.username || !userForm.name) return;
-    if (editingUser) {
-      setUsers(users.map(u => u.id === editingUser.id ? { ...editingUser, ...userForm } as User : u));
-    } else {
-      setUsers([...users, { ...userForm, id: Math.random().toString(36).substr(2, 9), status: 'Active' } as User]);
-    }
-    setIsUserDialogOpen(false);
   };
 
   const savePriceList = () => {
@@ -468,74 +294,6 @@ export function SettingsView() {
       setCombos([...combos, { ...comboForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Combo]);
     }
     setIsComboDialogOpen(false);
-  };
-
-  const handlePrintBarcode = (product: Product) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    
-    // Libre Barcode 39 requires * wrappers to render as barcode bars
-    const barcodeValue = `*${product.barcode || product.sku}*`;
-    
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Cetak Barcode - ${product.name}</title>
-          <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&family=Poppins:wght@400;700;800&display=swap" rel="stylesheet">
-          <style>
-            body { 
-              font-family: 'Poppins', sans-serif; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center; 
-              min-height: 100vh; 
-              margin: 0; 
-              background: white;
-            }
-            .barcode-card { 
-              border: 4px solid black; 
-              padding: 40px; 
-              text-align: center; 
-              width: 350px;
-              background: white;
-            }
-            .name { 
-              font-weight: 800; 
-              font-size: 20px; 
-              margin-bottom: 25px; 
-              text-transform: uppercase;
-              color: black;
-            }
-            .barcode-bars { 
-              font-family: 'Libre Barcode 39', cursive;
-              font-size: 100px; 
-              margin: 15px 0; 
-              line-height: 1;
-              color: black;
-            }
-            .sku { 
-              font-size: 16px; 
-              font-weight: 700;
-              margin-top: 20px;
-              letter-spacing: 2px;
-              color: black;
-            }
-            @media print {
-              body { min-height: auto; }
-              .no-print { display: none; }
-            }
-          </style>
-        </head>
-        <body onload="setTimeout(() => { window.print(); window.close(); }, 600)">
-          <div class="barcode-card">
-            <div class="name">${product.name}</div>
-            <div class="barcode-bars">${barcodeValue}</div>
-            <div class="sku">${product.sku}</div>
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
   };
 
   const renderTabContent = () => {
@@ -581,10 +339,10 @@ export function SettingsView() {
                 <CardDescription className="font-medium">Kelola item dan stok inventaris</CardDescription>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={downloadProductTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => productImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
-                <Button onClick={() => { setEditingProduct(null); setProductForm({ category: categories[0], image: 'https://picsum.photos/seed/new/400/300' }); setIsProductDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Produk</Button>
-                <input type="file" ref={productImportRef} className="hidden" accept=".csv" onChange={handleImportCSV} />
+                <Button variant="outline" onClick={() => downloadCSV("sku,barcode,name,category,price,costPrice,onHandQty,description,image\nPROD-001,888001,Contoh Produk,Makanan Utama,25000,12000,50,Deskripsi produk,https://picsum.photos/seed/1/400/300", "template_produk.csv")} className="h-12 rounded-xl border-2 font-black gap-2"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => productImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button onClick={() => { setEditingProduct(null); setProductForm({ category: categories[0] }); setIsProductDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Produk</Button>
+                <input type="file" ref={productImportRef} className="hidden" accept=".csv" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -595,7 +353,7 @@ export function SettingsView() {
                     <div><p className="font-black text-lg leading-tight">{p.name}</p><div className="flex gap-2 items-center mt-1"><span className="text-primary font-black text-sm">{formatCurrencyValue(p.price)}</span><Badge variant="outline" className="text-[9px] font-bold px-2 py-0 border-none bg-white">{p.sku}</Badge></div></div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" title="Cetak Barcode" onClick={() => handlePrintBarcode(p)}><Printer className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" title="Cetak Barcode" onClick={() => handlePrintBarcode(p)}><BarcodeIcon className="h-5 w-5" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(p); setProductForm(p); setIsProductDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setProducts(products.filter(item => item.id !== p.id))}><Trash2 className="h-5 w-5" /></Button>
                   </div>
@@ -611,10 +369,10 @@ export function SettingsView() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div><CardTitle className="text-2xl font-black">Harga Grosir</CardTitle><CardDescription className="font-medium">Atur harga diskon untuk pembelian jumlah banyak</CardDescription></div>
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={downloadPriceListTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => priceListImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
-                <Button onClick={() => { setEditingPriceList(null); setPriceListForm({ tiers: [], startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0] }); setIsPriceListDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Grosir</Button>
-                <input type="file" ref={priceListImportRef} className="hidden" accept=".csv" onChange={handleImportPriceListCSV} />
+                <Button variant="outline" onClick={() => downloadCSV("product_sku,rule_name,min_qty,price,start_date,end_date\nPROD-001,Grosir Spesial,10,20000,2024-01-01,2024-12-31", "template_grosir.csv")} className="h-12 rounded-xl border-2 font-black gap-2"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => priceListImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button onClick={() => { setEditingPriceList(null); setPriceListForm({ tiers: [] }); setIsPriceListDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Grosir</Button>
+                <input type="file" ref={priceListImportRef} className="hidden" accept=".csv" />
               </div>
             </div>
             <div className="space-y-4">
@@ -624,7 +382,7 @@ export function SettingsView() {
                     <div className="bg-white p-4 rounded-2xl text-primary border shadow-sm"><Tags /></div>
                     <div>
                       <p className="font-black text-lg leading-tight">{pl.name}</p>
-                      <p className="text-xs text-muted-foreground font-bold mt-1">Produk: {products.find(p => p.id === pl.productId)?.name || 'Produk dihapus'}</p>
+                      <p className="text-xs text-muted-foreground font-bold mt-1">Produk: {products.find(p => p.id === pl.productId)?.name || 'Produk'}</p>
                       <div className="flex gap-2 mt-2">
                         {pl.tiers.map((t, idx) => <Badge key={idx} variant="outline" className="text-[10px] font-bold border-none bg-white">Qty {t.minQty}+ : {formatCurrencyValue(t.price)}</Badge>)}
                       </div>
@@ -647,10 +405,10 @@ export function SettingsView() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div><CardTitle className="text-2xl font-black">Promo Diskon</CardTitle><CardDescription className="font-medium">Potongan harga produk untuk periode tertentu</CardDescription></div>
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={downloadPromoTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => promoImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
-                <Button onClick={() => { setEditingPromo(null); setPromoForm({ type: 'Percentage', value: 0, startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0] }); setIsPromoDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Promo</Button>
-                <input type="file" ref={promoImportRef} className="hidden" accept=".csv" onChange={handleImportPromoCSV} />
+                <Button variant="outline" onClick={() => downloadCSV("product_sku,promo_name,type,value,start_date,end_date\nPROD-001,Diskon Kilat,Percentage,10,2024-01-01,2024-12-31", "template_promo.csv")} className="h-12 rounded-xl border-2 font-black gap-2"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => promoImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button onClick={() => { setEditingPromo(null); setPromoForm({ type: 'Percentage' }); setIsPromoDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Promo</Button>
+                <input type="file" ref={promoImportRef} className="hidden" accept=".csv" />
               </div>
             </div>
             <div className="space-y-4">
@@ -663,7 +421,6 @@ export function SettingsView() {
                       <p className="text-xs text-muted-foreground font-bold mt-1">Produk: {products.find(p => p.id === pd.productId)?.name}</p>
                       <div className="flex gap-2 mt-1">
                         <Badge className="bg-rose-500 text-white font-black">{pd.type === 'Percentage' ? `${pd.value}%` : formatCurrencyValue(pd.value)} Off</Badge>
-                        <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> s/d {pd.endDate}</span>
                       </div>
                     </div>
                   </div>
@@ -684,10 +441,10 @@ export function SettingsView() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div><CardTitle className="text-2xl font-black">Paket Bundel</CardTitle><CardDescription className="font-medium">Gabungkan beberapa produk menjadi satu paket hemat</CardDescription></div>
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={downloadPackageTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => packageImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button variant="outline" onClick={() => downloadCSV("package_sku,package_name,package_price,item_sku,item_qty\nPK-001,Paket Hemat,50000,PROD-001,1", "template_paket.csv")} className="h-12 rounded-xl border-2 font-black gap-2"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => packageImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
                 <Button onClick={() => { setEditingPackage(null); setPackageForm({ items: [] }); setIsPackageDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Paket</Button>
-                <input type="file" ref={packageImportRef} className="hidden" accept=".csv" onChange={handleImportPackageCSV} />
+                <input type="file" ref={packageImportRef} className="hidden" accept=".csv" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -696,18 +453,12 @@ export function SettingsView() {
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-4">
                       <div className="bg-accent/10 text-accent p-3 rounded-2xl"><Box /></div>
-                      <div>
-                        <p className="font-black text-lg">{pkg.name}</p>
-                        <p className="font-black text-primary">{formatCurrencyValue(pkg.price)}</p>
-                      </div>
+                      <div><p className="font-black text-lg">{pkg.name}</p><p className="font-black text-primary">{formatCurrencyValue(pkg.price)}</p></div>
                     </div>
                     <div className="flex gap-1">
                        <Button variant="ghost" size="icon" onClick={() => { setEditingPackage(pkg); setPackageForm(pkg); setIsPackageDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                        <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setPackages(packages.filter(item => item.id !== pkg.id))}><Trash2 className="h-4 w-4" /></Button>
                     </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {pkg.items.map((i, idx) => <Badge key={idx} variant="secondary" className="bg-white text-[9px] font-bold">{i.quantity}x {products.find(prod => prod.id === i.productId)?.name}</Badge>)}
                   </div>
                 </div>
               ))}
@@ -719,12 +470,12 @@ export function SettingsView() {
         return (
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div><CardTitle className="text-2xl font-black">Pilihan Menu (Combo)</CardTitle><CardDescription className="font-medium">Menu kustom dengan pilihan grup (misal: pilih minum, pilih snack)</CardDescription></div>
+              <div><CardTitle className="text-2xl font-black">Pilihan Menu (Combo)</CardTitle><CardDescription className="font-medium">Menu kustom dengan pilihan grup fleksibel</CardDescription></div>
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={downloadComboTemplate} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => comboImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"><Upload className="h-4 w-4" /> Impor CSV</Button>
+                <Button variant="outline" onClick={() => downloadCSV("combo_sku,combo_name,base_price,group_name,is_required,option_sku,extra_price\nCB-001,Combo Makanan,25000,Pilih Minum,true,PROD-001,0", "template_pilihan.csv")} className="h-12 rounded-xl border-2 font-black gap-2"><Download className="h-4 w-4" /> Template</Button>
+                <Button variant="outline" onClick={() => comboImportRef.current?.click()} className="h-12 rounded-xl border-2 font-black gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
                 <Button onClick={() => { setEditingCombo(null); setComboForm({ groups: [] }); setIsComboDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Pilihan</Button>
-                <input type="file" ref={comboImportRef} className="hidden" accept=".csv" onChange={handleImportComboCSV} />
+                <input type="file" ref={comboImportRef} className="hidden" accept=".csv" />
               </div>
             </div>
             <div className="space-y-4">
@@ -732,10 +483,7 @@ export function SettingsView() {
                 <div key={c.id} className="p-6 bg-muted/10 rounded-[2rem] flex justify-between items-center">
                   <div className="flex items-center gap-5">
                     <div className="bg-primary/10 text-primary p-4 rounded-2xl border shadow-sm"><LayoutGrid /></div>
-                    <div>
-                      <p className="font-black text-lg leading-tight">{c.name}</p>
-                      <p className="text-xs text-muted-foreground font-bold mt-1">Mulai dari {formatCurrencyValue(c.basePrice)} • {c.groups.length} Grup Pilihan</p>
-                    </div>
+                    <div><p className="font-black text-lg leading-tight">{c.name}</p><p className="text-xs text-muted-foreground font-bold mt-1">Mulai dari {formatCurrencyValue(c.basePrice)}</p></div>
                   </div>
                   <div className="flex gap-3 items-center">
                     <Switch checked={c.enabled} onCheckedChange={(val) => setCombos(combos.map(item => item.id === c.id ? {...item, enabled: val} : item))} />
@@ -763,6 +511,14 @@ export function SettingsView() {
                 <h4 className="font-black text-lg">Impor Database</h4>
                 <p className="text-xs text-muted-foreground font-medium">Pulihkan data dari file cadangan JSON yang telah Anda simpan sebelumnya.</p>
                 <Button onClick={() => dbImportRef.current?.click()} variant="outline" className="w-full h-12 rounded-xl font-black gap-2 border-2"><Database className="h-4 w-4" /> Unggah File JSON</Button>
+                <input type="file" ref={dbImportRef} className="hidden" accept=".json" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => importDatabase(ev.target?.result as string);
+                    reader.readAsText(file);
+                  }
+                }} />
               </div>
             </div>
           </SettingsSection>
@@ -789,7 +545,6 @@ export function SettingsView() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUser(user); setNewPassword(''); setIsResetPasswordOpen(true); }}><Lock className="h-5 w-5" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setUsers(users.filter(u => u.id !== user.id))}><Trash2 className="h-5 w-5" /></Button>
                   </div>
@@ -915,14 +670,6 @@ export function SettingsView() {
           reader.readAsDataURL(file);
         }
       }} />
-      <input type="file" ref={dbImportRef} className="hidden" accept=".json" onChange={(e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (ev) => importDatabase(ev.target?.result as string);
-          reader.readAsText(file);
-        }
-      }} />
       
       <div className="flex flex-col gap-1">
         <h2 className="text-3xl font-black">Pengaturan</h2>
@@ -970,10 +717,9 @@ export function SettingsView() {
           <div className="grid grid-cols-2 gap-6 py-4">
             <div className="space-y-2"><Label className="text-xs font-black">Nama Produk</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} /></div>
             <div className="space-y-2"><Label className="text-xs font-black">SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} /></div>
-            <div className="space-y-2"><Label className="text-xs font-black">Barcode</Label><Input value={productForm.barcode || ''} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} placeholder="Scan atau ketik kode batang" /></div>
+            <div className="space-y-2"><Label className="text-xs font-black">Barcode</Label><Input value={productForm.barcode || ''} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} placeholder="Scan barcode" /></div>
             <div className="space-y-2"><Label className="text-xs font-black">Stok Awal</Label><Input type="number" value={productForm.onHandQty || ''} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value)})} /></div>
             <div className="space-y-2"><Label className="text-xs font-black">Harga Jual (Rp)</Label><Input type="number" value={productForm.price || ''} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} /></div>
-            <div className="space-y-2"><Label className="text-xs font-black">Harga Modal (Rp)</Label><Input type="number" value={productForm.costPrice || ''} onChange={(e) => setProductForm({...productForm, costPrice: parseFloat(e.target.value)})} /></div>
             <div className="space-y-2">
               <Label className="text-xs font-black">Kategori</Label>
               <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}>
@@ -987,10 +733,7 @@ export function SettingsView() {
                 <div className="h-20 w-20 rounded-xl overflow-hidden bg-white border flex items-center justify-center">
                   {productForm.image ? <img src={productForm.image} className="h-full w-full object-cover" /> : <ImageIcon className="text-muted-foreground/30" />}
                 </div>
-                <div className="flex-1 space-y-2">
-                  <Input value={productForm.image || ''} onChange={(e) => setProductForm({...productForm, image: e.target.value})} placeholder="Atau tempel URL gambar di sini" className="h-9 text-xs" />
-                  <Button variant="outline" size="sm" onClick={() => productImageInputRef.current?.click()} className="h-8 w-full text-[10px] font-black gap-2"><Upload className="h-3.5 w-3.5" /> Unggah dari Galeri</Button>
-                </div>
+                <Button variant="outline" size="sm" onClick={() => productImageInputRef.current?.click()} className="h-10 font-bold"><Upload className="h-4 w-4 mr-2" /> Unggah Galeri</Button>
               </div>
             </div>
           </div>
@@ -1010,21 +753,10 @@ export function SettingsView() {
                   <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label className="text-xs font-black">Nama Aturan Grosir</Label><Input value={priceListForm.name || ''} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} placeholder="Misal: Grosir Minggu Ini" /></div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex justify-between items-center"><Label className="text-xs font-black">Tier Harga</Label><Button variant="outline" size="sm" onClick={() => setPriceListForm({...priceListForm, tiers: [...(priceListForm.tiers || []), { minQty: 1, maxQty: 0, price: 0 }]})} className="h-8 rounded-lg font-black"><Plus className="h-3 w-3 mr-1" /> Tambah Tier</Button></div>
-              {priceListForm.tiers?.map((tier, idx) => (
-                <div key={idx} className="flex gap-4 items-end bg-muted/20 p-4 rounded-xl">
-                  <div className="flex-1 space-y-2"><Label className="text-[10px] font-black">Min Qty</Label><Input type="number" value={tier.minQty} onChange={(e) => { const nt = [...priceListForm.tiers!]; nt[idx].minQty = parseInt(e.target.value); setPriceListForm({...priceListForm, tiers: nt}); }} /></div>
-                  <div className="flex-1 space-y-2"><Label className="text-[10px] font-black">Harga Per Unit</Label><Input type="number" value={tier.price} onChange={(e) => { const nt = [...priceListForm.tiers!]; nt[idx].price = parseFloat(e.target.value); setPriceListForm({...priceListForm, tiers: nt}); }} /></div>
-                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => { const nt = priceListForm.tiers!.filter((_, i) => i !== idx); setPriceListForm({...priceListForm, tiers: nt}); }}><Trash2 className="h-4 w-4" /></Button>
-                </div>
-              ))}
+              <div className="space-y-2"><Label className="text-xs font-black">Nama Aturan</Label><Input value={priceListForm.name || ''} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} /></div>
             </div>
           </div>
-          <DialogFooter><Button onClick={savePriceList} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Aturan Grosir</Button></DialogFooter>
+          <DialogFooter><Button onClick={savePriceList} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Grosir</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1039,21 +771,7 @@ export function SettingsView() {
                 <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label className="text-xs font-black">Nama Promo</Label><Input value={promoForm.name || ''} onChange={(e) => setPromoForm({...promoForm, name: e.target.value})} placeholder="Misal: Promo Akhir Tahun" /></div>
-            <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-2">
-                 <Label className="text-xs font-black">Tipe Diskon</Label>
-                 <Select value={promoForm.type} onValueChange={(val: any) => setPromoForm({...promoForm, type: val})}>
-                   <SelectTrigger><SelectValue /></SelectTrigger>
-                   <SelectContent><SelectItem value="Percentage">Persentase (%)</SelectItem><SelectItem value="FixedAmount">Nominal (Rp)</SelectItem></SelectContent>
-                 </Select>
-               </div>
-               <div className="space-y-2"><Label className="text-xs font-black">Nilai Diskon</Label><Input type="number" value={promoForm.value || ''} onChange={(e) => setPromoForm({...promoForm, value: parseFloat(e.target.value)})} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-2"><Label className="text-xs font-black">Tanggal Mulai</Label><Input type="date" value={promoForm.startDate} onChange={(e) => setPromoForm({...promoForm, startDate: e.target.value})} /></div>
-               <div className="space-y-2"><Label className="text-xs font-black">Tanggal Akhir</Label><Input type="date" value={promoForm.endDate} onChange={(e) => setPromoForm({...promoForm, endDate: e.target.value})} /></div>
-            </div>
+            <div className="space-y-2"><Label className="text-xs font-black">Nama Promo</Label><Input value={promoForm.name || ''} onChange={(e) => setPromoForm({...promoForm, name: e.target.value})} /></div>
           </div>
           <DialogFooter><Button onClick={savePromo} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Promo</Button></DialogFooter>
         </DialogContent>
@@ -1061,28 +779,12 @@ export function SettingsView() {
 
       <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
         <DialogContent className="max-w-2xl rounded-[2.5rem] p-10">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingPackage ? 'Edit Paket Bundel' : 'Tambah Paket Bundel'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="text-2xl font-black">{editingPackage ? 'Edit Paket' : 'Tambah Paket'}</DialogTitle></DialogHeader>
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label className="text-xs font-black">Nama Paket</Label><Input value={packageForm.name || ''} onChange={(e) => setPackageForm({...packageForm, name: e.target.value})} /></div>
-              <div className="space-y-2"><Label className="text-xs font-black">SKU Paket</Label><Input value={packageForm.sku || ''} onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} /></div>
-              <div className="space-y-2"><Label className="text-xs font-black">Harga Paket (Rp)</Label><Input type="number" value={packageForm.price || ''} onChange={(e) => setPackageForm({...packageForm, price: parseFloat(e.target.value)})} /></div>
-            </div>
-            <div className="space-y-4">
-               <div className="flex justify-between items-center"><Label className="text-xs font-black">Isi Produk Dalam Paket</Label><Button variant="outline" size="sm" onClick={() => setPackageForm({...packageForm, items: [...(packageForm.items || []), { productId: products[0]?.id, quantity: 1 }]})} className="h-8 rounded-lg font-black"><Plus className="h-3 w-3 mr-1" /> Tambah Produk</Button></div>
-               {packageForm.items?.map((item, idx) => (
-                 <div key={idx} className="flex gap-4 items-end bg-muted/20 p-4 rounded-xl">
-                   <div className="flex-[2] space-y-2">
-                     <Label className="text-[10px] font-black">Produk</Label>
-                     <Select value={item.productId} onValueChange={(val) => { const ni = [...packageForm.items!]; ni[idx].productId = val; setPackageForm({...packageForm, items: ni}); }}>
-                       <SelectTrigger><SelectValue /></SelectTrigger>
-                       <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                     </Select>
-                   </div>
-                   <div className="flex-1 space-y-2"><Label className="text-[10px] font-black">Jumlah</Label><Input type="number" value={item.quantity} onChange={(e) => { const ni = [...packageForm.items!]; ni[idx].quantity = parseInt(e.target.value); setPackageForm({...packageForm, items: ni}); }} /></div>
-                   <Button variant="ghost" size="icon" className="text-destructive" onClick={() => { const ni = packageForm.items!.filter((_, i) => i !== idx); setPackageForm({...packageForm, items: ni}); }}><Trash2 className="h-4 w-4" /></Button>
-                 </div>
-               ))}
+              <div className="space-y-2"><Label className="text-xs font-black">SKU</Label><Input value={packageForm.sku || ''} onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} /></div>
+              <div className="space-y-2"><Label className="text-xs font-black">Harga Paket</Label><Input type="number" value={packageForm.price || ''} onChange={(e) => setPackageForm({...packageForm, price: parseFloat(e.target.value)})} /></div>
             </div>
           </div>
           <DialogFooter><Button onClick={savePackage} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Paket</Button></DialogFooter>
@@ -1091,47 +793,74 @@ export function SettingsView() {
 
       <Dialog open={isComboDialogOpen} onOpenChange={setIsComboDialogOpen}>
         <DialogContent className="max-w-3xl rounded-[2.5rem] p-10">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingCombo ? 'Edit Pilihan Menu' : 'Tambah Pilihan Menu'}</DialogTitle></DialogHeader>
-          <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="space-y-6 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label className="text-xs font-black">Nama Pilihan (Combo)</Label><Input value={comboForm.name || ''} onChange={(e) => setComboForm({...comboForm, name: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-xs font-black">SKU</Label><Input value={comboForm.sku || ''} onChange={(e) => setComboForm({...comboForm, sku: e.target.value})} /></div>
-                <div className="space-y-2"><Label className="text-xs font-black">Harga Dasar (Rp)</Label><Input type="number" value={comboForm.basePrice || ''} onChange={(e) => setComboForm({...comboForm, basePrice: parseFloat(e.target.value)})} /></div>
-              </div>
-              
-              <Separator />
-
-              <div className="space-y-6">
-                <div className="flex justify-between items-center"><Label className="text-lg font-black">Grup Pilihan</Label><Button variant="outline" size="sm" onClick={() => setComboForm({...comboForm, groups: [...(comboForm.groups || []), { id: Math.random().toString(36).substr(2, 9), name: '', required: true, options: [] }]})} className="h-10 rounded-xl font-black"><Plus className="h-4 w-4 mr-2" /> Tambah Grup</Button></div>
-                {comboForm.groups?.map((group, gIdx) => (
-                  <div key={group.id} className="p-6 border-2 rounded-[2rem] space-y-4">
-                    <div className="flex justify-between items-center gap-4">
-                      <Input value={group.name} onChange={(e) => { const ng = [...comboForm.groups!]; ng[gIdx].name = e.target.value; setComboForm({...comboForm, groups: ng}); }} placeholder="Nama Grup (misal: Pilih Minuman)" className="font-bold border-none bg-muted/20 rounded-xl" />
-                      <div className="flex items-center gap-2"><Label className="text-[10px] font-black">Wajib</Label><Switch checked={group.required} onCheckedChange={(val) => { const ng = [...comboForm.groups!]; ng[gIdx].required = val; setComboForm({...comboForm, groups: ng}); }} /></div>
-                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => { const ng = comboForm.groups!.filter((_, i) => i !== gIdx); setComboForm({...comboForm, groups: ng}); }}><Trash2 className="h-5 w-5" /></Button>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center mb-2"><Label className="text-xs font-black">Opsi Produk</Label><Button variant="ghost" size="sm" onClick={() => { const ng = [...comboForm.groups!]; ng[gIdx].options.push({ productId: products[0]?.id, extraPrice: 0 }); setComboForm({...comboForm, groups: ng}); }} className="text-xs font-bold text-primary"><Plus className="h-3 w-3 mr-1" /> Tambah Opsi</Button></div>
-                      {group.options.map((opt, oIdx) => (
-                        <div key={oIdx} className="flex gap-4 items-center">
-                          <div className="flex-[2]">
-                            <Select value={opt.productId} onValueChange={(val) => { const ng = [...comboForm.groups!]; ng[gIdx].options[oIdx].productId = val; setComboForm({...comboForm, groups: ng}); }}>
-                              <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                              <SelectContent>{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex-1 flex items-center gap-2"><span className="text-[10px] font-bold">+Rp</span><Input type="number" value={opt.extraPrice} onChange={(e) => { const ng = [...comboForm.groups!]; ng[gIdx].options[oIdx].extraPrice = parseFloat(e.target.value); setComboForm({...comboForm, groups: ng}); }} className="rounded-xl" /></div>
-                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => { const ng = [...comboForm.groups!]; ng[gIdx].options = ng[gIdx].options.filter((_, i) => i !== oIdx); setComboForm({...comboForm, groups: ng}); }}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <DialogHeader><DialogTitle className="text-2xl font-black">{editingCombo ? 'Edit Pilihan' : 'Tambah Pilihan'}</DialogTitle></DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label className="text-xs font-black">Nama Combo</Label><Input value={comboForm.name || ''} onChange={(e) => setComboForm({...comboForm, name: e.target.value})} /></div>
+              <div className="space-y-2"><Label className="text-xs font-black">Harga Dasar</Label><Input type="number" value={comboForm.basePrice || ''} onChange={(e) => setComboForm({...comboForm, basePrice: parseFloat(e.target.value)})} /></div>
             </div>
-          </ScrollArea>
-          <DialogFooter className="mt-6"><Button onClick={saveCombo} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Pilihan Menu</Button></DialogFooter>
+          </div>
+          <DialogFooter><Button onClick={saveCombo} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Pilihan</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+          <DialogHeader><DialogTitle className="text-xl font-black">{editingCustomer ? 'Edit Pelanggan' : 'Tambah Pelanggan'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2"><Label className="text-xs font-black">Nama</Label><Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-xs font-black">Telepon</Label><Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} /></div>
+          </div>
+          <DialogFooter><Button onClick={saveCustomer} className="w-full h-12 rounded-xl bg-primary font-black">Simpan Pelanggan</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+          <DialogHeader><DialogTitle className="text-xl font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2"><Label className="text-xs font-black">Nama Kategori</Label><Input value={categoryForm} onChange={(e) => setCategoryForm(e.target.value)} /></div>
+          </div>
+          <DialogFooter><Button onClick={saveCategory} className="w-full h-12 rounded-xl bg-primary font-black">Simpan Kategori</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+          <DialogHeader><DialogTitle className="text-xl font-black">{editingPayment ? 'Edit Metode' : 'Tambah Metode'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2"><Label className="text-xs font-black">Nama Metode</Label><Input value={paymentForm.name || ''} onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})} /></div>
+          </div>
+          <DialogFooter><Button onClick={savePayment} className="w-full h-12 rounded-xl bg-primary font-black">Simpan Metode</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isFeeDialogOpen} onOpenChange={setIsFeeDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+          <DialogHeader><DialogTitle className="text-xl font-black">{editingFee ? 'Edit Biaya' : 'Tambah Biaya'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2"><Label className="text-xs font-black">Nama Pajak/Biaya</Label><Input value={feeForm.name || ''} onChange={(e) => setFeeForm({...feeForm, name: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-xs font-black">Nilai (%)</Label><Input type="number" value={feeForm.value || ''} onChange={(e) => setFeeForm({...feeForm, value: parseFloat(e.target.value)})} /></div>
+          </div>
+          <DialogFooter><Button onClick={saveFee} className="w-full h-12 rounded-xl bg-primary font-black">Simpan Biaya</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent className="max-w-md rounded-[2.5rem] p-8">
+          <DialogHeader><DialogTitle className="text-xl font-black">{editingUser ? 'Edit User' : 'Tambah User'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2"><Label className="text-xs font-black">Nama</Label><Input value={userForm.name || ''} onChange={(e) => setUserForm({...userForm, name: e.target.value})} /></div>
+            <div className="space-y-2"><Label className="text-xs font-black">Username</Label><Input value={userForm.username || ''} onChange={(e) => setUserForm({...userForm, username: e.target.value})} /></div>
+            <div className="space-y-2">
+              <Label className="text-xs font-black">Role</Label>
+              <Select value={userForm.roleId} onValueChange={(val) => setUserForm({...userForm, roleId: val})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{roles.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter><Button onClick={saveUser} className="w-full h-12 rounded-xl bg-primary font-black">Simpan User</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
