@@ -163,8 +163,6 @@ export function SettingsView() {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const isAdmin = useMemo(() => currentUser?.roleId === 'admin', [currentUser]);
-
   // --- CSV TEMPLATES ---
   const downloadProductTemplate = () => {
     const headers = "sku,barcode,name,category,price,costPrice,onHandQty,description,image\n";
@@ -476,23 +474,62 @@ export function SettingsView() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
+    // Libre Barcode 39 requires * wrappers to render as barcode bars
+    const barcodeValue = `*${product.barcode || product.sku}*`;
+    
     printWindow.document.write(`
       <html>
         <head>
           <title>Cetak Barcode - ${product.name}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&family=Poppins:wght@400;700;800&display=swap" rel="stylesheet">
           <style>
-            body { font-family: 'Poppins', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-            .barcode-container { border: 2px solid black; padding: 20px; text-align: center; }
-            .name { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
-            .barcode { font-size: 32px; letter-spacing: 5px; margin: 10px 0; font-family: 'Libre Barcode 39', cursive; }
-            .sku { font-size: 12px; }
-            @media print { .no-print { display: none; } }
+            body { 
+              font-family: 'Poppins', sans-serif; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              min-height: 100vh; 
+              margin: 0; 
+              background: white;
+            }
+            .barcode-card { 
+              border: 4px solid black; 
+              padding: 40px; 
+              text-align: center; 
+              width: 350px;
+              background: white;
+            }
+            .name { 
+              font-weight: 800; 
+              font-size: 20px; 
+              margin-bottom: 25px; 
+              text-transform: uppercase;
+              color: black;
+            }
+            .barcode-bars { 
+              font-family: 'Libre Barcode 39', cursive;
+              font-size: 100px; 
+              margin: 15px 0; 
+              line-height: 1;
+              color: black;
+            }
+            .sku { 
+              font-size: 16px; 
+              font-weight: 700;
+              margin-top: 20px;
+              letter-spacing: 2px;
+              color: black;
+            }
+            @media print {
+              body { min-height: auto; }
+              .no-print { display: none; }
+            }
           </style>
         </head>
-        <body onload="window.print()">
-          <div class="barcode-container">
+        <body onload="setTimeout(() => { window.print(); window.close(); }, 600)">
+          <div class="barcode-card">
             <div class="name">${product.name}</div>
-            <div class="barcode">${product.barcode || product.sku}</div>
+            <div class="barcode-bars">${barcodeValue}</div>
             <div class="sku">${product.sku}</div>
           </div>
         </body>
@@ -555,7 +592,7 @@ export function SettingsView() {
                 <div key={p.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
                   <div className="flex items-center gap-5">
                     <div className="h-14 w-14 rounded-2xl overflow-hidden bg-white border shadow-sm"><img src={p.image} className="h-full w-full object-cover" alt={p.name} /></div>
-                    <div><p className="font-black text-lg leading-tight">{p.name}</p><div className="flex gap-2 items-center mt-1"><span className="text-primary font-black text-sm">{formatCurrencyValue(p.price)}</span><Badge variant="outline" className="text-[9px] font-bold px-2 py-0">{p.sku}</Badge></div></div>
+                    <div><p className="font-black text-lg leading-tight">{p.name}</p><div className="flex gap-2 items-center mt-1"><span className="text-primary font-black text-sm">{formatCurrencyValue(p.price)}</span><Badge variant="outline" className="text-[9px] font-bold px-2 py-0 border-none bg-white">{p.sku}</Badge></div></div>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="ghost" size="icon" title="Cetak Barcode" onClick={() => handlePrintBarcode(p)}><Printer className="h-5 w-5" /></Button>
@@ -589,7 +626,7 @@ export function SettingsView() {
                       <p className="font-black text-lg leading-tight">{pl.name}</p>
                       <p className="text-xs text-muted-foreground font-bold mt-1">Produk: {products.find(p => p.id === pl.productId)?.name || 'Produk dihapus'}</p>
                       <div className="flex gap-2 mt-2">
-                        {pl.tiers.map((t, idx) => <Badge key={idx} variant="outline" className="text-[10px] font-bold">Qty {t.minQty}+ : {formatCurrencyValue(t.price)}</Badge>)}
+                        {pl.tiers.map((t, idx) => <Badge key={idx} variant="outline" className="text-[10px] font-bold border-none bg-white">Qty {t.minQty}+ : {formatCurrencyValue(t.price)}</Badge>)}
                       </div>
                     </div>
                   </div>
@@ -736,7 +773,7 @@ export function SettingsView() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div><CardTitle className="text-2xl font-black">Manajemen User</CardTitle><CardDescription className="font-medium">Kelola akses staf dan hak istimewa role</CardDescription></div>
-              {isAdmin && <Button onClick={() => { setEditingUser(null); setUserForm({ roleId: 'cashier', status: 'Active' }); setIsUserDialogOpen(true); }} className="h-14 rounded-2xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah User</Button>}
+              <Button onClick={() => { setEditingUser(null); setUserForm({ roleId: 'cashier', status: 'Active' }); setIsUserDialogOpen(true); }} className="h-14 rounded-2xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah User</Button>
             </div>
             <div className="space-y-4">
               {users.map((user) => (
@@ -752,13 +789,9 @@ export function SettingsView() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {isAdmin && (
-                      <>
-                        <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUser(user); setNewPassword(''); setIsResetPasswordOpen(true); }}><Lock className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setUsers(users.filter(u => u.id !== user.id))}><Trash2 className="h-5 w-5" /></Button>
-                      </>
-                    )}
+                    <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUser(user); setNewPassword(''); setIsResetPasswordOpen(true); }}><Lock className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setUsers(users.filter(u => u.id !== user.id))}><Trash2 className="h-5 w-5" /></Button>
                   </div>
                 </div>
               ))}
@@ -860,13 +893,7 @@ export function SettingsView() {
         );
 
       default:
-        return (
-          <div className="flex flex-col items-center justify-center h-full opacity-30 text-center py-20">
-             <Database className="h-20 w-20 mb-4" />
-             <h3 className="text-2xl font-black">Modul Dalam Pengembangan</h3>
-             <p className="max-w-xs">Halaman ini akan segera tersedia dalam pembaruan berikutnya.</p>
-          </div>
-        );
+        return null;
     }
   };
 
@@ -1105,117 +1132,6 @@ export function SettingsView() {
             </div>
           </ScrollArea>
           <DialogFooter className="mt-6"><Button onClick={saveCombo} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Pilihan Menu</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2"><Label className="text-xs font-black">Nama Kategori</Label><Input value={categoryForm} onChange={(e) => setCategoryForm(e.target.value)} placeholder="Contoh: Makanan Penutup" /></div>
-          </div>
-          <DialogFooter><Button onClick={saveCategory} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Kategori</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingCustomer ? 'Edit Pelanggan' : 'Tambah Pelanggan'}</DialogTitle></DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2"><Label className="text-xs font-black">Nama Lengkap</Label><Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} /></div>
-            <div className="space-y-2"><Label className="text-xs font-black">Nomor Telepon</Label><Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} /></div>
-            <div className="space-y-2"><Label className="text-xs font-black">Email (Opsional)</Label><Input value={customerForm.email || ''} onChange={(e) => setCustomerForm({...customerForm, email: e.target.value})} /></div>
-          </div>
-          <DialogFooter><Button onClick={saveCustomer} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Pelanggan</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-        <DialogContent className="max-w-xl rounded-[2.5rem] p-10">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingUser ? 'Edit User' : 'Tambah User'}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-6 py-4">
-            <div className="space-y-2"><Label className="text-xs font-black">Nama Lengkap</Label><Input value={userForm.name || ''} onChange={(e) => setUserForm({...userForm, name: e.target.value})} /></div>
-            <div className="space-y-2"><Label className="text-xs font-black">Username</Label><Input value={userForm.username || ''} onChange={(e) => setUserForm({...userForm, username: e.target.value})} /></div>
-            {!editingUser && <div className="space-y-2"><Label className="text-xs font-black">Password</Label><Input type="password" value={userForm.password || ''} onChange={(e) => setUserForm({...userForm, password: e.target.value})} /></div>}
-            <div className="space-y-2">
-              <Label className="text-xs font-black">Role</Label>
-              <Select value={userForm.roleId} onValueChange={(val) => setUserForm({...userForm, roleId: val})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{roles.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter><Button onClick={saveUser} className="w-full h-14 rounded-xl bg-primary font-black">Simpan User</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black text-destructive">Reset Password</DialogTitle>
-            <DialogDescription>Reset password untuk user <b>{resetPasswordUser?.name}</b></DialogDescription>
-          </DialogHeader>
-          <div className="py-6 space-y-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Password Baru</Label>
-              <div className="relative">
-                <Input 
-                  type={showPassword ? "text" : "password"} 
-                  value={newPassword} 
-                  onChange={(e) => setNewPassword(e.target.value)} 
-                  className="h-14 rounded-xl pr-12 font-bold text-lg" 
-                />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => {
-              if (newPassword && resetPasswordUser) {
-                setUsers(users.map(u => u.id === resetPasswordUser.id ? {...u, password: newPassword} : u));
-                setIsResetPasswordOpen(false);
-                toast({ title: "Berhasil", description: "Password telah diperbarui." });
-              }
-            }} className="w-full h-14 rounded-xl bg-destructive text-white font-black">Konfirmasi Reset Password</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingPayment ? 'Edit Metode Pembayaran' : 'Tambah Metode Pembayaran'}</DialogTitle></DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2"><Label className="text-xs font-black">Nama Metode</Label><Input value={paymentForm.name || ''} onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})} /></div>
-            <div className="space-y-2">
-              <Label className="text-xs font-black">Ikon</Label>
-              <Select value={paymentForm.icon} onValueChange={(val: any) => setPaymentForm({...paymentForm, icon: val})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="Banknote">Tunai (Banknote)</SelectItem><SelectItem value="CreditCard">Kartu (CreditCard)</SelectItem><SelectItem value="Smartphone">Digital (Smartphone)</SelectItem></SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2"><Label className="text-xs font-black">Deskripsi</Label><Input value={paymentForm.description || ''} onChange={(e) => setPaymentForm({...paymentForm, description: e.target.value})} /></div>
-          </div>
-          <DialogFooter><Button onClick={savePayment} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Metode</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isFeeDialogOpen} onOpenChange={setIsFeeDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingFee ? 'Edit Biaya/Pajak' : 'Tambah Biaya/Pajak'}</DialogTitle></DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2"><Label className="text-xs font-black">Nama Biaya</Label><Input value={feeForm.name || ''} onChange={(e) => setFeeForm({...feeForm, name: e.target.value})} /></div>
-            <div className="space-y-2">
-              <Label className="text-xs font-black">Tipe</Label>
-              <Select value={feeForm.type} onValueChange={(val: any) => setFeeForm({...feeForm, type: val})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="Tax">Pajak (Tax)</SelectItem><SelectItem value="Service">Biaya Layanan (Service)</SelectItem><SelectItem value="Discount">Diskon (Discount)</SelectItem></SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2"><Label className="text-xs font-black">Nilai (%)</Label><Input type="number" value={feeForm.value || ''} onChange={(e) => setFeeForm({...feeForm, value: parseFloat(e.target.value)})} /></div>
-          </div>
-          <DialogFooter><Button onClick={saveFee} className="w-full h-14 rounded-xl bg-primary font-black">Simpan Biaya</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
