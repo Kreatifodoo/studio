@@ -111,7 +111,6 @@ export function SettingsView() {
     return groups.filter(g => g.items.length > 0);
   }, [checkPermission]);
 
-  // Dialog States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isPriceListDialogOpen, setIsPriceListDialogOpen] = useState(false);
@@ -123,7 +122,6 @@ export function SettingsView() {
   const [isFeeDialogOpen, setIsFeeDialogOpen] = useState(false);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
 
-  // Form States
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<Partial<Product>>({});
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -145,7 +143,6 @@ export function SettingsView() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({});
 
-  // --- HELPERS ---
   const formatCurrencyValue = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
@@ -166,8 +163,8 @@ export function SettingsView() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     
-    // Standard Code 39 uses * as start/stop character
     const barcodeValue = `*${product.barcode || product.sku}*`;
+    const formattedPrice = formatCurrencyValue(product.price);
     
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -209,9 +206,9 @@ export function SettingsView() {
             .name {
               font-family: 'Poppins', sans-serif;
               font-weight: 800;
-              font-size: 7pt;
+              font-size: 7.5pt;
               line-height: 1.1;
-              margin-top: 0;
+              margin-top: 0.5mm;
               text-transform: uppercase;
               word-break: break-word;
               max-width: 100%;
@@ -226,24 +223,39 @@ export function SettingsView() {
                align-items: center;
                justify-content: center;
                width: 100%;
-               padding: 0 2mm; /* Quiet zone! Crucial for scanners */
+               padding: 0 4mm; /* Quiet zone! */
             }
             .barcode {
               font-family: 'Libre Barcode 39', cursive;
-              font-size: 32pt;
+              font-size: 30pt;
               margin: 0;
               padding: 0;
               line-height: 1;
               white-space: nowrap;
-              max-width: 34mm;
+              max-width: 30mm;
               overflow: hidden;
+            }
+            .footer {
+              width: 100%;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              padding: 0 1.5mm 0.5mm 1.5mm;
+              box-sizing: border-box;
             }
             .sku {
               font-family: 'Poppins', sans-serif;
               font-weight: 700;
-              font-size: 7pt;
+              font-size: 6.5pt;
               margin-bottom: 0;
-              letter-spacing: 1.5px;
+              letter-spacing: 0.5px;
+              color: #000;
+            }
+            .price {
+              font-family: 'Poppins', sans-serif;
+              font-weight: 800;
+              font-size: 8.5pt;
+              color: #000;
             }
           </style>
         </head>
@@ -253,7 +265,10 @@ export function SettingsView() {
             <div class="barcode-container">
               <div class="barcode">${barcodeValue}</div>
             </div>
-            <div class="sku">${product.barcode || product.sku}</div>
+            <div class="footer">
+              <div class="sku">${product.barcode || product.sku}</div>
+              <div class="price">${formattedPrice}</div>
+            </div>
           </div>
         </body>
       </html>
@@ -787,7 +802,6 @@ export function SettingsView() {
         </div>
       </div>
 
-      {/* Dialogs */}
       <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
         <DialogContent className="max-w-2xl rounded-[2.5rem] p-10">
           <DialogHeader><DialogTitle className="text-2xl font-black">{editingProduct ? 'Edit Produk' : 'Tambah Produk'}</DialogTitle></DialogHeader>
