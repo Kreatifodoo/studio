@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -19,9 +20,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
+import { Permission } from '@/types/pos';
 
 export function Sidebar() {
-  const { view, setView, currentSession, closeSession, history, lastClosedSession, logout, currentUser } = usePOS();
+  const { view, setView, currentSession, closeSession, history, lastClosedSession, logout, currentUser, checkPermission } = usePOS();
   const [closingCash, setClosingCash] = useState('');
   const [showSummaryPreview, setShowSummaryPreview] = useState(false);
 
@@ -38,13 +40,22 @@ export function Sidebar() {
   const currentClosingAmount = parseFloat(closingCash) || 0;
   const isBalanced = Math.abs(currentClosingAmount - expectedCash) < 0.01;
 
-  const navItems = [
-    { id: 'pos', icon: ShoppingCart, label: 'Kasir' },
-    { id: 'history', icon: Clock, label: 'Riwayat' },
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dasbor' },
-    { id: 'reports', icon: FileText, label: 'Laporan' },
-    { id: 'settings', icon: Settings, label: 'Pengaturan' },
-  ];
+  const navItems = useMemo(() => {
+    const allItems = [
+      { id: 'pos', icon: ShoppingCart, label: 'Kasir', permission: 'view_pos' as Permission },
+      { id: 'history', icon: Clock, label: 'Riwayat', permission: 'view_history' as Permission },
+      { id: 'dashboard', icon: LayoutDashboard, label: 'Dasbor', permission: 'view_dashboard' as Permission },
+      { id: 'reports', icon: FileText, label: 'Laporan', permission: 'view_reports' as Permission },
+      { id: 'settings', icon: Settings, label: 'Pengaturan', permission: 'manage_products' as Permission }, 
+    ];
+
+    return allItems.filter(item => {
+      if (item.id === 'settings') {
+        return checkPermission('manage_settings') || checkPermission('manage_products') || checkPermission('manage_customers') || checkPermission('manage_users');
+      }
+      return checkPermission(item.permission);
+    });
+  }, [checkPermission]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -54,7 +65,6 @@ export function Sidebar() {
     closeSession(currentClosingAmount);
     setClosingCash('');
     setShowSummaryPreview(true);
-    // Otomatis cetak setelah state diupdate
     setTimeout(() => {
       window.print();
     }, 800);

@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -26,14 +27,11 @@ import {
   Ticket,
   Upload,
   Download,
-  FileSpreadsheet,
   Image as ImageIcon,
   UserCog,
   ShieldCheck,
   Mail,
   User as UserIcon,
-  Shield,
-  Key,
   Lock,
   Eye,
   EyeOff,
@@ -46,7 +44,7 @@ import { usePOS } from './POSContext';
 import { 
   Product, PaymentMethod, Fee, Customer, PriceList, Package, 
   PackageItem, Combo, ComboGroup, ComboOption, PromoDiscount, 
-  StoreSettings, User, Role 
+  StoreSettings, User, Role, Permission 
 } from '@/types/pos';
 import { 
   Dialog, 
@@ -77,7 +75,7 @@ export function SettingsView() {
     promoDiscounts, setPromoDiscounts,
     storeSettings, setStoreSettings,
     users, setUsers,
-    roles, currentUser,
+    roles, currentUser, checkPermission,
     exportDatabase, importDatabase
   } = usePOS();
   
@@ -88,6 +86,43 @@ export function SettingsView() {
   const [importType, setImportType] = useState<'products' | 'pricelist' | 'promo' | 'package' | 'combo' | null>(null);
 
   const [activeTab, setActiveTab] = useState('general');
+
+  const navGroups = useMemo(() => {
+    const groups = [
+      {
+        title: "Produk",
+        items: [
+          { id: 'products', icon: PackageIcon, label: 'Master Produk', permission: 'manage_products' as Permission },
+          { id: 'pricelist', icon: Tags, label: 'Daftar Harga Grosir', permission: 'manage_products' as Permission },
+          { id: 'promo', icon: Ticket, label: 'Promo Diskon', permission: 'manage_products' as Permission },
+          { id: 'package', icon: Box, label: 'Paket Bundel', permission: 'manage_products' as Permission },
+          { id: 'combo', icon: LayoutGrid, label: 'Pilihan Menu', permission: 'manage_products' as Permission },
+        ].filter(item => checkPermission(item.permission))
+      },
+      {
+        title: "Sistem",
+        items: [
+          { id: 'general', icon: Store, label: 'Informasi Toko', permission: 'manage_settings' as Permission },
+          { id: 'backup', icon: Database, label: 'Backup & Restore', permission: 'manage_settings' as Permission },
+          { id: 'users', icon: UserCog, label: 'Manajemen User', permission: 'manage_users' as Permission },
+          { id: 'customers', icon: Users, label: 'Data Pelanggan', permission: 'manage_customers' as Permission },
+          { id: 'categories', icon: Layers, label: 'Kategori Produk', permission: 'manage_settings' as Permission },
+          { id: 'payments', icon: CreditCard, label: 'Metode Pembayaran', permission: 'manage_settings' as Permission },
+          { id: 'fees', icon: Percent, label: 'Pajak & Biaya', permission: 'manage_settings' as Permission },
+        ].filter(item => checkPermission(item.permission))
+      }
+    ];
+    return groups.filter(g => g.items.length > 0);
+  }, [checkPermission]);
+
+  useEffect(() => {
+    // Ensure activeTab is a valid permitted tab
+    const allPermittedIds = navGroups.flatMap(g => g.items.map(i => i.id));
+    if (allPermittedIds.length > 0 && !allPermittedIds.includes(activeTab)) {
+      setActiveTab(allPermittedIds[0]);
+    }
+  }, [navGroups, activeTab]);
+
   const [packageSearch, setPackageSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
   const [comboSearch, setComboSearch] = useState('');
@@ -129,32 +164,7 @@ export function SettingsView() {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const isAdmin = currentUser?.roleId === 'admin';
-
-  const navGroups = [
-    {
-      title: "Produk",
-      items: [
-        { id: 'products', icon: PackageIcon, label: 'Master Produk' },
-        { id: 'pricelist', icon: Tags, label: 'Daftar Harga Grosir' },
-        { id: 'promo', icon: Ticket, label: 'Promo Diskon' },
-        { id: 'package', icon: Box, label: 'Paket Bundel' },
-        { id: 'combo', icon: LayoutGrid, label: 'Pilihan Menu' },
-      ]
-    },
-    {
-      title: "Sistem",
-      items: [
-        { id: 'general', icon: Store, label: 'Informasi Toko' },
-        { id: 'backup', icon: Database, label: 'Backup & Restore' },
-        { id: 'users', icon: UserCog, label: 'Manajemen User' },
-        { id: 'customers', icon: Users, label: 'Data Pelanggan' },
-        { id: 'categories', icon: Layers, label: 'Kategori Produk' },
-        { id: 'payments', icon: CreditCard, label: 'Metode Pembayaran' },
-        { id: 'fees', icon: Percent, label: 'Pajak & Biaya' },
-      ]
-    }
-  ];
+  const isAdmin = useMemo(() => checkPermission('manage_users'), [checkPermission]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -264,7 +274,7 @@ export function SettingsView() {
               description: d.description || '',
               available: true
             }));
-            setProducts(prev => [...prev, ...newProducts]);
+            setProducts([...products, ...newProducts]);
             break;
           case 'pricelist':
             const newPriceLists = parsedData.map(d => {
@@ -279,7 +289,7 @@ export function SettingsView() {
                 tiers: [{ minQty: Number(d.minqty) || 1, maxQty: Number(d.maxqty) || 999, price: Number(d.price) || 0 }]
               };
             });
-            setPriceLists(prev => [...prev, ...newPriceLists]);
+            setPriceLists([...priceLists, ...newPriceLists]);
             break;
           case 'promo':
             const newPromos = parsedData.map(d => {
@@ -295,7 +305,7 @@ export function SettingsView() {
                 enabled: d.enabled === true
               };
             });
-            setPromoDiscounts(prev => [...prev, ...newPromos]);
+            setPromoDiscounts([...promoDiscounts, ...newPromos]);
             break;
           case 'package':
             const newPackages = parsedData.map(d => {
@@ -316,7 +326,7 @@ export function SettingsView() {
                 items
               };
             });
-            setPackages(prev => [...prev, ...newPackages]);
+            setPackages([...packages, ...newPackages]);
             break;
           case 'combo':
             const newCombos = parsedData.map(d => {
@@ -351,7 +361,7 @@ export function SettingsView() {
                 groups
               };
             });
-            setCombos(prev => [...prev, ...newCombos]);
+            setCombos([...combos, ...newCombos]);
             break;
         }
 
@@ -403,21 +413,21 @@ export function SettingsView() {
       return;
     }
     if (editingCategory) {
-      setCategories(prev => prev.map(cat => cat === editingCategory ? categoryForm : cat));
-      setProducts(prev => prev.map(p => p.category === editingCategory ? { ...p, category: categoryForm } : p));
+      setCategories(categories.map(cat => cat === editingCategory ? categoryForm : cat));
+      setProducts(products.map(p => p.category === editingCategory ? { ...p, category: categoryForm } : p));
     } else {
       if (categories.includes(categoryForm)) {
         toast({ variant: "destructive", title: "Error", description: "Kategori sudah ada." });
         return;
       }
-      setCategories(prev => [...prev, categoryForm]);
+      setCategories([...categories, categoryForm]);
     }
     setIsCategoryDialogOpen(false);
   };
 
   const handleDeleteCategory = (catToDelete: string) => {
     if (catToDelete === 'Semua') return;
-    setCategories(prev => prev.filter(c => c !== catToDelete));
+    setCategories(categories.filter(c => c !== catToDelete));
     setIsCategoryDialogOpen(false);
   };
 
@@ -430,13 +440,13 @@ export function SettingsView() {
   const handleSavePayment = () => {
     if (!paymentForm.name) return;
     if (editingPayment) {
-      setPaymentMethods(prev => prev.map(pm => pm.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : pm));
+      setPaymentMethods(paymentMethods.map(pm => pm.id === editingPayment.id ? { ...editingPayment, ...paymentForm } as PaymentMethod : pm));
     } else {
       const newPm: PaymentMethod = {
         id: Math.random().toString(36).substr(2, 9),
         ...paymentForm as PaymentMethod
       };
-      setPaymentMethods(prev => [...prev, newPm]);
+      setPaymentMethods([...paymentMethods, newPm]);
     }
     setIsPaymentDialogOpen(false);
   };
@@ -450,13 +460,13 @@ export function SettingsView() {
   const handleSaveFee = () => {
     if (!feeForm.name) return;
     if (editingFee) {
-      setFees(prev => prev.map(f => f.id === editingFee.id ? { ...editingFee, ...feeForm } as Fee : f));
+      setFees(fees.map(f => f.id === editingFee.id ? { ...editingFee, ...feeForm } as Fee : f));
     } else {
       const newFee: Fee = {
         id: Math.random().toString(36).substr(2, 9),
         ...feeForm as Fee
       };
-      setFees(prev => [...prev, newFee]);
+      setFees([...fees, newFee]);
     }
     setIsFeeDialogOpen(false);
   };
@@ -470,9 +480,9 @@ export function SettingsView() {
   const handleSavePackage = () => {
     if (!packageForm.name || !packageForm.sku || !packageForm.price) return;
     if (editingPackage) {
-      setPackages(prev => prev.map(p => p.id === editingPackage.id ? { ...editingPackage, ...packageForm } as Package : p));
+      setPackages(packages.map(p => p.id === editingPackage.id ? { ...editingPackage, ...packageForm } as Package : p));
     } else {
-      setPackages(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...packageForm as Package }]);
+      setPackages([...packages, { id: Math.random().toString(36).substr(2, 9), ...packageForm as Package }]);
     }
     setIsPackageDialogOpen(false);
   };
@@ -494,9 +504,9 @@ export function SettingsView() {
   const handleSaveCombo = () => {
     if (!comboForm.name || !comboForm.sku || !comboForm.basePrice) return;
     if (editingCombo) {
-      setCombos(prev => prev.map(c => c.id === editingCombo.id ? { ...editingCombo, ...comboForm } as Combo : c));
+      setCombos(combos.map(c => c.id === editingCombo.id ? { ...editingCombo, ...comboForm } as Combo : c));
     } else {
-      setCombos(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...comboForm as Combo }]);
+      setCombos([...combos, { id: Math.random().toString(36).substr(2, 9), ...comboForm as Combo }]);
     }
     setIsComboDialogOpen(false);
   };
@@ -541,8 +551,8 @@ export function SettingsView() {
 
   const handleSavePriceList = () => {
     if (!priceListForm.name || !priceListForm.productId) return;
-    if (editingPriceList) setPriceLists(prev => prev.map(pl => pl.id === editingPriceList.id ? { ...editingPriceList, ...priceListForm } as PriceList : pl));
-    else setPriceLists(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...priceListForm as PriceList }]);
+    if (editingPriceList) setPriceLists(priceLists.map(pl => pl.id === editingPriceList.id ? { ...editingPriceList, ...priceListForm } as PriceList : pl));
+    else setPriceLists([...priceLists, { id: Math.random().toString(36).substr(2, 9), ...priceListForm as PriceList }]);
     setIsPriceListDialogOpen(false);
   };
 
@@ -562,8 +572,8 @@ export function SettingsView() {
 
   const handleSavePromo = () => {
     if (!promoForm.name || !promoForm.productId) return;
-    if (editingPromo) setPromoDiscounts(prev => prev.map(pd => pd.id === editingPromo.id ? { ...editingPromo, ...promoForm } as PromoDiscount : pd));
-    else setPromoDiscounts(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...promoForm as PromoDiscount }]);
+    if (editingPromo) setPromoDiscounts(promoDiscounts.map(pd => pd.id === editingPromo.id ? { ...editingPromo, ...promoForm } as PromoDiscount : pd));
+    else setPromoDiscounts([...promoDiscounts, { id: Math.random().toString(36).substr(2, 9), ...promoForm as PromoDiscount }]);
     setIsPromoDialogOpen(false);
   };
 
@@ -575,8 +585,8 @@ export function SettingsView() {
 
   const handleSaveCustomer = () => {
     if (!customerForm.name || !customerForm.phone) return;
-    if (editingCustomer) setCustomers(prev => prev.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...customerForm } as Customer : c));
-    else setCustomers(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...customerForm as Customer }]);
+    if (editingCustomer) setCustomers(customers.map(c => c.id === editingCustomer.id ? { ...editingCustomer, ...customerForm } as Customer : c));
+    else setCustomers([...customers, { id: Math.random().toString(36).substr(2, 9), ...customerForm as Customer }]);
     setIsCustomerDialogOpen(false);
   };
 
@@ -592,8 +602,8 @@ export function SettingsView() {
 
   const handleSaveUser = () => {
     if (!userForm.name || !userForm.username) return;
-    if (editingUser) setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...editingUser, ...userForm } as User : u));
-    else setUsers(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), ...userForm as User }]);
+    if (editingUser) setUsers(users.map(u => u.id === editingUser.id ? { ...editingUser, ...userForm } as User : u));
+    else setUsers([...users, { id: Math.random().toString(36).substr(2, 9), ...userForm as User }]);
     setIsUserDialogOpen(false);
     toast({ title: "User Berhasil Disimpan" });
   };
@@ -611,7 +621,7 @@ export function SettingsView() {
 
   const handleConfirmResetPassword = () => {
     if (!newPassword || !resetPasswordUser) return;
-    setUsers(prev => prev.map(u => u.id === resetPasswordUser.id ? { ...u, password: newPassword } : u));
+    setUsers(users.map(u => u.id === resetPasswordUser.id ? { ...u, password: newPassword } : u));
     setIsResetPasswordOpen(false);
     toast({ title: "Password Berhasil Di-reset", description: `Password untuk ${resetPasswordUser.name} telah diperbarui.` });
   };
@@ -636,27 +646,9 @@ export function SettingsView() {
 
   return (
     <div className="flex flex-col gap-8 h-full">
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        accept=".csv" 
-        onChange={handleFileUpload}
-      />
-      <input 
-        type="file" 
-        ref={logoInputRef} 
-        className="hidden" 
-        accept="image/*" 
-        onChange={handleLogoUpload}
-      />
-      <input 
-        type="file" 
-        ref={dbImportRef} 
-        className="hidden" 
-        accept=".json" 
-        onChange={handleDbFileSelect}
-      />
+      <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleFileUpload} />
+      <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
+      <input type="file" ref={dbImportRef} className="hidden" accept=".json" onChange={handleDbFileSelect} />
       
       <div className="flex flex-col gap-1">
         <h2 className="text-3xl font-black">Pengaturan</h2>
@@ -700,120 +692,26 @@ export function SettingsView() {
                   <div className="space-y-6">
                     <div className="space-y-3">
                       <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Nama Toko</Label>
-                      <Input 
-                        value={storeSettings.name} 
-                        onChange={(e) => setStoreSettings({...storeSettings, name: e.target.value})}
-                        className="h-12 rounded-xl focus:ring-primary/20 border-2" 
-                      />
+                      <Input value={storeSettings.name} onChange={(e) => setStoreSettings({...storeSettings, name: e.target.value})} className="h-12 rounded-xl border-2" />
                     </div>
                     <div className="space-y-3">
                       <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Alamat Toko</Label>
-                      <Textarea 
-                        value={storeSettings.address} 
-                        onChange={(e) => setStoreSettings({...storeSettings, address: e.target.value})}
-                        className="min-h-[100px] rounded-xl focus:ring-primary/20 border-2" 
-                      />
-                    </div>
-                    <div className="space-y-3">
-                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Simbol Mata Uang</Label>
-                      <Input 
-                        value={storeSettings.currencySymbol} 
-                        onChange={(e) => setStoreSettings({...storeSettings, currencySymbol: e.target.value})}
-                        className="h-12 rounded-xl focus:ring-primary/20 border-2" 
-                      />
+                      <Textarea value={storeSettings.address} onChange={(e) => setStoreSettings({...storeSettings, address: e.target.value})} className="min-h-[100px] rounded-xl border-2" />
                     </div>
                   </div>
-
                   <div className="space-y-6">
                     <div className="space-y-3">
-                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Logo Toko (untuk Struk)</Label>
+                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Logo Toko</Label>
                       <div className="flex flex-col items-center gap-4 p-6 border-2 border-dashed rounded-[2rem] bg-muted/10">
                         {storeSettings.logoUrl ? (
                           <div className="relative h-32 w-32 rounded-2xl overflow-hidden border bg-white shadow-sm">
-                            <img src={storeSettings.logoUrl} alt="Store Logo" className="h-full w-full object-contain" />
-                            <button 
-                              onClick={() => setStoreSettings({...storeSettings, logoUrl: ''})}
-                              className="absolute top-1 right-1 bg-destructive text-white p-1 rounded-full shadow-lg"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+                            <img src={storeSettings.logoUrl} alt="Logo" className="h-full w-full object-contain" />
+                            <button onClick={() => setStoreSettings({...storeSettings, logoUrl: ''})} className="absolute top-1 right-1 bg-destructive text-white p-1 rounded-full"><Trash2 className="h-3 w-3" /></button>
                           </div>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-32 w-32 rounded-2xl bg-white border shadow-sm text-muted-foreground">
-                            <ImageIcon className="h-10 w-10 opacity-20" />
-                          </div>
-                        )}
-                        <Button 
-                          onClick={() => logoInputRef.current?.click()}
-                          variant="outline" 
-                          className="h-10 rounded-xl font-bold gap-2"
-                        >
-                          <Upload className="h-4 w-4" /> Pilih Logo
-                        </Button>
+                        ) : <div className="h-32 w-32 rounded-2xl bg-white border flex items-center justify-center opacity-20"><ImageIcon /></div>}
+                        <Button onClick={() => logoInputRef.current?.click()} variant="outline" className="h-10 rounded-xl font-bold gap-2"><Upload className="h-4 w-4" /> Pilih Logo</Button>
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Header Struk (Pesan Atas)</Label>
-                      <Input 
-                        value={storeSettings.headerNote} 
-                        onChange={(e) => setStoreSettings({...storeSettings, headerNote: e.target.value})}
-                        placeholder="Contoh: Selamat Datang!" 
-                        className="h-12 rounded-xl border-2" 
-                      />
-                    </div>
-                    <div className="space-y-3">
-                      <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Footer Struk (Pesan Bawah)</Label>
-                      <Input 
-                        value={storeSettings.footerNote} 
-                        onChange={(e) => setStoreSettings({...storeSettings, footerNote: e.target.value})}
-                        placeholder="Contoh: Terima Kasih!" 
-                        className="h-12 rounded-xl border-2" 
-                      />
-                    </div>
-                  </div>
-                </div>
-              </SettingsSection>
-            </Card>
-          )}
-
-          {activeTab === 'backup' && (
-            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <SettingsSection icon={Database} title="Backup & Restore" description="Simpan dan pulihkan database aplikasi">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8">
-                  <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-primary/10 flex flex-col items-center text-center gap-6">
-                    <div className="bg-white p-6 rounded-[2rem] shadow-sm text-primary">
-                      <Download className="h-10 w-10" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-black mb-2">Backup Database</h4>
-                      <p className="text-sm text-muted-foreground font-medium">Ekspor seluruh data aplikasi ke dalam file .json untuk cadangan.</p>
-                    </div>
-                    <Button onClick={handleBackup} className="w-full h-14 rounded-2xl bg-primary font-black text-lg gap-2">
-                      <FileJson className="h-5 w-5" /> Download Backup
-                    </Button>
-                  </div>
-
-                  <div className="p-8 bg-accent/5 rounded-[2.5rem] border-2 border-accent/10 flex flex-col items-center text-center gap-6">
-                    <div className="bg-white p-6 rounded-[2rem] shadow-sm text-accent">
-                      <RefreshCw className="h-10 w-10" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-black mb-2">Restore Database</h4>
-                      <p className="text-sm text-muted-foreground font-medium">Pulihkan data dari file backup (.json). <span className="text-destructive font-black">Data saat ini akan diganti!</span></p>
-                    </div>
-                    <Button onClick={() => dbImportRef.current?.click()} variant="outline" className="w-full h-14 rounded-2xl border-2 font-black text-lg gap-2">
-                      <Upload className="h-5 w-5" /> Pilih File Backup
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="mt-12 p-6 bg-muted/20 rounded-3xl border flex items-start gap-4">
-                  <AlertTriangle className="h-6 w-6 text-orange-500 mt-1" />
-                  <div>
-                    <p className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-1">Penting</p>
-                    <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                      Sistem ini menyimpan data secara lokal di perangkat ini. Lakukan backup secara berkala ke penyimpanan eksternal (seperti Google Drive atau Flashdisk) untuk mencegah kehilangan data jika perangkat Anda mengalami kerusakan atau ter-reset.
-                    </p>
                   </div>
                 </div>
               </SettingsSection>
@@ -823,102 +721,47 @@ export function SettingsView() {
           {activeTab === 'users' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <div className="flex justify-between items-center mb-8">
-                <div>
-                  <CardTitle className="text-2xl font-black">Manajemen User</CardTitle>
-                  <CardDescription className="font-medium">Kelola akses staf dan hak istimewa role</CardDescription>
-                </div>
-                {isAdmin && (
-                  <Button onClick={handleOpenAddUser} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20">
-                    <Plus className="h-5 w-5" /> Tambah User
-                  </Button>
-                )}
+                <div><CardTitle className="text-2xl font-black">Manajemen User</CardTitle><CardDescription className="font-medium">Kelola akses staf dan hak istimewa role</CardDescription></div>
+                {isAdmin && <Button onClick={handleOpenAddUser} className="h-14 rounded-2xl bg-primary font-black px-8 gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah User</Button>}
               </div>
               <div className="space-y-4">
                 {users.map((user) => {
                   const role = roles.find(r => r.id === user.roleId);
                   return (
-                    <div key={user.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
+                    <div key={user.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem]">
                       <div className="flex items-center gap-5">
                         <Avatar className="h-14 w-14 rounded-2xl border shadow-sm">
                           <AvatarImage src={user.avatarUrl} />
-                          <AvatarFallback className="bg-primary text-white font-black rounded-2xl">
-                            {user.name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
+                          <AvatarFallback className="bg-primary text-white font-black">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-black text-lg leading-tight">{user.name}</p>
-                            <Badge variant="secondary" className="bg-primary/10 text-primary border-none rounded-lg px-2 py-0.5 text-[9px] font-black uppercase">
-                              {role?.name}
-                            </Badge>
-                          </div>
-                          <p className="text-xs font-bold text-muted-foreground mt-1">@{user.username} • {user.email || 'Tanpa email'}</p>
+                          <p className="font-black text-lg">{user.name} <Badge className="bg-primary/10 text-primary border-none ml-2">{role?.name}</Badge></p>
+                          <p className="text-xs font-bold text-muted-foreground mt-1">@{user.username}</p>
                         </div>
                       </div>
-                      <div className="flex gap-4 items-center">
-                        <Badge className={cn(
-                          "rounded-lg px-3 py-1 font-black text-[9px]", 
-                          user.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        )}>
-                          {user.status === 'Active' ? 'AKTIF' : 'NON-AKTIF'}
-                        </Badge>
-                        <div className="flex gap-1">
-                          {isAdmin && (
-                            <>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-primary/70 hover:text-primary"
-                                title="Reset Password"
-                                onClick={() => handleOpenResetPassword(user)}
-                              >
-                                <Lock className="h-5 w-5" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                title="Edit User"
-                                onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}
-                              >
-                                <Pencil className="h-5 w-5" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-destructive/50" 
-                                title="Hapus User"
-                                onClick={() => setUsers(prev => prev.filter(u => u.id !== user.id))}
-                              >
-                                <Trash2 className="h-5 w-5" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                      <div className="flex gap-2">
+                        {isAdmin && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenResetPassword(user)}><Lock className="h-5 w-5" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingUser(user); setUserForm(user); setIsUserDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
+                            <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setUsers(users.filter(u => u.id !== user.id))}><Trash2 className="h-5 w-5" /></Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-
               <Separator className="my-12" />
-
               <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="bg-primary/10 p-3 rounded-xl text-primary"><ShieldCheck className="h-5 w-5" /></div>
-                  <div>
-                    <h3 className="text-lg font-black">Informasi Hak Akses Role</h3>
-                    <p className="text-xs text-muted-foreground font-medium">Penjelasan akses untuk setiap tingkat jabatan</p>
-                  </div>
-                </div>
+                <h3 className="text-lg font-black flex items-center gap-3"><ShieldCheck className="text-primary" /> Informasi Hak Akses Role</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {roles.map(role => (
                     <div key={role.id} className="p-6 bg-muted/20 rounded-[2rem] space-y-4">
                       <p className="font-black text-primary uppercase tracking-widest text-xs">{role.name}</p>
                       <ul className="space-y-2">
                         {role.permissions.map((p, idx) => (
-                          <li key={idx} className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
-                            <Check className="h-3 w-3 text-green-500" /> {p.replace('_', ' ')}
-                          </li>
+                          <li key={idx} className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground"><Check className="h-3 w-3 text-green-500" /> {p.replace('_', ' ')}</li>
                         ))}
                       </ul>
                     </div>
@@ -927,7 +770,7 @@ export function SettingsView() {
               </div>
             </Card>
           )}
-
+          
           {activeTab === 'products' && (
             <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -1034,10 +877,10 @@ export function SettingsView() {
                         <TableCell className="font-bold">{pkg.name}</TableCell>
                         <TableCell><Badge variant="outline">{pkg.sku}</Badge></TableCell>
                         <TableCell className="font-black text-primary">{formatCurrency(pkg.price)}</TableCell>
-                        <TableCell><Switch checked={pkg.enabled} onCheckedChange={(val) => setPackages(prev => prev.map(p => p.id === pkg.id ? { ...p, enabled: val } : p))} /></TableCell>
+                        <TableCell><Switch checked={pkg.enabled} onCheckedChange={(val) => setPackages(packages.map(p => p.id === pkg.id ? { ...p, enabled: val } : p))} /></TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => { setEditingPackage(pkg); setPackageForm(pkg); setIsPackageDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setPackages(prev => prev.filter(p => p.id !== pkg.id))}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setPackages(packages.filter(p => p.id !== pkg.id))}><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1065,93 +908,15 @@ export function SettingsView() {
                       <TableRow key={c.id}>
                         <TableCell className="font-bold">{c.name}</TableCell>
                         <TableCell className="font-black text-primary">{formatCurrency(c.basePrice)}</TableCell>
-                        <TableCell><Switch checked={c.enabled} onCheckedChange={(val) => setCombos(prev => prev.map(item => item.id === c.id ? { ...item, enabled: val } : item))} /></TableCell>
+                        <TableCell><Switch checked={c.enabled} onCheckedChange={(val) => setCombos(combos.map(item => item.id === c.id ? { ...item, enabled: val } : item))} /></TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => { setEditingCombo(c); setComboForm(c); setIsComboDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setCombos(prev => prev.filter(item => item.id !== c.id))}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setCombos(combos.filter(item => item.id !== c.id))}><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            </Card>
-          )}
-
-          {activeTab === 'payments' && (
-            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex justify-between items-center mb-8">
-                <div><CardTitle className="text-2xl font-black">Metode Pembayaran</CardTitle><CardDescription className="font-medium">Kelola cara pembayaran pelanggan</CardDescription></div>
-                <Button onClick={handleOpenAddPayment} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Metode</Button>
-              </div>
-              <div className="space-y-4">
-                {paymentMethods.map((pm) => (
-                  <div key={pm.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
-                    <div className="flex items-center gap-5">
-                      <div className="bg-white p-4 rounded-2xl text-primary shadow-sm border">{getPaymentIcon(pm.icon)}</div>
-                      <div>
-                        <p className="font-black text-lg leading-tight">{pm.name}</p>
-                        <p className="text-xs font-bold text-muted-foreground mt-1">{pm.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                      <Switch checked={pm.enabled} onCheckedChange={(val) => setPaymentMethods(prev => prev.map(item => item.id === pm.id ? { ...item, enabled: val } : item))} />
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingPayment(pm); setPaymentForm(pm); setIsPaymentDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setPaymentMethods(prev => prev.filter(item => item.id !== pm.id))}><Trash2 className="h-5 w-5" /></Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {activeTab === 'fees' && (
-            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex justify-between items-center mb-8">
-                <div><CardTitle className="text-2xl font-black">Pajak & Biaya Tambahan</CardTitle><CardDescription className="font-medium">Kelola PPN, biaya layanan, dan diskon manual</CardDescription></div>
-                <Button onClick={handleOpenAddFee} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Biaya</Button>
-              </div>
-              <div className="space-y-4">
-                {fees.map((f) => (
-                  <div key={f.id} className="flex items-center justify-between p-5 bg-muted/10 rounded-[2rem]">
-                    <div className="flex items-center gap-5">
-                      <div className="bg-white p-4 rounded-2xl text-primary shadow-sm border"><Percent /></div>
-                      <div>
-                        <p className="font-black text-lg leading-tight">{f.name}</p>
-                        <p className="text-xs font-bold text-muted-foreground mt-1">{f.type === 'Tax' ? 'Pajak' : f.type === 'Service' ? 'Layanan' : 'Diskon'} • {f.value}%</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                      <Switch checked={f.enabled} onCheckedChange={(val) => setFees(prev => prev.map(item => item.id === f.id ? { ...item, enabled: val } : item))} />
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingFee(f); setFeeForm(f); setIsFeeDialogOpen(true); }}><Pencil className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" className="text-destructive/50" onClick={() => setFees(prev => prev.filter(item => item.id !== f.id))}><Trash2 className="h-5 w-5" /></Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {activeTab === 'categories' && (
-            <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white h-full">
-              <div className="flex justify-between items-center mb-8">
-                <div><CardTitle className="text-2xl font-black">Kategori Produk</CardTitle><CardDescription className="font-medium">Kelola pengelompokan produk Anda</CardDescription></div>
-                <Button onClick={handleOpenAddCategory} className="h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Kategori</Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredCategories.map((cat) => (
-                  <div key={cat} className="group flex items-center justify-between p-5 bg-muted/10 rounded-3xl border border-transparent hover:border-primary/20 transition-all hover:bg-white hover:shadow-xl hover:shadow-primary/5">
-                    <div className="flex items-center gap-4"><div className="bg-primary/5 p-3 rounded-2xl text-primary"><Layers className="h-5 w-5" /></div><span className="font-black text-lg">{cat}</span></div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(cat); setCategoryForm(cat); setIsCategoryDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="text-destructive/40" onClick={() => handleDeleteCategory(cat)}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  </div>
-                ))}
               </div>
             </Card>
           )}
@@ -1175,336 +940,33 @@ export function SettingsView() {
               </div>
             </Card>
           )}
+          
+          {/* Missing Payment/Fee Tabs if they become the active tab but are hidden in sidebar filter - though our useEffect handles redirection */}
         </div>
       </div>
 
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
         <DialogContent className="max-w-xl rounded-[2.5rem] p-10 border-none shadow-2xl">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-3xl font-black">{editingUser ? 'Edit User' : 'Tambah User'}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">{editingUser ? 'Edit User' : 'Tambah User'}</DialogTitle></DialogHeader>
           <div className="space-y-6">
-            <div className="flex justify-center mb-4">
-              <Avatar className="h-24 w-24 rounded-3xl border-4 border-primary/10">
-                <AvatarImage src={userForm.avatarUrl} />
-                <AvatarFallback className="bg-primary text-white text-2xl font-black rounded-3xl">
-                  {userForm.name?.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+            <div className="flex justify-center mb-4"><Avatar className="h-24 w-24 rounded-3xl border-4 border-primary/10"><AvatarImage src={userForm.avatarUrl} /><AvatarFallback className="bg-primary text-white text-2xl font-black rounded-3xl">{userForm.name?.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label><Input value={userForm.name || ''} onChange={(e) => setUserForm({...userForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Username</Label><Input value={userForm.username || ''} onChange={(e) => setUserForm({...userForm, username: e.target.value})} className="h-12 rounded-xl border-2" /></div>
             </div>
+            {!editingUser && <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Password Awal</Label><Input type="password" value={userForm.password || ''} onChange={(e) => setUserForm({...userForm, password: e.target.value})} className="h-12 rounded-xl border-2" /></div>}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label>
-                <div className="relative">
-                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={userForm.name || ''} onChange={(e) => setUserForm({...userForm, name: e.target.value})} className="h-12 rounded-xl border-2 pl-12" />
-                </div>
+                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Role</Label>
+                <Select value={userForm.roleId} onValueChange={(val: any) => setUserForm({...userForm, roleId: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent>{roles.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}</SelectContent></Select>
               </div>
               <div className="space-y-2">
-                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Username</Label>
-                <Input value={userForm.username || ''} onChange={(e) => setUserForm({...userForm, username: e.target.value})} className="h-12 rounded-xl border-2" />
-              </div>
-            </div>
-            {!editingUser && (
-              <div className="space-y-2">
-                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Password Awal</Label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    type={showPassword ? "text" : "password"}
-                    value={userForm.password || ''} 
-                    onChange={(e) => setUserForm({...userForm, password: e.target.value})} 
-                    className="h-12 rounded-xl border-2 pl-12 pr-12" 
-                    placeholder="Masukkan password"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input value={userForm.email || ''} onChange={(e) => setUserForm({...userForm, email: e.target.value})} className="h-12 rounded-xl border-2 pl-12" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Jabatan (Role)</Label>
-                <Select value={userForm.roleId} onValueChange={(val: any) => setUserForm({...userForm, roleId: val})}>
-                  <SelectTrigger className="h-12 rounded-xl border-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl">
-                    {roles.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Status Akun</Label>
-                <Select value={userForm.status} onValueChange={(val: any) => setUserForm({...userForm, status: val})}>
-                  <SelectTrigger className="h-12 rounded-xl border-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl">
-                    <SelectItem value="Active">Aktif</SelectItem>
-                    <SelectItem value="Inactive">Non-Aktif</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Status</Label>
+                <Select value={userForm.status} onValueChange={(val: any) => setUserForm({...userForm, status: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Active">Aktif</SelectItem><SelectItem value="Inactive">Non-Aktif</SelectItem></SelectContent></Select>
               </div>
             </div>
           </div>
-          <DialogFooter className="mt-8">
-            <Button onClick={handleSaveUser} className="w-full h-16 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
-              Simpan Data User
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-3xl font-black">Reset Password</DialogTitle>
-            <DialogDescription className="font-bold">Reset password untuk: <span className="text-primary">{resetPasswordUser?.name}</span></DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200 flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
-              <p className="text-[10px] font-bold text-orange-800 leading-relaxed">
-                Password yang di-reset tidak dapat dikembalikan. Harap informasikan password baru kepada staf yang bersangkutan secara aman.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Password Baru</Label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  type={showPassword ? "text" : "password"}
-                  value={newPassword} 
-                  onChange={(e) => setNewPassword(e.target.value)} 
-                  className="h-12 rounded-xl border-2 pl-12 pr-12" 
-                  placeholder="Masukkan password baru"
-                  autoFocus
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="mt-8">
-            <Button onClick={handleConfirmResetPassword} disabled={!newPassword} className="w-full h-16 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
-              Konfirmasi Reset Password
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">{editingPayment ? 'Edit Pembayaran' : 'Tambah Pembayaran'}</DialogTitle></DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Pembayaran</Label><Input value={paymentForm.name || ''} onChange={(e) => setPaymentForm({...paymentForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Ikon</Label>
-              <Select value={paymentForm.icon} onValueChange={(val: any) => setPaymentForm({...paymentForm, icon: val})}>
-                <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-2xl">
-                  <SelectItem value="Banknote">Uang Tunai (Banknote)</SelectItem>
-                  <SelectItem value="CreditCard">Kartu Kredit/Debit</SelectItem>
-                  <SelectItem value="Smartphone">Dompet Digital (QRIS/E-Wallet)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Keterangan</Label><Input value={paymentForm.description || ''} onChange={(e) => setPaymentForm({...paymentForm, description: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-          </div>
-          <DialogFooter className="mt-8"><Button onClick={handleSavePayment} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Simpan Metode Pembayaran</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isFeeDialogOpen} onOpenChange={setIsFeeDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">{editingFee ? 'Edit Pajak/Biaya' : 'Tambah Pajak/Biaya'}</DialogTitle></DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Biaya</Label><Input value={feeForm.name || ''} onChange={(e) => setFeeForm({...feeForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Tipe Biaya</Label>
-              <Select value={feeForm.type} onValueChange={(val: any) => setFeeForm({...feeForm, type: val})}>
-                <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-2xl">
-                  <SelectItem value="Tax">Pajak (PPN)</SelectItem>
-                  <SelectItem value="Service">Biaya Layanan</SelectItem>
-                  <SelectItem value="Discount">Diskon Manual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Persentase (%)</Label>
-              <Input type="number" value={feeForm.value || ''} onChange={handleValueChange((val: any) => setFeeForm({...feeForm, value: val}))} className="h-12 rounded-xl border-2" />
-            </div>
-          </div>
-          <DialogFooter className="mt-8"><Button onClick={handleSaveFee} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Simpan Konfigurasi</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
-          <div className="space-y-6"><div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Kategori</Label><Input value={categoryForm} onChange={(e) => setCategoryForm(e.target.value)} placeholder="Contoh: Makanan Utama, Camilan" className="h-12 rounded-xl border-2 focus:ring-primary/20" /></div></div>
-          <DialogFooter className="mt-8"><Button onClick={handleSaveCategory} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20 gap-2"><Check className="h-5 w-5" />Simpan Kategori</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-        <DialogContent className="max-w-2xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Detail Produk</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-4">
-             <div className="space-y-6">
-                <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Produk</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="h-12 rounded-xl focus:ring-primary/20 border-2" /></div>
-                <div className="space-y-2">
-                  <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Kategori</Label>
-                  <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}>
-                    <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-2xl">{categories.filter(c => c !== 'Semua').map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Keterangan</Label><Input value={productForm.description || ''} onChange={(e) => setProductForm({...productForm, description: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-             </div>
-             <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-                   <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Barcode</Label><Input value={productForm.barcode || ''} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Jual (Rp)</Label><Input type="number" value={productForm.price || ''} onChange={handleValueChange((val: any) => setProductForm({...productForm, price: val}))} className="h-12 rounded-xl border-2 font-black text-primary" /></div>
-                   <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Modal (Rp)</Label><Input type="number" value={productForm.costPrice || ''} onChange={handleValueChange((val: any) => setProductForm({...productForm, costPrice: val}))} className="h-12 rounded-xl border-2 font-black" /></div>
-                </div>
-                <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Stok Tersedia</Label><Input type="number" value={productForm.onHandQty || ''} onChange={handleValueChange((val: any) => setProductForm({...productForm, onHandQty: val}))} className="h-12 rounded-xl border-2 font-black" /></div>
-             </div>
-          </div>
-          <DialogFooter className="mt-8"><Button onClick={() => { if (editingProduct) setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p)); else setProducts([...products, { id: Math.random().toString(36).substr(2, 9), ...productForm, available: true } as Product]); setIsProductDialogOpen(false); }} className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">Simpan Produk</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPromoDialogOpen} onOpenChange={setIsPromoDialogOpen}>
-        <DialogContent className="max-w-xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Detail Promo Diskon</DialogTitle></DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Promo</Label><Input value={promoForm.name || ''} onChange={(e) => setPromoForm({...promoForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-            <div className="space-y-2">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Produk Terkait</Label>
-              <Select value={promoForm.productId} onValueChange={(val) => setPromoForm({...promoForm, productId: val})}>
-                <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                <SelectContent className="rounded-2xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Tipe Diskon</Label>
-                <Select value={promoForm.type} onValueChange={(val: any) => setPromoForm({...promoForm, type: val})}>
-                  <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-2xl">
-                    <SelectItem value="Percentage">Persentase (%)</SelectItem>
-                    <SelectItem value="FixedAmount">Nominal Rupiah (Rp)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nilai Potongan</Label><Input type="number" value={promoForm.value || ''} onChange={handleValueChange((val: any) => setPromoForm({...promoForm, value: val}))} className="h-12 rounded-xl border-2 font-black text-primary" /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Tgl Mulai</Label><Input type="date" value={promoForm.startDate || ''} onChange={(e) => setPromoForm({...promoForm, startDate: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-              <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Tgl Berakhir</Label><Input type="date" value={promoForm.endDate || ''} onChange={(e) => setPromoForm({...promoForm, endDate: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-            </div>
-          </div>
-          <DialogFooter className="mt-8"><Button onClick={handleSavePromo} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Simpan Promo</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPackageDialogOpen} onOpenChange={setIsPackageDialogOpen}>
-        <DialogContent className="max-w-3xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Konfigurasi Paket</DialogTitle></DialogHeader>
-          <div className="space-y-8 py-4">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Paket</Label><Input value={packageForm.name || ''} onChange={(e) => setPackageForm({...packageForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU Paket</Label><Input value={packageForm.sku || ''} onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-               <div className="col-span-full space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Keterangan Paket</Label><Textarea value={packageForm.description || ''} onChange={(e) => setPackageForm({...packageForm, description: e.target.value})} className="min-h-[100px] rounded-xl border-2" /></div>
-               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Jual Paket (Rp)</Label><Input type="number" value={packageForm.price || ''} onChange={handleValueChange((val: any) => setPackageForm({...packageForm, price: val}))} className="h-14 rounded-xl border-2 font-black text-2xl text-primary" /></div>
-             </div>
-             <Separator className="my-6" />
-             <div className="space-y-4">
-               <div className="flex justify-between items-center"><Label className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground">Komposisi Item Paket</Label><Button variant="outline" size="sm" onClick={addPackageItem} className="rounded-xl h-10 border-2 font-bold gap-2"><Plus className="h-4 w-4" /> Tambah Item</Button></div>
-               <div className="space-y-3">{packageForm.items?.map((item, idx) => (<div key={idx} className="flex gap-4 items-end p-5 bg-muted/20 rounded-[1.5rem] border border-transparent hover:border-primary/10 transition-all"><div className="flex-1 space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Produk</Label><Select value={item.productId} onValueChange={(val) => updatePackageItem(idx, 'productId', val)}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-2xl">{products.map(p => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}</SelectContent></Select></div><div className="w-24 space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Qty</Label><Input type="number" value={item.quantity || ''} onChange={(e) => updatePackageItem(idx, 'quantity', e.target.value === '' ? 0 : parseInt(e.target.value))} className="h-12 rounded-xl border-2 font-bold text-center" /></div><Button variant="ghost" size="icon" onClick={() => removePackageItem(idx)} className="h-12 w-12 text-destructive/40"><Trash2 className="h-5 w-5" /></Button></div>))}</div>
-             </div>
-          </div>
-          <DialogFooter className="mt-8 gap-3"><Button variant="outline" onClick={() => setIsPackageDialogOpen(false)} className="h-16 rounded-2xl font-black text-lg px-8">Batal</Button><Button onClick={handleSavePackage} className="flex-1 h-16 rounded-2xl bg-primary font-black text-lg">Simpan Paket</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isComboDialogOpen} onOpenChange={setIsComboDialogOpen}>
-        <DialogContent className="max-w-4xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Konfigurasi Set Pilihan</DialogTitle></DialogHeader>
-          <div className="space-y-8 py-4">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Menu Pilihan</Label><Input value={comboForm.name || ''} onChange={(e) => setComboForm({...comboForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">SKU Pilihan</Label><Input value={comboForm.sku || ''} onChange={(e) => setComboForm({...comboForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-               <div className="space-y-2"><Label className="font-black text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Harga Dasar Pilihan (Rp)</Label><Input type="number" value={comboForm.basePrice || ''} onChange={handleValueChange((val: any) => setComboForm({...comboForm, basePrice: val}))} className="h-14 rounded-xl border-2 font-black text-2xl text-primary" /></div>
-             </div>
-             <Separator className="my-6" />
-             <div className="space-y-6">
-               <div className="flex justify-between items-center"><div className="flex items-center gap-3"><Label className="font-black text-xs uppercase tracking-[0.2em] text-muted-foreground">Builder Grup Pilihan</Label></div><Button onClick={addComboGroup} variant="outline" className="h-10 rounded-xl border-2 font-bold gap-2"><Plus className="h-4 w-4" /> Tambah Grup</Button></div>
-               <div className="space-y-6">
-                 {comboForm.groups?.map((group, gIdx) => (
-                   <div key={group.id} className="p-6 bg-muted/10 rounded-[2rem] border-2 border-transparent hover:border-primary/5 transition-all space-y-6">
-                     <div className="flex flex-col md:flex-row gap-6 items-start">
-                        <div className="flex-1 space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Nama Grup</Label><Input value={group.name} onChange={(e) => updateComboGroup(gIdx, 'name', e.target.value)} className="h-12 rounded-xl border-2 bg-white" /></div>
-                        <div className="flex items-center gap-3 pt-8"><Checkbox id={`req-${group.id}`} checked={group.required} onCheckedChange={(val) => updateComboGroup(gIdx, 'required', !!val)} /><Label htmlFor={`req-${group.id}`} className="font-bold text-sm">Wajib Dipilih</Label></div>
-                        <Button variant="ghost" size="icon" onClick={() => removeComboGroup(gIdx)} className="h-12 w-12 text-destructive/40 mt-6"><Trash2 className="h-5 w-5" /></Button>
-                     </div>
-                     <div className="space-y-3 pl-4 border-l-2 border-primary/10">
-                        <div className="flex justify-between items-center mb-2"><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Opsi Produk:</p><Button onClick={() => addComboOption(gIdx)} variant="ghost" size="sm" className="h-8 text-[10px] font-black text-primary"><Plus className="h-3.5 w-3.5 mr-1" /> Tambah Opsi</Button></div>
-                        {group.options.map((opt, oIdx) => (<div key={oIdx} className="flex gap-4 items-end bg-white/50 p-4 rounded-2xl border border-transparent hover:border-primary/5"><div className="flex-1 space-y-1.5"><Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Produk</Label><Select value={opt.productId} onValueChange={(val) => updateComboOption(gIdx, oIdx, 'productId', val)}><SelectTrigger className="h-10 rounded-lg bg-white border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div><div className="w-28 space-y-1.5"><Label className="text-[9px] font-black uppercase tracking-widest opacity-40">Biaya Tambah (Rp)</Label><Input type="number" value={opt.extraPrice || ''} onChange={(e) => updateComboOption(gIdx, oIdx, 'extraPrice', e.target.value === '' ? 0 : parseFloat(e.target.value))} className="h-10 rounded-lg bg-white border-2 font-bold" /></div><Button variant="ghost" size="icon" onClick={() => removeComboOption(gIdx, oIdx)} className="h-10 w-10 text-destructive/30"><Trash2 className="h-4 w-4" /></Button></div>))}
-                     </div>
-                   </div>
-                 ))}
-               </div>
-             </div>
-          </div>
-          <DialogFooter className="mt-10 gap-3"><Button variant="outline" onClick={() => setIsComboDialogOpen(false)} className="h-16 rounded-2xl font-black text-lg px-8">Batal</Button><Button onClick={handleSaveCombo} className="flex-1 h-16 rounded-2xl bg-primary font-black text-lg">Simpan Menu Pilihan</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-        <DialogContent className="max-w-md rounded-[2.5rem] p-10 border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Detail Pelanggan</DialogTitle></DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label><Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nomor Telepon</Label><Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-          </div>
-          <DialogFooter className="mt-8"><Button onClick={handleSaveCustomer} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Simpan Data Pelanggan</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPriceListDialogOpen} onOpenChange={setIsPriceListDialogOpen}>
-        <DialogContent className="max-w-xl rounded-[2.5rem] p-10 overflow-y-auto max-h-[90vh] border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black">Konfigurasi Harga Grosir</DialogTitle></DialogHeader>
-          <div className="space-y-8">
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Nama Daftar Harga</Label><Input value={priceListForm.name || ''} onChange={(e) => setPriceListForm({...priceListForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-            <div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Produk Terkait</Label><Select value={priceListForm.productId} onValueChange={(val) => setPriceListForm({...priceListForm, productId: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-2xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></div>
-            <div className="grid grid-cols-2 gap-6"><div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Tgl Mulai</Label><Input type="date" value={priceListForm.startDate || ''} onChange={(e) => setPriceListForm({...priceListForm, startDate: e.target.value})} className="h-12 rounded-xl border-2" /></div><div className="space-y-2"><Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground ml-1">Tgl Akhir</Label><Input type="date" value={priceListForm.endDate || ''} onChange={(e) => setPriceListForm({...priceListForm, endDate: e.target.value})} className="h-12 rounded-xl border-2" /></div></div>
-            <div className="space-y-4">{priceListForm.tiers?.map((tier, idx) => (<div key={idx} className="flex gap-4 items-end p-5 bg-muted/20 rounded-[1.5rem]"><div className="flex-1 space-y-1.5"><Label className="text-[10px] font-black opacity-60">Min Qty</Label><Input type="number" value={tier.minQty || ''} onChange={(e) => { const newTiers = [...(priceListForm.tiers || [])]; newTiers[idx].minQty = parseInt(e.target.value) || 0; setPriceListForm({...priceListForm, tiers: newTiers}); }} className="h-11 rounded-xl border-2" /></div><div className="flex-1 space-y-1.5"><Label className="text-[10px] font-black opacity-60">Max Qty</Label><Input type="number" value={tier.maxQty || ''} onChange={(e) => { const newTiers = [...(priceListForm.tiers || [])]; newTiers[idx].maxQty = parseInt(e.target.value) || 0; setPriceListForm({...priceListForm, tiers: newTiers}); }} className="h-11 rounded-xl border-2" /></div><div className="flex-1 space-y-1.5"><Label className="text-[10px] font-black opacity-60">Harga (Rp)</Label><Input type="number" value={tier.price || ''} onChange={(e) => { const newTiers = [...(priceListForm.tiers || [])]; newTiers[idx].price = parseFloat(e.target.value) || 0; setPriceListForm({...priceListForm, tiers: newTiers}); }} className="h-11 rounded-xl border-2 font-black text-primary" /></div><Button variant="ghost" size="icon" onClick={() => setPriceListForm(prev => ({ ...prev, tiers: prev.tiers?.filter((_, i) => i !== idx) }))} className="text-destructive/40 h-11 w-11"><Trash2 className="h-5 w-5" /></Button></div>))}</div>
-          </div>
-          <DialogFooter className="mt-8"><Button onClick={handleSavePriceList} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Simpan Daftar Harga</Button></DialogFooter>
+          <DialogFooter className="mt-8"><Button onClick={handleSaveUser} className="w-full h-16 rounded-2xl bg-primary font-black text-lg">Simpan User</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

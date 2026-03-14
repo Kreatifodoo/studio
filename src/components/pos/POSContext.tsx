@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { 
   Product, OrderItem, Transaction, Category, AppView, PaymentMethod, 
   Fee, Session, Customer, PriceList, Package, Combo, PromoDiscount, 
-  StoreSettings, User, Role 
+  StoreSettings, User, Role, Permission 
 } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 import { db } from '@/lib/db';
@@ -61,6 +61,7 @@ interface POSContextType {
   currentUser: User | null;
   login: (username: string, password?: string) => boolean;
   logout: () => void;
+  checkPermission: (permission: Permission) => boolean;
   exportDatabase: () => Promise<void>;
   importDatabase: (json: string) => Promise<boolean>;
   isDbLoaded: boolean;
@@ -160,7 +161,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         setIsDbLoaded(true);
       } catch (e) {
         console.error("Gagal inisialisasi database", e);
-        setIsDbLoaded(true); // Biarkan aplikasi jalan dengan state kosong jika DB gagal parah
+        setIsDbLoaded(true);
       }
     }
     initDb();
@@ -237,6 +238,12 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => { setCurrentUser(null); setCart([]); setView('pos'); };
+
+  const checkPermission = useCallback((permission: Permission) => {
+    if (!currentUser) return false;
+    const role = INITIAL_ROLES.find(r => r.id === currentUser.roleId);
+    return role?.permissions.includes(permission) || false;
+  }, [currentUser]);
 
   const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
     const product = products.find(p => p.id === productId);
@@ -364,7 +371,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
       products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
-      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, exportDatabase, importDatabase, isDbLoaded
+      users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded
     }}>
       {children}
     </POSContext.Provider>
