@@ -79,6 +79,7 @@ export function SettingsView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const dbImportRef = useRef<HTMLInputElement>(null);
+  const productImportRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState('products');
 
@@ -157,6 +158,61 @@ export function SettingsView() {
   const [showPassword, setShowPassword] = useState(false);
 
   const isAdmin = useMemo(() => currentUser?.roleId === 'admin', [currentUser]);
+
+  const downloadProductTemplate = () => {
+    const headers = "sku,name,category,price,costPrice,onHandQty,description,image\n";
+    const sample = "MU-001,Nasi Goreng Spesial,Makanan Utama,25000,12000,50,Nasi goreng lezat,https://picsum.photos/seed/1/400/300\nMN-001,Es Teh Manis,Minuman,5000,1500,100,Teh seduh segar,https://picsum.photos/seed/2/400/300";
+    const blob = new Blob([headers + sample], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = "template_produk_nextpos.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n');
+      const newProducts: Product[] = [];
+      
+      // Skip header
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const [sku, name, category, price, costPrice, onHandQty, description, image] = line.split(',');
+        newProducts.push({
+          id: Math.random().toString(36).substr(2, 9),
+          sku: sku || `SKU-${Date.now()}`,
+          barcode: sku || '',
+          name: name || 'Produk Tanpa Nama',
+          category: category || (categories.length > 0 ? categories[0] : 'Umum'),
+          price: parseFloat(price) || 0,
+          costPrice: parseFloat(costPrice) || 0,
+          onHandQty: parseInt(onHandQty) || 0,
+          description: description || '',
+          image: image || 'https://picsum.photos/seed/default/400/300',
+          available: true
+        });
+      }
+
+      if (newProducts.length > 0) {
+        setProducts([...products, ...newProducts]);
+        toast({
+          title: "Berhasil!",
+          description: `${newProducts.length} produk berhasil diimpor ke database.`,
+        });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
+  };
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -300,8 +356,30 @@ export function SettingsView() {
         return (
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div><CardTitle className="text-2xl font-black">Master Produk</CardTitle><CardDescription className="font-medium">Kelola item dan stok inventaris</CardDescription></div>
-              <Button onClick={() => { setEditingProduct(null); setProductForm({ category: categories[0], image: 'https://picsum.photos/seed/new/400/300' }); setIsProductDialogOpen(true); }} className="h-14 rounded-2xl bg-primary font-black px-8 gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Produk</Button>
+              <div>
+                <CardTitle className="text-2xl font-black">Master Produk</CardTitle>
+                <CardDescription className="font-medium">Kelola item dan stok inventaris</CardDescription>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={downloadProductTemplate}
+                  className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
+                >
+                  <Download className="h-4 w-4" /> Template
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => productImportRef.current?.click()}
+                  className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
+                >
+                  <Upload className="h-4 w-4" /> Impor CSV
+                </Button>
+                <Button onClick={() => { setEditingProduct(null); setProductForm({ category: categories[0], image: 'https://picsum.photos/seed/new/400/300' }); setIsProductDialogOpen(true); }} className="h-12 rounded-xl bg-primary font-black px-8 gap-3 shadow-lg shadow-primary/20">
+                  <Plus className="h-5 w-5" /> Tambah Produk
+                </Button>
+                <input type="file" ref={productImportRef} className="hidden" accept=".csv" onChange={handleImportCSV} />
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {products.map((p) => (
