@@ -37,7 +37,8 @@ import {
   RefreshCw,
   BluetoothOff,
   AlertCircle,
-  MapPin
+  MapPin,
+  Smartphone
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -79,68 +80,21 @@ export function SettingsView() {
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const productImageInputRef = useRef<HTMLInputElement>(null);
-  const dbImportRef = useRef<HTMLInputElement>(null);
-  
-  const productImportRef = useRef<HTMLInputElement>(null);
-  const priceListImportRef = useRef<HTMLInputElement>(null);
-  const promoImportRef = useRef<HTMLInputElement>(null);
-  const packageImportRef = useRef<HTMLInputElement>(null);
-  const comboImportRef = useRef<HTMLInputElement>(null);
-
   const [activeTab, setActiveTab] = useState('products');
 
-  const navGroups = useMemo(() => {
-    const groups = [
-      {
-        title: "Produk",
-        items: [
-          { id: 'products', icon: PackageIcon, label: 'Master Produk', permission: 'manage_products' as Permission },
-          { id: 'pricelist', icon: Tags, label: 'Daftar Harga Grosir', permission: 'manage_products' as Permission },
-          { id: 'promo', icon: Ticket, label: 'Promo Diskon', permission: 'manage_products' as Permission },
-          { id: 'package', icon: Box, label: 'Paket Bundel', permission: 'manage_products' as Permission },
-          { id: 'combo', icon: LayoutGrid, label: 'Pilihan Menu', permission: 'manage_products' as Permission },
-        ].filter(item => checkPermission(item.permission))
-      },
-      {
-        title: "Sistem",
-        items: [
-          { id: 'general', icon: Store, label: 'Informasi Toko', permission: 'manage_settings' as Permission },
-          { id: 'printer', icon: Printer, label: 'Printer Bluetooth', permission: 'manage_settings' as Permission },
-          { id: 'backup', icon: Database, label: 'Backup & Restore', permission: 'manage_settings' as Permission },
-          { id: 'users', icon: UserCog, label: 'Manajemen User', permission: 'manage_users' as Permission },
-          { id: 'customers', icon: Users, label: 'Data Pelanggan', permission: 'manage_customers' as Permission },
-          { id: 'categories', icon: Layers, label: 'Kategori Produk', permission: 'manage_settings' as Permission },
-          { id: 'payments', icon: CreditCard, label: 'Metode Pembayaran', permission: 'manage_settings' as Permission },
-          { id: 'fees', icon: Percent, label: 'Pajak & Biaya', permission: 'manage_settings' as Permission },
-        ].filter(item => checkPermission(item.permission))
-      }
-    ];
-    return groups.filter(g => g.items.length > 0);
-  }, [checkPermission]);
-
+  // Dialog States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [isPriceListDialogOpen, setIsPriceListDialogOpen] = useState(false);
-  const [isPromoDialogOpen, setIsPromoDialogOpen] = useState(false);
-  const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
-  const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isFeeDialogOpen, setIsFeeDialogOpen] = useState(false);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
 
+  // Form States
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productForm, setProductForm] = useState<Partial<Product>>({});
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customerForm, setCustomerForm] = useState<Partial<Customer>>({});
-  const [editingPriceList, setEditingPriceList] = useState<PriceList | null>(null);
-  const [priceListForm, setPriceListForm] = useState<Partial<PriceList>>({ tiers: [] });
-  const [editingPromo, setEditingPromo] = useState<PromoDiscount | null>(null);
-  const [promoForm, setPromoForm] = useState<Partial<PromoDiscount>>({});
-  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
-  const [packageForm, setPackageForm] = useState<Partial<Package>>({ items: [] });
-  const [editingCombo, setEditingCombo] = useState<Combo | null>(null);
-  const [comboForm, setComboForm] = useState<Partial<Combo>>({ groups: [] });
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [categoryForm, setCategoryForm] = useState('');
   const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
@@ -149,6 +103,31 @@ export function SettingsView() {
   const [feeForm, setFeeForm] = useState<Partial<Fee>>({});
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({});
+
+  const navGroups = useMemo(() => {
+    const groups = [
+      {
+        title: "Produk",
+        items: [
+          { id: 'products', icon: PackageIcon, label: 'Master Produk', permission: 'manage_products' as Permission },
+          { id: 'package', icon: Box, label: 'Paket Bundel', permission: 'manage_products' as Permission },
+          { id: 'combo', icon: LayoutGrid, label: 'Pilihan Menu', permission: 'manage_products' as Permission },
+        ].filter(item => checkPermission(item.permission))
+      },
+      {
+        title: "Sistem",
+        items: [
+          { id: 'general', icon: Store, label: 'Toko', permission: 'manage_settings' as Permission },
+          { id: 'printer', icon: Printer, label: 'Printer', permission: 'manage_settings' as Permission },
+          { id: 'customers', icon: Users, label: 'Pelanggan', permission: 'manage_customers' as Permission },
+          { id: 'categories', icon: Layers, label: 'Kategori', permission: 'manage_settings' as Permission },
+          { id: 'payments', icon: CreditCard, label: 'Pembayaran', permission: 'manage_settings' as Permission },
+          { id: 'fees', icon: Percent, label: 'Pajak & Biaya', permission: 'manage_settings' as Permission },
+        ].filter(item => checkPermission(item.permission))
+      }
+    ];
+    return groups.filter(g => g.items.length > 0);
+  }, [checkPermission]);
 
   const formatCurrencyValue = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -204,7 +183,7 @@ export function SettingsView() {
                align-items: center;
                justify-content: center;
                width: 100%;
-               padding: 0 4mm;
+               padding: 0 4mm; /* Quiet Zone agar scanner mudah membaca */
             }
             .barcode {
               font-family: 'Libre Barcode 39', cursive;
@@ -265,7 +244,7 @@ export function SettingsView() {
       setProducts([...products, { ...productForm, id: Math.random().toString(36).substr(2, 9), available: true, onHandQty: productForm.onHandQty || 0, barcode: productForm.barcode || productForm.sku, image: productForm.image || 'https://picsum.photos/seed/default/400/300' } as Product]);
     }
     setIsProductDialogOpen(false);
-    toast({ title: "Produk Disimpan", description: "Master produk telah diperbarui." });
+    toast({ title: "Produk Disimpan" });
   };
 
   const saveCustomer = () => {
@@ -276,7 +255,7 @@ export function SettingsView() {
       addCustomer(customerForm as Omit<Customer, 'id'>);
     }
     setIsCustomerDialogOpen(false);
-    toast({ title: "Pelanggan Disimpan", description: "Data pelanggan telah diperbarui." });
+    toast({ title: "Pelanggan Disimpan" });
   };
 
   const saveCategory = () => {
@@ -289,7 +268,7 @@ export function SettingsView() {
       }
     }
     setIsCategoryDialogOpen(false);
-    toast({ title: "Kategori Disimpan", description: "Daftar kategori telah diperbarui." });
+    toast({ title: "Kategori Disimpan" });
   };
 
   const savePayment = () => {
@@ -300,7 +279,7 @@ export function SettingsView() {
       setPaymentMethods([...paymentMethods, { ...paymentForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as PaymentMethod]);
     }
     setIsPaymentDialogOpen(false);
-    toast({ title: "Metode Disimpan", description: "Metode pembayaran telah diperbarui." });
+    toast({ title: "Metode Disimpan" });
   };
 
   const saveFee = () => {
@@ -311,143 +290,80 @@ export function SettingsView() {
       setFees([...fees, { ...feeForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as Fee]);
     }
     setIsFeeDialogOpen(false);
-    toast({ title: "Biaya Disimpan", description: "Data pajak/biaya telah diperbarui." });
-  };
-
-  const saveUser = () => {
-    if (!userForm.name || !userForm.username) return;
-    if (editingUser) {
-      setUsers(users.map(u => u.id === editingUser.id ? { ...editingUser, ...userForm } as User : u));
-    } else {
-      setUsers([...users, { ...userForm, id: Math.random().toString(36).substr(2, 9), status: 'Active' } as User]);
-    }
-    setIsUserDialogOpen(false);
-    toast({ title: "User Disimpan", description: "Data user telah diperbarui." });
+    toast({ title: "Biaya Disimpan" });
   };
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'general':
-        return (
-          <SettingsSection icon={Store} title="Informasi Toko" description="Detail dasar tentang usaha Anda">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Nama Toko</Label>
-                  <Input value={storeSettings.name} onChange={(e) => setStoreSettings({...storeSettings, name: e.target.value})} className="h-12 rounded-xl border-2" />
-                </div>
-                <div className="space-y-3">
-                  <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Alamat Toko</Label>
-                  <Textarea value={storeSettings.address} onChange={(e) => setStoreSettings({...storeSettings, address: e.target.value})} className="min-h-[100px] rounded-xl border-2" />
-                </div>
-              </div>
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Logo Toko</Label>
-                  <div className="flex flex-col items-center gap-4 p-6 border-2 border-dashed rounded-[2rem] bg-muted/10">
-                    {storeSettings.logoUrl ? (
-                      <div className="relative h-32 w-32 rounded-2xl overflow-hidden border bg-white shadow-sm">
-                        <img src={storeSettings.logoUrl} alt="Logo" className="h-full w-full object-contain" />
-                        <button onClick={() => setStoreSettings({...storeSettings, logoUrl: ''})} className="absolute top-1 right-1 bg-destructive text-white p-1 rounded-full"><Trash2 className="h-3 w-3" /></button>
-                      </div>
-                    ) : <div className="h-32 w-32 rounded-2xl bg-white border flex items-center justify-center opacity-20"><ImageIcon /></div>}
-                    <Button onClick={() => logoInputRef.current?.click()} variant="outline" className="h-10 rounded-xl font-bold gap-2"><Upload className="h-4 w-4" /> Pilih Logo</Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SettingsSection>
-        );
       case 'printer':
         return (
-          <SettingsSection icon={Printer} title="Printer Bluetooth" description="Hubungkan printer termal Bluetooth Samsung Anda">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
-              <Card className="p-8 border-2 border-dashed rounded-[3rem] flex flex-col items-center text-center gap-6 bg-white shadow-sm overflow-hidden">
-                <div className={cn(
-                  "p-6 rounded-full transition-all duration-500",
-                  printer.status === 'connected' ? "bg-green-500 text-white shadow-xl shadow-green-200" : "bg-primary/10 text-primary"
-                )}>
-                  {printer.status === 'connected' ? <Bluetooth className="h-12 w-12" /> : <Printer className="h-12 w-12" />}
-                </div>
-                <div className="space-y-2">
-                  <h4 className="font-black text-xl">
-                    {printer.status === 'connected' ? printer.name : "Belum Terhubung"}
-                  </h4>
-                  <Badge variant={printer.status === 'connected' ? 'default' : 'secondary'} className={cn(
-                    "font-black uppercase tracking-widest px-4 py-1",
-                    printer.status === 'connected' ? "bg-green-500" : ""
-                  )}>
-                    {printer.status === 'connected' ? 'Connected' : 'Disconnected'}
-                  </Badge>
-                </div>
-                <div className="bg-orange-50 p-4 rounded-2xl border border-orange-200 flex items-start gap-3 text-left">
-                  <AlertCircle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-orange-800 font-bold leading-relaxed">
-                    Penting: Di Android, Anda harus menyalakan <span className="underline">Bluetooth</span> DAN <span className="underline">Lokasi (GPS)</span> agar browser dapat memindai printer.
-                  </p>
-                </div>
-                {printer.status === 'connected' ? (
-                  <Button onClick={disconnectPrinter} variant="destructive" className="w-full h-14 rounded-2xl font-black gap-2 shadow-lg shadow-destructive/20">
-                    <BluetoothOff className="h-5 w-5" /> Putuskan Koneksi
-                  </Button>
-                ) : (
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="flex-1 space-y-4">
+                <div className="bg-primary/5 p-6 rounded-[2rem] border-2 border-primary/10 flex flex-col items-center text-center gap-4">
+                  <div className={cn("p-4 rounded-full", printer.status === 'connected' ? "bg-green-500 text-white" : "bg-primary/20 text-primary")}>
+                    <Bluetooth className="h-8 w-8" />
+                  </div>
+                  <h3 className="font-black text-lg">{printer.status === 'connected' ? printer.name : 'Printer Tidak Terhubung'}</h3>
                   <Button 
                     onClick={connectPrinter} 
                     disabled={printer.status === 'connecting'}
-                    className="w-full h-16 rounded-2xl font-black gap-3 bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20"
+                    className="w-full h-12 rounded-xl font-black bg-primary shadow-lg shadow-primary/20"
                   >
-                    {printer.status === 'connecting' ? (
-                      <RefreshCw className="h-5 w-5 animate-spin" />
-                    ) : <Bluetooth className="h-5 w-5" />}
-                    {printer.status === 'connecting' ? "Menghubungkan..." : "Pindai & Sambungkan"}
+                    {printer.status === 'connecting' ? 'Sedang Memindai...' : 'Pindai & Sambungkan'}
                   </Button>
-                )}
-              </Card>
-              <div className="space-y-4">
-                <div className="bg-muted/30 p-6 rounded-[2rem] border-2 border-muted-foreground/10 space-y-4">
-                  <h5 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-primary" /> Panduan Samsung Android
-                  </h5>
-                  <ul className="space-y-3 text-[10px] font-bold text-muted-foreground">
-                    <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">1</span> Pastikan printer termal Anda sudah menyala dan dalam mode pairing.</li>
-                    <li className="flex gap-3">
-                      <span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">2</span> 
-                      <span className="text-primary font-black">PENTING!</span> Nyalakan <b>Lokasi (GPS)</b> di HP Samsung Anda melalui Quick Panel (tarik layar dari atas).
-                    </li>
-                    <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">3</span> Gunakan Google Chrome atau Samsung Internet terbaru.</li>
-                    <li className="flex gap-3"><span className="h-5 w-5 rounded-full bg-white flex items-center justify-center text-[8px] font-black shadow-sm shrink-0">4</span> Saat pop-up browser muncul, pilih nama printer Anda dan klik "Pasangkan".</li>
-                  </ul>
+                  {printer.status === 'connected' && (
+                    <Button onClick={disconnectPrinter} variant="ghost" className="text-destructive font-bold">Putuskan Koneksi</Button>
+                  )}
+                </div>
+
+                <div className="bg-orange-50 p-6 rounded-[2rem] border-2 border-orange-100 space-y-4">
+                  <h4 className="font-black text-orange-800 text-sm flex items-center gap-2">
+                    <MapPin className="h-4 w-4" /> AKTIFKAN LOKASI (GPS) SAMSUNG
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex gap-3 items-start">
+                      <div className="h-5 w-5 rounded-full bg-orange-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">1</div>
+                      <p className="text-[10px] font-bold text-orange-900 leading-tight">Tarik layar Samsung Anda dari atas ke bawah <b>dua kali</b> sampai panel ikon muncul.</p>
+                    </div>
+                    <div className="flex gap-3 items-start">
+                      <div className="h-5 w-5 rounded-full bg-orange-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">2</div>
+                      <p className="text-[10px] font-bold text-orange-900 leading-tight">Cari ikon <b>Pin Peta (Lokasi)</b>. Pastikan berwarna <b>Biru (Aktif)</b>.</p>
+                    </div>
+                    <div className="flex gap-3 items-start">
+                      <div className="h-5 w-5 rounded-full bg-orange-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">3</div>
+                      <p className="text-[10px] font-bold text-orange-900 leading-tight">Chrome butuh izin Lokasi untuk memindai Bluetooth. Klik "Izinkan" jika muncul pop-up browser.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              <div className="hidden lg:block w-64 p-6 bg-muted/20 rounded-[2.5rem] space-y-4">
+                <Smartphone className="h-8 w-8 text-muted-foreground mx-auto" />
+                <p className="text-center text-[10px] font-bold text-muted-foreground leading-relaxed">
+                  Aplikasi ini menggunakan teknologi Web Bluetooth yang memerlukan Izin Lokasi aktif pada perangkat Android Anda.
+                </p>
+              </div>
             </div>
-          </SettingsSection>
+          </div>
         );
       case 'products':
         return (
           <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <CardTitle className="text-2xl font-black">Master Produk</CardTitle>
-                <CardDescription className="font-medium">Kelola item dan stok inventaris</CardDescription>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => downloadCSV("sku,barcode,name,category,price,costPrice,onHandQty,description,image\nPROD-001,888001,Contoh Produk,Makanan Utama,25000,12000,50,Deskripsi produk,https://picsum.photos/seed/1/400/300", "template_produk.csv")} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Download className="h-4 w-4" /> Template</Button>
-                <Button variant="outline" onClick={() => productImportRef.current?.click()} className="h-10 md:h-12 rounded-xl border-2 font-black text-xs gap-2"><Upload className="h-4 w-4" /> Impor CSV</Button>
-                <Button onClick={() => { setEditingProduct(null); setProductForm({ category: categories[0] }); setIsProductDialogOpen(true); }} className="h-10 md:h-12 rounded-xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Produk</Button>
-                <input type="file" ref={productImportRef} className="hidden" accept=".csv" />
-              </div>
+            <div className="flex justify-between items-center">
+              <div><CardTitle className="text-xl font-black">Produk</CardTitle></div>
+              <Button onClick={() => { setEditingProduct(null); setProductForm({ category: categories[0] }); setIsProductDialogOpen(true); }} className="h-10 rounded-xl bg-primary font-black text-xs px-4">Tambah</Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {products.map((p) => (
-                <div key={p.id} className="flex items-center justify-between p-4 md:p-5 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem] border border-transparent hover:border-primary/10 transition-all">
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="h-12 w-12 md:h-14 md:w-14 rounded-xl md:rounded-2xl overflow-hidden bg-white border shadow-sm"><img src={p.image} className="h-full w-full object-cover" alt={p.name} /></div>
-                    <div><p className="font-black text-sm md:text-lg leading-tight">{p.name}</p><div className="flex gap-2 items-center mt-1"><span className="text-primary font-black text-xs md:text-sm">{formatCurrencyValue(p.price)}</span><Badge variant="outline" className="text-[8px] md:text-[9px] font-bold px-2 py-0 border-none bg-white">{p.sku}</Badge></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {products.map(p => (
+                <div key={p.id} className="flex items-center justify-between p-3 bg-muted/10 rounded-2xl border border-transparent hover:border-primary/10">
+                  <div className="flex items-center gap-3">
+                    <img src={p.image} className="h-10 w-10 rounded-lg object-cover" alt={p.name} />
+                    <div><p className="font-black text-xs">{p.name}</p><p className="text-[10px] text-primary font-bold">{formatCurrencyValue(p.price)}</p></div>
                   </div>
-                  <div className="flex gap-1 md:gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Cetak Barcode" onClick={() => handlePrintBarcode(p)}><BarcodeIcon className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingProduct(p); setProductForm(p); setIsProductDialogOpen(true); }}><Pencil className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50" onClick={() => setProducts(products.filter(item => item.id !== p.id))}><Trash2 className="h-4 w-4 md:h-5 md:w-5" /></Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintBarcode(p)}><BarcodeIcon className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingProduct(p); setProductForm(p); setIsProductDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                   </div>
                 </div>
               ))}
@@ -458,20 +374,14 @@ export function SettingsView() {
         return (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <div><CardTitle className="text-2xl font-black">Data Pelanggan</CardTitle><CardDescription className="font-medium">Pantau daftar pelanggan Anda</CardDescription></div>
-              <Button onClick={() => { setEditingCustomer(null); setCustomerForm({}); setIsCustomerDialogOpen(true); }} className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg shadow-primary/20"><Plus className="h-5 w-5" /> Tambah Pelanggan</Button>
+              <div><CardTitle className="text-xl font-black">Pelanggan</CardTitle></div>
+              <Button onClick={() => { setEditingCustomer(null); setCustomerForm({}); setIsCustomerDialogOpen(true); }} className="h-10 rounded-xl bg-primary font-black text-xs px-4">Tambah</Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {customers.map((c) => (
-                <div key={c.id} className="flex items-center justify-between p-4 md:p-6 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem]">
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="bg-white p-3 md:p-4 rounded-xl md:rounded-2xl text-primary shadow-sm border"><Users className="h-4 w-4 md:h-6 md:w-6" /></div>
-                    <div><p className="font-black text-sm md:text-lg leading-tight">{c.name}</p><p className="text-[10px] md:text-xs font-bold text-muted-foreground mt-1">{c.phone}</p></div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingCustomer(c); setCustomerForm(c); setIsCustomerDialogOpen(true); }}><Pencil className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50" onClick={() => setCustomers(customers.filter(cust => cust.id !== c.id))}><Trash2 className="h-4 w-4 md:h-5 md:w-5" /></Button>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {customers.map(c => (
+                <div key={c.id} className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl">
+                  <div><p className="font-black text-sm">{c.name}</p><p className="text-[10px] text-muted-foreground font-bold">{c.phone}</p></div>
+                  <Button variant="ghost" size="icon" onClick={() => { setEditingCustomer(c); setCustomerForm(c); setIsCustomerDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                 </div>
               ))}
             </div>
@@ -481,24 +391,42 @@ export function SettingsView() {
         return (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <div><CardTitle className="text-2xl font-black">Kategori Produk</CardTitle><CardDescription className="font-medium">Kelola kategori untuk pengelompokan produk</CardDescription></div>
-              <Button onClick={() => { setEditingCategory(null); setCategoryForm(''); setIsCategoryDialogOpen(true); }} className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-primary font-black px-6 md:px-8 text-xs gap-3 shadow-lg"><Plus className="h-5 w-5" /> Tambah Kategori</Button>
+              <div><CardTitle className="text-xl font-black">Kategori</CardTitle></div>
+              <Button onClick={() => { setEditingCategory(null); setCategoryForm(''); setIsCategoryDialogOpen(true); }} className="h-10 rounded-xl bg-primary font-black text-xs px-4">Tambah</Button>
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-              {categories.map((cat) => (
-                <div key={cat} className="flex items-center justify-between p-4 md:p-6 bg-muted/10 rounded-[1.25rem] md:rounded-[2rem]">
-                  <span className="font-black text-xs md:text-sm">{cat}</span>
-                  <div className="flex gap-0.5">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" disabled={cat === 'Semua'} onClick={() => { setEditingCategory(cat); setCategoryForm(cat); setIsCategoryDialogOpen(true); }}><Pencil className="h-3.5 w-3.5 md:h-4 md:w-4" /></Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 text-destructive/50" disabled={cat === 'Semua'} onClick={() => setCategories(categories.filter(c => c !== cat))}><Trash2 className="h-3.5 w-3.5 md:h-4 md:w-4" /></Button>
+            <div className="grid grid-cols-2 gap-3">
+              {categories.map(cat => (
+                <div key={cat} className="flex items-center justify-between p-3 bg-muted/10 rounded-xl">
+                  <span className="font-black text-xs">{cat}</span>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={cat === 'Semua'} onClick={() => { setEditingCategory(cat); setCategoryForm(cat); setIsCategoryDialogOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/50" disabled={cat === 'Semua'} onClick={() => setCategories(categories.filter(c => c !== cat))}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         );
+      case 'general':
+        return (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Toko</Label><Input value={storeSettings.name} onChange={(e) => setStoreSettings({...storeSettings, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Alamat</Label><Textarea value={storeSettings.address} onChange={(e) => setStoreSettings({...storeSettings, address: e.target.value})} className="rounded-xl border-2" /></div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Logo</Label>
+                <div className="p-6 border-2 border-dashed rounded-[2rem] flex flex-col items-center gap-4 bg-muted/5">
+                  {storeSettings.logoUrl ? <img src={storeSettings.logoUrl} className="h-20 w-auto object-contain" /> : <div className="h-20 w-20 bg-white border rounded-xl flex items-center justify-center opacity-20"><ImageIcon /></div>}
+                  <Button onClick={() => logoInputRef.current?.click()} variant="outline" className="h-10 rounded-xl font-bold">Ganti Logo</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       default:
-        return <div className="p-20 text-center opacity-30 font-bold">Menu sedang dalam pengembangan</div>;
+        return <div className="p-20 text-center opacity-30 font-bold">Halaman Sedang Dikembangkan</div>;
     }
   };
 
@@ -508,7 +436,7 @@ export function SettingsView() {
         const file = e.target.files?.[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (event) => setStoreSettings({ ...storeSettings, logoUrl: event.target?.result as string });
+          reader.onload = (ev) => setStoreSettings({ ...storeSettings, logoUrl: ev.target?.result as string });
           reader.readAsDataURL(file);
         }
       }} />
@@ -516,106 +444,87 @@ export function SettingsView() {
         const file = e.target.files?.[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (event) => setProductForm({ ...productForm, image: event.target?.result as string });
+          reader.onload = (ev) => setProductForm({ ...productForm, image: ev.target?.result as string });
           reader.readAsDataURL(file);
         }
       }} />
-      <div className="flex flex-col gap-0.5 md:gap-1">
-        <h2 className="text-xl md:text-3xl font-black">Pengaturan</h2>
-        <p className="text-[10px] md:text-sm text-muted-foreground">Kelola konfigurasi POS dan data master Anda</p>
-      </div>
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start">
-        <aside className="w-full lg:w-64 bg-white rounded-[1.5rem] md:rounded-[2rem] p-3 md:p-4 shadow-sm border border-muted/50 overflow-x-auto">
-          <div className="flex lg:flex-col gap-6 md:gap-8 min-w-max lg:min-w-0">
-            {navGroups.map((group, idx) => (
-              <div key={idx} className="space-y-1.5 md:space-y-2">
-                <p className="px-3 md:px-4 text-[7px] md:text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1 md:mb-3">{group.title}</p>
-                <div className="flex lg:flex-col gap-1">
-                  {group.items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id)}
-                      className={cn(
-                        "flex items-center justify-between px-3 md:px-4 py-2 md:py-3.5 rounded-lg md:rounded-2xl transition-all duration-200 group min-w-[120px] lg:w-full",
-                        activeTab === item.id ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <item.icon className={cn("h-4 w-4 md:h-5 md:w-5", activeTab === item.id ? "text-white" : "text-muted-foreground group-hover:text-primary")} />
-                        <span className="text-[10px] md:text-xs font-bold whitespace-nowrap">{item.label}</span>
-                      </div>
-                      {activeTab === item.id && <ChevronRight className="h-3 w-3 md:h-4 md:w-4 hidden lg:block" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
-        <div className="flex-1 w-full min-h-[500px] bg-white p-4 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm border border-muted/50">
-          {renderTabContent()}
-        </div>
+
+      <div className="flex flex-col gap-1">
+        <h2 className="text-xl md:text-2xl font-black">Pengaturan</h2>
+        <p className="text-[10px] md:text-sm text-muted-foreground">Konfigurasi POS dan Data Master</p>
       </div>
 
-      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10">
-          <DialogHeader><DialogTitle className="text-lg md:text-2xl font-black">{editingProduct ? 'Edit Produk' : 'Tambah Produk'}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 py-4 overflow-y-auto max-h-[70vh] pr-2 scrollbar-hide">
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Produk</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Barcode</Label><Input value={productForm.barcode || ''} onChange={(e) => setProductForm({...productForm, barcode: e.target.value})} placeholder="Scan barcode" className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Stok Awal</Label><Input type="number" value={productForm.onHandQty || ''} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value)})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Harga Jual (Rp)</Label><Input type="number" value={productForm.price || ''} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5">
-              <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Kategori</Label>
-              <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}>
-                <SelectTrigger className="h-10 md:h-12 rounded-lg md:rounded-xl border-2"><SelectValue /></SelectTrigger>
-                <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
+        <aside className="w-full lg:w-56 bg-white rounded-[2rem] p-3 shadow-sm border overflow-x-auto flex lg:flex-col gap-2 scrollbar-hide">
+          {navGroups.map((group, idx) => (
+            <div key={idx} className="flex lg:flex-col gap-1 shrink-0">
+              <p className="hidden lg:block px-3 text-[8px] font-black uppercase tracking-widest text-muted-foreground my-2">{group.title}</p>
+              {group.items.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-[10px] md:text-xs",
+                    activeTab === item.id ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span className="whitespace-nowrap">{item.label}</span>
+                </button>
+              ))}
             </div>
-            <div className="md:col-span-2 space-y-1.5">
-              <Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Gambar Produk</Label>
-              <div className="flex gap-4 items-center p-4 bg-muted/20 rounded-xl md:rounded-2xl border-2 border-dashed">
-                <div className="h-16 w-16 md:h-20 md:w-20 rounded-lg md:rounded-xl overflow-hidden bg-white border flex items-center justify-center">
-                  {productForm.image ? <img src={productForm.image} className="h-full w-full object-cover" /> : <ImageIcon className="text-muted-foreground/30 h-6 w-6 md:h-8 md:w-8" />}
-                </div>
-                <Button variant="outline" size="sm" onClick={() => productImageInputRef.current?.click()} className="h-9 md:h-10 font-black text-[10px] md:text-xs rounded-lg md:rounded-xl"><Upload className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Unggah Galeri</Button>
-              </div>
+          ))}
+        </aside>
+
+        <main className="flex-1 bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-sm border">
+          {renderTabContent()}
+        </main>
+      </div>
+
+      {/* Dialogs */}
+      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+        <DialogContent className="max-w-[95vw] md:max-w-md rounded-[2rem] p-6">
+          <DialogHeader><DialogTitle className="text-lg font-black">{editingProduct ? 'Edit Produk' : 'Tambah Produk'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
+            <div className="space-y-1"><Label className="text-[10px] font-black">Nama</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="h-12 rounded-xl" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1"><Label className="text-[10px] font-black">SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} className="h-12 rounded-xl" /></div>
+              <div className="space-y-1"><Label className="text-[10px] font-black">Stok</Label><Input type="number" value={productForm.onHandQty || ''} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value)})} className="h-12 rounded-xl" /></div>
+            </div>
+            <div className="space-y-1"><Label className="text-[10px] font-black">Harga Jual</Label><Input type="number" value={productForm.price || ''} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} className="h-12 rounded-xl" /></div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-black">Kategori</Label>
+              <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}><SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-black">Gambar</Label>
+              <Button variant="outline" onClick={() => productImageInputRef.current?.click()} className="w-full h-12 rounded-xl gap-2"><Upload className="h-4 w-4" /> Pilih Gambar</Button>
             </div>
           </div>
-          <DialogFooter className="mt-2 md:mt-4"><Button onClick={saveProduct} className="w-full h-12 md:h-14 rounded-lg md:rounded-xl bg-primary font-black text-sm md:text-base">Simpan Produk</Button></DialogFooter>
+          <DialogFooter><Button onClick={saveProduct} className="w-full h-12 rounded-xl bg-primary font-black">Simpan</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-black">{editingCustomer ? 'Edit Pelanggan' : 'Tambah Pelanggan'}</DialogTitle></DialogHeader>
-          <div className="space-y-3 md:space-y-4 py-4">
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama</Label><Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Telepon</Label><Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
+        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2rem] p-6">
+          <DialogHeader><DialogTitle className="text-lg font-black">{editingCustomer ? 'Edit Pelanggan' : 'Tambah Pelanggan'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1"><Label className="text-[10px] font-black">Nama</Label><Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({...customerForm, name: e.target.value})} className="h-12 rounded-xl" /></div>
+            <div className="space-y-1"><Label className="text-[10px] font-black">Telepon</Label><Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({...customerForm, phone: e.target.value})} className="h-12 rounded-xl" /></div>
           </div>
-          <DialogFooter><Button onClick={saveCustomer} className="w-full h-10 md:h-12 rounded-lg md:rounded-xl bg-primary font-black text-xs md:text-sm">Simpan Pelanggan</Button></DialogFooter>
+          <DialogFooter><Button onClick={saveCustomer} className="w-full h-12 rounded-xl bg-primary font-black">Simpan</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8">
-          <DialogHeader><DialogTitle className="text-lg md:text-xl font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
-          <div className="space-y-3 md:space-y-4 py-4">
-            <div className="space-y-1.5"><Label className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">Nama Kategori</Label><Input value={categoryForm} onChange={(e) => setCategoryForm(e.target.value)} className="h-10 md:h-12 rounded-lg md:rounded-xl border-2" /></div>
+        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2rem] p-6">
+          <DialogHeader><DialogTitle className="text-lg font-black">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1"><Label className="text-[10px] font-black">Nama Kategori</Label><Input value={categoryForm} onChange={(e) => setCategoryForm(e.target.value)} className="h-12 rounded-xl" /></div>
           </div>
-          <DialogFooter><Button onClick={saveCategory} className="w-full h-10 md:h-12 rounded-lg md:rounded-xl bg-primary font-black text-xs md:text-sm">Simpan Kategori</Button></DialogFooter>
+          <DialogFooter><Button onClick={saveCategory} className="w-full h-12 rounded-xl bg-primary font-black">Simpan</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function SettingsSection({ icon: Icon, title, description, children }: any) {
-  return (
-    <div className="space-y-4 md:space-y-8">
-      <div className="flex gap-4 md:gap-5"><div className="bg-primary/10 p-3 md:p-4 rounded-xl md:rounded-2xl text-primary h-fit"><Icon className="h-5 w-5 md:h-7 md:w-7" /></div><div><h3 className="text-lg md:text-2xl font-black leading-tight">{title}</h3><p className="text-[10px] md:text-sm text-muted-foreground font-medium mt-1">{description}</p></div></div>
-      <div className="pl-0 lg:pl-4">{children}</div>
     </div>
   );
 }
