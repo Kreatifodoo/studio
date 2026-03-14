@@ -42,12 +42,12 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
-    font-size: 14px; /* Default size for mobile compatibility */
+    font-size: 14px;
   }
 
   @media (max-width: 768px) {
     body {
-      font-size: 12px; /* Smaller base font for mobile */
+      font-size: 12px;
     }
   }
 }
@@ -56,7 +56,6 @@
   font-family: 'Poppins', sans-serif;
 }
 
-/* Scrollbar Hide for Clean Mobile UI */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -65,7 +64,6 @@
   scrollbar-width: none;
 }
 
-/* Specific Thermal Print Styles */
 @media print {
   body * {
     visibility: hidden !important;

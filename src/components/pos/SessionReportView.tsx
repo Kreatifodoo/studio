@@ -3,11 +3,10 @@
 import React, { useState } from 'react';
 import { usePOS } from './POSContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { FileText, DollarSign, PieChart, ArrowDownRight, ArrowUpRight, History, CreditCard, Banknote, Download, Printer } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,6 @@ export function SessionReportView() {
   const { lastClosedSession, sessions, history, customers } = usePOS();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   
-  // Safety check: prioritize last closed, then current sessions list
   const sessionToView = lastClosedSession || (sessions.length > 0 ? sessions[0] : null);
 
   const formatCurrency = (val: number) => {
@@ -27,56 +25,30 @@ export function SessionReportView() {
 
   const handleExportCSV = () => {
     if (!sessionToView) return;
-
     const sessionTransactions = history.filter(t => sessionToView.transactionIds.includes(t.id));
-    
-    const headers = ["ID Pesanan", "Tanggal", "Jam", "Pelanggan", "Item", "Subtotal", "Pajak", "Total", "Metode Pembayaran", "Referensi"];
-    
-    const rows = sessionTransactions.map(t => {
-      const customer = customers.find(c => c.id === t.customerId)?.name || "Umum";
-      const itemsList = t.items.map(i => `${i.quantity}x ${i.name}`).join(" | ");
-      return [
-        t.id,
-        format(new Date(t.date), 'yyyy-MM-dd'),
-        format(new Date(t.date), 'HH:mm:ss'),
-        customer,
-        `"${itemsList}"`,
-        t.subtotal.toFixed(0),
-        t.tax.toFixed(0),
-        t.total.toFixed(0),
-        t.paymentMethod || "N/A",
-        t.paymentReference || ""
-      ];
-    });
-
+    const headers = ["ID", "Tanggal", "Jam", "Pelanggan", "Total", "Metode"];
+    const rows = sessionTransactions.map(t => [
+      t.id,
+      format(new Date(t.date), 'yyyy-MM-dd'),
+      format(new Date(t.date), 'HH:mm'),
+      customers.find(c => c.id === t.customerId)?.name || "Umum",
+      t.total.toFixed(0),
+      t.paymentMethod || "N/A"
+    ]);
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Laporan_Sesi_${sessionToView.id}_${format(new Date(), 'yyyyMMdd')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `Laporan_Sesi_${sessionToView.id}.csv`;
     link.click();
-    document.body.removeChild(link);
   };
 
-  const handlePrintSummary = () => {
-    if (!sessionToView) return;
-    setIsPreviewOpen(true);
-    setTimeout(() => {
-      window.print();
-    }, 500);
-  };
-
-  // If no session found at all, show empty state instead of crashing
   if (!sessionToView) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh] text-center opacity-30">
-        <FileText className="h-24 w-24 mb-6" />
-        <h2 className="text-3xl font-black">Laporan Belum Tersedia</h2>
-        <p className="text-xl">Selesaikan transaksi dan tutup sesi kasir untuk melihat laporan pertama Anda.</p>
+      <div className="flex flex-col items-center justify-center h-[70vh] text-center opacity-30 px-4">
+        <FileText className="h-16 w-16 md:h-24 md:w-24 mb-6" />
+        <h2 className="text-xl md:text-3xl font-black">Laporan Kosong</h2>
+        <p className="text-sm md:text-xl">Tutup sesi kasir untuk melihat laporan.</p>
       </div>
     );
   }
@@ -95,185 +67,82 @@ export function SessionReportView() {
   const cashDifference = (sessionToView.closingCash || 0) - (sessionToView.openingCash + (paymentsByMethod['Tunai'] || 0));
 
   return (
-    <div className="flex flex-col gap-8 pb-20">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-black flex items-center gap-3">
-            <FileText className="text-primary" /> Laporan Sesi Kasir
-          </h2>
-          <p className="text-muted-foreground mt-1 font-medium">
-            Sesi #{sessionToView.id} • {format(new Date(sessionToView.startTime), 'PPP p', { locale: localeId })} - {sessionToView.endTime ? format(new Date(sessionToView.endTime), 'p', { locale: localeId }) : 'Berlangsung'}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            onClick={handlePrintSummary}
-            variant="outline"
-            className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
-          >
-            <Printer className="h-5 w-5" />
-            Cetak Ringkasan
-          </Button>
-          <Button 
-            onClick={handleExportCSV}
-            variant="outline"
-            className="h-12 rounded-xl border-2 font-black gap-2 hover:bg-primary/5 hover:text-primary transition-all"
-          >
-            <Download className="h-5 w-5" />
-            Ekspor ke CSV
-          </Button>
-          <Badge className="bg-primary/10 text-primary border-none px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest h-12 flex items-center">
-            {sessionToView.status === 'Open' ? 'TERBUKA' : 'TERTUTUP'}
-          </Badge>
+    <div className="flex flex-col gap-4 md:gap-8 pb-24">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black flex items-center gap-2">
+              <FileText className="text-primary h-6 w-6 md:h-8 md:w-8" /> Laporan
+            </h2>
+            <p className="text-[10px] md:text-sm text-muted-foreground mt-1">Sesi #{sessionToView.id}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <Button onClick={() => setIsPreviewOpen(true)} variant="outline" size="sm" className="flex-1 md:flex-none h-10 rounded-xl font-black gap-2">
+              <Printer className="h-4 w-4" /> Cetak
+            </Button>
+            <Button onClick={handleExportCSV} variant="outline" size="sm" className="flex-1 md:flex-none h-10 rounded-xl font-black gap-2">
+              <Download className="h-4 w-4" /> CSV
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <ReportStatCard title="Total Penjualan" value={formatCurrency(totalSales)} icon={DollarSign} color="bg-primary" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ReportStatCard title="Total Jual" value={formatCurrency(totalSales)} icon={DollarSign} color="bg-primary" />
         <ReportStatCard title="Modal Awal" value={formatCurrency(sessionToView.openingCash)} icon={ArrowUpRight} color="bg-green-500" />
-        <ReportStatCard title="Uang Akhir" value={formatCurrency(sessionToView.closingCash || 0)} icon={ArrowDownRight} color="bg-orange-500" />
-        <ReportStatCard 
-          title="Selisih Kas" 
-          value={`${cashDifference >= 0 ? '+' : ''}${formatCurrency(cashDifference)}`} 
-          icon={PieChart} 
-          color={cashDifference === 0 ? "bg-accent" : "bg-destructive"} 
-        />
+        <ReportStatCard title="Kas Akhir" value={formatCurrency(sessionToView.closingCash || 0)} icon={ArrowDownRight} color="bg-orange-500" />
+        <ReportStatCard title="Selisih" value={formatCurrency(cashDifference)} icon={PieChart} color={cashDifference === 0 ? "bg-accent" : "bg-destructive"} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
+        <Card className="lg:col-span-2 rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
           <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-xl font-black">Ringkasan Transaksi</CardTitle>
+            <CardTitle className="text-lg md:text-xl font-black">Ringkasan</CardTitle>
           </CardHeader>
-          <div className="space-y-6">
-             <div className="flex justify-between items-center py-4 border-b">
-               <span className="text-muted-foreground font-bold">Total Transaksi</span>
-               <span className="font-black text-xl">{sessionTransactions.length}</span>
-             </div>
-             <div className="flex justify-between items-center py-4 border-b">
-               <span className="text-muted-foreground font-bold">Subtotal (Net)</span>
-               <span className="font-black text-xl">{formatCurrency(totalSubtotal)}</span>
-             </div>
-             <div className="flex justify-between items-center py-4 border-b">
-               <span className="text-muted-foreground font-bold">Pajak Terkumpul</span>
-               <span className="font-black text-xl">{formatCurrency(totalTax)}</span>
-             </div>
-             <div className="flex justify-between items-center py-6 bg-primary/5 px-6 rounded-3xl">
-               <span className="text-primary font-black text-lg">Penjualan Bruto</span>
-               <span className="text-primary font-black text-3xl">{formatCurrency(totalSales)}</span>
-             </div>
+          <div className="space-y-4">
+             <div className="flex justify-between items-center py-2 border-b"><span className="text-muted-foreground text-xs font-bold">Orders</span><span className="font-black">{sessionTransactions.length}</span></div>
+             <div className="flex justify-between items-center py-2 border-b"><span className="text-muted-foreground text-xs font-bold">Subtotal</span><span className="font-black">{formatCurrency(totalSubtotal)}</span></div>
+             <div className="flex justify-between items-center py-2 border-b"><span className="text-muted-foreground text-xs font-bold">Pajak</span><span className="font-black">{formatCurrency(totalTax)}</span></div>
+             <div className="flex justify-between items-center p-4 bg-primary/5 rounded-2xl mt-4"><span className="text-primary font-black text-sm">TOTAL</span><span className="text-primary font-black text-xl">{formatCurrency(totalSales)}</span></div>
           </div>
         </Card>
 
-        <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
+        <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
           <CardHeader className="px-0 pt-0">
-            <CardTitle className="text-xl font-black">Metode Pembayaran</CardTitle>
+            <CardTitle className="text-lg md:text-xl font-black">Pembayaran</CardTitle>
           </CardHeader>
-          <div className="space-y-6 mt-4">
+          <div className="space-y-4">
             {Object.entries(paymentsByMethod).map(([method, amount]: any) => (
-              <div key={method} className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-sm">{method}</span>
-                  <span className="font-black">{formatCurrency(amount)}</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                   <div 
-                    className="h-full bg-primary" 
-                    style={{ width: `${(amount / (totalSales || 1)) * 100}%` }}
-                   ></div>
-                </div>
+              <div key={method} className="space-y-1">
+                <div className="flex justify-between text-xs font-bold"><span>{method}</span><span>{formatCurrency(amount)}</span></div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary" style={{ width: `${(amount / (totalSales || 1)) * 100}%` }}></div></div>
               </div>
             ))}
-            {Object.keys(paymentsByMethod).length === 0 && (
-              <p className="text-center text-muted-foreground py-10 font-medium">Belum ada pembayaran</p>
-            )}
           </div>
         </Card>
       </div>
 
-      <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white overflow-hidden">
-        <CardHeader className="px-0 pt-0 mb-4">
-          <CardTitle className="text-xl font-black">Detail Transaksi Sesi</CardTitle>
-        </CardHeader>
-        <div className="rounded-3xl border overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="font-black">Waktu</TableHead>
-                <TableHead className="font-black">ID Order</TableHead>
-                <TableHead className="font-black">Metode</TableHead>
-                <TableHead className="font-black">Ref</TableHead>
-                <TableHead className="text-right font-black">Total</TableHead>
-              </TableRow>
-            </TableHeader>
+      <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white overflow-hidden">
+        <CardTitle className="text-lg md:text-xl font-black mb-6">Detail Transaksi</CardTitle>
+        <div className="overflow-x-auto -mx-4 px-4">
+          <Table className="min-w-[500px]">
+            <TableHeader className="bg-muted/50"><TableRow><TableHead className="font-black">Jam</TableHead><TableHead className="font-black">ID</TableHead><TableHead className="font-black">Metode</TableHead><TableHead className="text-right font-black">Total</TableHead></TableRow></TableHeader>
             <TableBody>
               {sessionTransactions.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell className="font-medium">{format(new Date(t.date), 'p')}</TableCell>
-                  <TableCell className="font-mono text-xs">#{t.id}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {t.paymentMethod?.toLowerCase().includes('tunai') ? <Banknote className="h-3 w-3" /> : <CreditCard className="h-3 w-3" />}
-                      <span className="text-xs font-bold">{t.paymentMethod}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {t.paymentReference ? (
-                      <Badge variant="outline" className="bg-primary/5 text-primary border-none rounded-lg font-mono text-[10px]">
-                        {t.paymentReference}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-[10px] italic">Tanpa ref</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-black">{formatCurrency(t.total)}</TableCell>
+                  <TableCell className="text-xs">{format(new Date(t.date), 'HH:mm')}</TableCell>
+                  <TableCell className="font-mono text-[10px]">#{t.id}</TableCell>
+                  <TableCell className="text-xs font-bold">{t.paymentMethod}</TableCell>
+                  <TableCell className="text-right font-black text-xs">{formatCurrency(t.total)}</TableCell>
                 </TableRow>
               ))}
-              {sessionTransactions.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground italic font-medium">
-                    Belum ada transaksi di sesi ini.
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </div>
       </Card>
-
-      <Card className="rounded-[2.5rem] border-none shadow-sm p-8 bg-white">
-        <CardHeader className="px-0 pt-0">
-          <CardTitle className="text-xl font-black">Riwayat Sesi</CardTitle>
-        </CardHeader>
-        <ScrollArea className="h-64">
-          <div className="space-y-4 pr-4">
-            {sessions.map((s) => (
-              <div 
-                key={s.id} 
-                className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl hover:bg-muted/30 transition-all cursor-pointer border border-transparent hover:border-primary/10"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="bg-white p-3 rounded-xl text-primary"><History /></div>
-                  <div>
-                    <p className="font-black">Sesi #{s.id}</p>
-                    <p className="text-xs text-muted-foreground font-bold">{format(new Date(s.startTime), 'PPP', { locale: localeId })}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-lg">{formatCurrency(history.filter(t => s.transactionIds.includes(t.id)).reduce((acc, t) => acc + t.total, 0))}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.transactionIds.length} Transaksi</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </Card>
-
+      
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-[400px] p-0 border-none shadow-none bg-transparent">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Pratinjau Ringkasan Sesi</DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-[90vw] md:max-w-[400px] p-0 border-none bg-transparent">
           <SessionSummaryReceipt session={sessionToView} />
         </DialogContent>
       </Dialog>
@@ -283,16 +152,10 @@ export function SessionReportView() {
 
 function ReportStatCard({ title, value, icon: Icon, color }: any) {
   return (
-    <Card className="rounded-[2.5rem] border-none shadow-sm p-6 bg-white overflow-hidden relative group">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`${color} p-4 rounded-2xl text-white group-hover:scale-110 transition-transform duration-300`}>
-          <Icon className="h-6 w-6" />
-        </div>
-      </div>
-      <div>
-        <p className="text-sm text-muted-foreground font-black uppercase tracking-widest mb-1">{title}</p>
-        <p className="text-xl font-black tracking-tight">{value}</p>
-      </div>
+    <Card className="rounded-2xl border-none shadow-sm p-4 bg-white overflow-hidden">
+      <div className={`${color} w-8 h-8 rounded-lg text-white flex items-center justify-center mb-3`}><Icon className="h-4 w-4" /></div>
+      <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest">{title}</p>
+      <p className="text-base font-black truncate">{value}</p>
     </Card>
   );
 }

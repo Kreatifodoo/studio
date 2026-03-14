@@ -22,7 +22,6 @@ export function LoginView() {
     if (!username || !password) return;
 
     setIsLoading(true);
-    // Simulasi delay kecil untuk UX yang lebih baik
     setTimeout(() => {
       const success = login(username, password);
       if (success) {
@@ -43,78 +42,77 @@ export function LoginView() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F9FBFF] p-4 font-poppins">
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-10 text-center">
-          <div className="bg-primary p-5 rounded-[2rem] shadow-2xl shadow-primary/20 mb-6 flex items-center justify-center min-w-[80px] min-h-[80px]">
+      <div className="w-full max-w-[340px] md:max-w-md">
+        <div className="flex flex-col items-center mb-6 md:mb-10 text-center">
+          <div className="bg-primary p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl shadow-primary/20 mb-4 md:mb-6 flex items-center justify-center min-w-[60px] min-h-[60px] md:min-w-[80px] md:min-h-[80px]">
             {storeSettings.logoUrl ? (
-              <img src={storeSettings.logoUrl} alt="Logo Toko" className="h-12 w-12 object-contain invert brightness-0" />
+              <img src={storeSettings.logoUrl} alt="Logo" className="h-8 w-8 md:h-12 md:w-12 object-contain invert brightness-0" />
             ) : (
-              <UtensilsCrossed className="h-10 w-10 text-white" />
+              <UtensilsCrossed className="h-8 w-8 md:h-10 md:w-10 text-white" />
             )}
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-[#1a1f2b]">{storeSettings.name}</h1>
-          <p className="text-muted-foreground font-bold mt-2 uppercase tracking-widest text-[11px]">Sistem Point of Sale Modern</p>
+          <h1 className="text-2xl md:text-4xl font-black tracking-tight text-[#1a1f2b]">{storeSettings.name}</h1>
+          <p className="text-muted-foreground font-bold mt-1 md:mt-2 uppercase tracking-widest text-[8px] md:text-[11px]">Sistem Point of Sale Modern</p>
         </div>
 
-        <Card className="border-none shadow-[0_50px_100px_-20px_rgba(0,0,0,0.08)] rounded-[3rem] p-4 bg-white overflow-hidden">
-          <CardHeader className="text-center pb-8 pt-8">
-            <CardTitle className="text-2xl font-black">Masuk ke Sistem</CardTitle>
-            <CardDescription className="font-medium">Masukkan kredensial Anda untuk memulai sesi kerja</CardDescription>
+        <Card className="border-none shadow-[0_30px_60px_-12px_rgba(0,0,0,0.08)] rounded-[2rem] md:rounded-[3rem] p-2 md:p-4 bg-white overflow-hidden">
+          <CardHeader className="text-center pb-4 md:pb-8 pt-6 md:pt-8 px-4">
+            <CardTitle className="text-xl md:text-2xl font-black">Masuk</CardTitle>
+            <CardDescription className="text-[10px] md:text-sm font-medium">Masukkan kredensial Anda untuk memulai sesi</CardDescription>
           </CardHeader>
           
           <form onSubmit={handleLogin}>
-            <CardContent className="space-y-6 px-8">
-              <div className="space-y-3">
-                <Label className="font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground ml-1">Username</Label>
+            <CardContent className="space-y-4 md:space-y-6 px-6 md:px-8">
+              <div className="space-y-2">
+                <Label className="font-black text-[9px] uppercase tracking-[0.2em] text-muted-foreground ml-1">Username</Label>
                 <div className="relative">
-                  <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
                   <Input 
-                    placeholder="Masukkan username"
+                    placeholder="Username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="h-16 rounded-[1.25rem] border-2 bg-muted/5 focus-visible:ring-primary/20 pl-14 font-bold text-lg"
+                    className="h-12 md:h-16 rounded-xl md:rounded-[1.25rem] border-2 bg-muted/5 focus-visible:ring-primary/20 pl-11 md:pl-14 font-bold text-sm md:text-lg"
                     required
                   />
                 </div>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between items-center ml-1">
-                  <Label className="font-black text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Kata Sandi</Label>
-                  <button type="button" className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Lupa Sandi?</button>
+                  <Label className="font-black text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Sandi</Label>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/40" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
                   <Input 
                     type={showPassword ? "text" : "password"}
-                    placeholder="Masukkan kata sandi"
+                    placeholder="Kata sandi"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-16 rounded-[1.25rem] border-2 bg-muted/5 focus-visible:ring-primary/20 pl-14 pr-14 font-bold text-lg"
+                    className="h-12 md:h-16 rounded-xl md:rounded-[1.25rem] border-2 bg-muted/5 focus-visible:ring-primary/20 pl-11 md:pl-14 pr-11 md:pr-14 font-bold text-sm md:text-lg"
                     required
                   />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-primary transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-primary transition-colors"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
             </CardContent>
             
-            <CardFooter className="px-8 pb-10 pt-6">
+            <CardFooter className="px-6 md:px-8 pb-8 md:pb-10 pt-4 md:pt-6">
               <Button 
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-18 rounded-[1.25rem] text-lg font-black bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/20 gap-3 py-8"
+                className="w-full h-14 md:h-18 rounded-xl md:rounded-[1.25rem] text-base md:text-lg font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
               >
                 {isLoading ? (
-                  <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <LogIn className="h-6 w-6" />
+                    <LogIn className="h-5 w-5 md:h-6 md:w-6" />
                     Masuk Sekarang
                   </>
                 )}
@@ -123,8 +121,8 @@ export function LoginView() {
           </form>
         </Card>
         
-        <p className="text-center mt-12 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-60">
-          &copy; {new Date().getFullYear()} NEXTPOS • KELOLA BISNIS JADI LEBIH MUDAH
+        <p className="text-center mt-8 md:mt-12 text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-60">
+          &copy; {new Date().getFullYear()} NEXTPOS • MODERN POS SYSTEM
         </p>
       </div>
     </div>
