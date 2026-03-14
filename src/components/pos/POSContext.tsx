@@ -9,6 +9,8 @@ import {
 } from '@/types/pos';
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 import { db } from '@/lib/db';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 interface POSContextType {
   activeCategory: Category;
@@ -106,6 +108,7 @@ const INITIAL_STORE_SETTINGS: StoreSettings = {
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
 export function POSProvider({ children }: { children: React.ReactNode }) {
+  const firestore = useFirestore();
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Category>('Semua');
   const [searchQuery, setSearchQuery] = useState('');
@@ -132,6 +135,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [btCharacteristic, setBtCharacteristic] = useState<any>(null);
   const [btDevice, setBtDevice] = useState<any>(null);
 
+  // Load persistence
   useEffect(() => {
     async function initDb() {
       try {
@@ -156,7 +160,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         if (dbProducts.length > 0) setProductsState(dbProducts); else setProductsState(INITIAL_PRODUCTS);
         if (dbHistory.length > 0) setHistory(dbHistory);
         if (dbSessions.length > 0) setSessions(dbSessions);
-        if (dbUsers.length > 0) setUsersState(dbUsers); else setUsersState(INITIAL_USERS);
+        
+        const finalUsers = dbUsers.length > 0 ? dbUsers : INITIAL_USERS;
+        setUsersState(finalUsers);
+        
         if (dbCustomers.length > 0) setCustomersState(dbCustomers);
         if (dbPM.length > 0) setPaymentMethodsState(dbPM); else setPaymentMethodsState(INITIAL_PAYMENT_METHODS);
         if (dbFees.length > 0) setFeesState(dbFees); else setFeesState(INITIAL_FEES);
@@ -166,6 +173,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         setPromoDiscountsState(dbPromos);
         if (dbSettings) setStoreSettingsState(dbSettings.value);
 
+        // Persistent Login from localStorage
+        const savedUserId = localStorage.getItem('pos_current_user_id');
+        if (savedUserId) {
+          const user = finalUsers.find(u => u.id === savedUserId);
+          if (user) setCurrentUser(user);
+        }
+
+        // Persistent Printer Config from Firestore
+        if (firestore) {
+          const configDoc = await getDoc(doc(firestore, 'app_configurations', 'global_settings'));
+          if (configDoc.exists()) {
+            const data = configDoc.data();
+            if (data.printerName) {
+              setPrinter(prev => ({ ...prev, name: data.printerName }));
+            }
+          }
+        }
+
         setIsDbLoaded(true);
       } catch (e) {
         console.error("Gagal inisialisasi database", e);
@@ -173,7 +198,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       }
     }
     initDb();
-  }, []);
+  }, [firestore]);
 
   const connectPrinter = async () => {
     try {
@@ -215,8 +240,18 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
       setBtDevice(device);
       setBtCharacteristic(writeChar);
-      setPrinter({ name: device.name || 'Printer Bluetooth', status: 'connected', type: 'bluetooth' });
+      const printerName = device.name || 'Printer Bluetooth';
+      setPrinter({ name: printerName, status: 'connected', type: 'bluetooth' });
       
+      // Save to Firestore for persistence
+      if (firestore) {
+        setDoc(doc(firestore, 'app_configurations', 'global_settings'), {
+          printerName: printerName,
+          printerConnected: true,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+
       device.addEventListener('gattserverdisconnected', () => {
         setPrinter({ name: null, status: 'disconnected', type: 'system' });
         setBtCharacteristic(null);
@@ -234,6 +269,14 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     setBtDevice(null);
     setBtCharacteristic(null);
     setPrinter({ name: null, status: 'disconnected', type: 'system' });
+    
+    // Update Firestore
+    if (firestore) {
+      setDoc(doc(firestore, 'app_configurations', 'global_settings'), {
+        printerConnected: false,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    }
   };
 
   const printViaBluetooth = async (transaction: Transaction): Promise<boolean> => {
@@ -459,12 +502,18 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     const user = users.find(u => u.username === username && (u.password === password || !password));
     if (user && user.status === 'Active') {
       setCurrentUser(user);
+      localStorage.setItem('pos_current_user_id', user.id);
       return true;
     }
     return false;
   };
 
-  const logout = () => { setCurrentUser(null); setCart([]); setView('pos'); };
+  const logout = () => { 
+    setCurrentUser(null); 
+    localStorage.removeItem('pos_current_user_id');
+    setCart([]); 
+    setView('pos'); 
+  };
 
   const checkPermission = useCallback((permission: Permission) => {
     if (!currentUser) return false;

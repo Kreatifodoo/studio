@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 import { Permission, Session } from '@/types/pos';
+import { Badge } from '@/components/ui/badge';
 
 export function Sidebar() {
   const { 
@@ -146,7 +147,6 @@ export function Sidebar() {
               </AlertDialogHeader>
               
               <div className="py-4 space-y-6">
-                 {/* Summary Cards */}
                  <div className="grid grid-cols-2 gap-3">
                    <div className="bg-muted/30 p-3 rounded-2xl">
                      <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Modal Awal</p>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
@@ -287,13 +286,18 @@ export function SettingsView() {
                 <div className={cn("p-4 rounded-full", printer.status === 'connected' ? "bg-green-500 text-white" : "bg-primary/20 text-primary")}>
                   <Bluetooth className="h-8 w-8" />
                 </div>
-                <h3 className="font-black text-lg">{printer.status === 'connected' ? printer.name : 'Printer Tidak Terhubung'}</h3>
+                <h3 className="font-black text-lg">
+                  {printer.status === 'connected' 
+                    ? printer.name 
+                    : (printer.name ? `Terakhir digunakan: ${printer.name}` : 'Printer Tidak Terhubung')
+                  }
+                </h3>
                 <Button 
                   onClick={connectPrinter} 
                   disabled={printer.status === 'connecting'}
                   className="w-full h-12 rounded-xl font-black bg-primary shadow-lg shadow-primary/20"
                 >
-                  {printer.status === 'connecting' ? 'Sedang Memindai...' : 'Pindai & Sambungkan'}
+                  {printer.status === 'connecting' ? 'Sedang Memindai...' : (printer.status === 'connected' ? 'Ganti Printer' : 'Sambungkan Printer')}
                 </Button>
                 {printer.status === 'connected' && (
                   <Button onClick={disconnectPrinter} variant="ghost" className="text-destructive font-bold">Putuskan Koneksi</Button>
@@ -303,10 +307,10 @@ export function SettingsView() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-orange-50 p-5 rounded-[1.5rem] border border-orange-100 space-y-4">
                   <h4 className="font-black text-orange-800 text-[10px] uppercase tracking-widest flex items-center gap-2">
-                    <MapPin className="h-4 w-4" /> 1. Aktifkan Lokasi Samsung
+                    <MapPin className="h-4 w-4" /> 1. Aktifkan Lokasi Perangkat
                   </h4>
                   <p className="text-[10px] text-orange-900 leading-relaxed font-bold">
-                    Tarik panel notifikasi dari atas layar ke bawah. Pastikan ikon <b>"Lokasi"</b> atau <b>"GPS"</b> sudah menyala (Biru).
+                    Tarik panel notifikasi dari atas layar ke bawah. Pastikan ikon <b>"Lokasi"</b> atau <b>"GPS"</b> sudah menyala.
                   </p>
                 </div>
 
@@ -315,7 +319,7 @@ export function SettingsView() {
                     <Settings2 className="h-4 w-4" /> 2. Reset Izin Browser
                   </h4>
                   <p className="text-[10px] text-blue-900 leading-relaxed font-bold">
-                    Jika tidak muncul pertanyaan "Izinkan Lokasi", klik <b>ikon Gembok</b> di sebelah URL alamat situs (kiri atas Chrome), lalu pilih <b>"Izin"</b> dan aktifkan <b>Lokasi</b>.
+                    Jika tidak muncul pertanyaan "Izinkan Lokasi", klik <b>ikon Gembok</b> di sebelah URL alamat situs, lalu pilih <b>"Izin"</b> dan aktifkan <b>Lokasi</b>.
                   </p>
                 </div>
               </div>
@@ -323,7 +327,7 @@ export function SettingsView() {
               <div className="p-4 bg-muted/20 rounded-xl flex gap-3 items-start">
                 <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 <p className="text-[9px] font-medium text-muted-foreground leading-relaxed">
-                  Aplikasi ini menggunakan teknologi Web Bluetooth yang memerlukan Izin Lokasi aktif pada Android agar daftar printer termal muncul saat pemindaian.
+                  Aplikasi ini menggunakan teknologi Web Bluetooth yang memerlukan Izin Lokasi aktif pada Android agar daftar printer termal muncul saat pemindaian. Karena keamanan browser, Anda perlu mengeklik "Sambungkan" setiap kali membuka aplikasi setelah ditutup.
                 </p>
               </div>
             </div>
