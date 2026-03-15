@@ -12,8 +12,10 @@ interface ReceiptViewProps {
 export function ReceiptView({ transaction }: ReceiptViewProps) {
   const { storeSettings, customers } = usePOS();
   const [barcodeBars, setBarcodeBars] = useState<{width: string, show: boolean}[]>([]);
+  const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
+    setMounted(true);
     // Generate random barcode bars only on the client to avoid hydration mismatch
     const bars = [...Array(24)].map(() => ({
       width: Math.random() > 0.5 ? 'w-0.5' : 'w-1',
@@ -22,7 +24,7 @@ export function ReceiptView({ transaction }: ReceiptViewProps) {
     setBarcodeBars(bars);
   }, []);
 
-  if (!transaction) return null;
+  if (!transaction || !mounted) return null;
 
   const selectedCustomer = transaction.customerId 
     ? customers.find(c => c.id === transaction.customerId) 
