@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { LayoutDashboard, ShoppingCart, Clock, Settings, LogOut, UtensilsCrossed, FileText, XCircle, AlertCircle, CheckCircle2, DollarSign, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Clock, Settings, LogOut, FileText, XCircle, AlertCircle, CheckCircle2, DollarSign, ArrowRight, LayoutDashboard } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { cn } from '@/lib/utils';
 import {
@@ -23,6 +23,22 @@ import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 import { Permission, Session } from '@/types/pos';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+
+const KompakLogo = ({ className }: { className?: string }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2.5" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 2 7 0 5-4 9-7 11z" />
+    <path d="M9 20l-5-5" />
+    <path d="M17 14l4-4" />
+  </svg>
+);
 
 export function Sidebar() {
   const { 
@@ -74,28 +90,11 @@ export function Sidebar() {
 
   const handleCloseSession = async (shouldPrint: boolean) => {
     if (!currentSession) return;
-
     const finalAmount = parseFloat(closingCash) || 0;
-    
-    const sessionData: Session = {
-      ...currentSession,
-      endTime: new Date().toISOString(),
-      closingCash: finalAmount,
-      status: 'Closed'
-    };
-
     closeSession(finalAmount);
     setClosingCash('');
-
     if (shouldPrint) {
       setShowSummaryPreview(true);
-      if (printer.status === 'connected') {
-        await printSessionSummaryViaBluetooth(sessionData);
-      } else {
-        setTimeout(() => {
-          window.print();
-        }, 800);
-      }
     }
   };
 
@@ -104,9 +103,9 @@ export function Sidebar() {
       <div className="flex flex-col items-center gap-10 md:gap-14 w-full">
         <div 
           onClick={() => setView('pos')}
-          className="bg-primary p-3 md:p-4 rounded-2xl md:rounded-[1.5rem] shadow-2xl shadow-primary/30 cursor-pointer hover:scale-110 active:scale-90 transition-all duration-300"
+          className="bg-primary p-3 md:p-4 rounded-2xl md:rounded-[1.5rem] shadow-xl shadow-primary/20 cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300"
         >
-          <UtensilsCrossed className="text-white h-5 w-5 md:h-7 md:w-7" />
+          <KompakLogo className="text-white h-5 w-5 md:h-7 md:w-7" />
         </div>
 
         <nav className="flex flex-col gap-4 md:gap-6 w-full px-2">
@@ -121,13 +120,13 @@ export function Sidebar() {
                       className={cn(
                         "relative p-3.5 md:p-5 rounded-2xl md:rounded-[1.5rem] transition-all duration-500 flex items-center justify-center group w-full",
                         isActive 
-                          ? "bg-primary text-white shadow-xl shadow-primary/40 scale-105" 
+                          ? "bg-white/10 text-primary shadow-inner" 
                           : "text-white/20 hover:bg-white/5 hover:text-white/60"
                       )}
                     >
                       <item.icon className={cn("h-5 w-5 md:h-7 md:w-7", isActive ? "stroke-[2.5px]" : "stroke-[2px]")} />
                       {isActive && (
-                        <div className="absolute left-0 w-1.5 h-8 bg-white rounded-r-full animate-in slide-in-from-left duration-300" />
+                        <div className="absolute left-0 w-1 h-8 bg-primary rounded-r-full" />
                       )}
                     </button>
                   </TooltipTrigger>
@@ -219,12 +218,12 @@ export function Sidebar() {
               <AlertDialogFooter className="gap-3 sm:flex-col sm:gap-3">
                 <AlertDialogCancel className="rounded-xl h-14 font-bold border-2 text-sm mt-0 border-muted-foreground/10 hover:bg-muted/50 transition-all">Kembali</AlertDialogCancel>
                 <div className="flex flex-col gap-3">
-                  <AlertDialogAction 
+                  <button 
                     onClick={() => handleCloseSession(false)}
                     className="rounded-xl h-14 bg-muted hover:bg-muted/80 text-foreground font-bold px-8 transition-all active:scale-95"
                   >
                     Tutup Tanpa Cetak
-                  </AlertDialogAction>
+                  </button>
                   <AlertDialogAction 
                     onClick={() => handleCloseSession(true)}
                     className="rounded-xl h-16 bg-primary hover:bg-primary/90 font-black px-8 shadow-2xl shadow-primary/30 text-base gap-3 transition-all active:scale-95"

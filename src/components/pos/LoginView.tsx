@@ -7,8 +7,24 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Lock, User as UserIcon, LogIn, Leaf, Eye, EyeOff } from 'lucide-react';
+import { Lock, User as UserIcon, LogIn, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+const KompakLogo = ({ className }: { className?: string }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2.5" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 2 7 0 5-4 9-7 11z" />
+    <path d="M9 20l-5-5" />
+    <path d="M17 14l4-4" />
+  </svg>
+);
 
 export function LoginView() {
   const { login, storeSettings } = usePOS();
@@ -45,76 +61,74 @@ export function LoginView() {
     <div className="min-h-screen w-full flex items-center justify-center bg-[#F9FBFF] p-4 font-poppins">
       <div className="w-full max-w-[340px] md:max-w-md">
         <div className="flex flex-col items-center mb-6 md:mb-10 text-center">
-          <div className="bg-primary p-4 md:p-5 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl shadow-primary/20 mb-4 md:mb-6 flex items-center justify-center min-w-[60px] min-h-[60px] md:min-w-[80px] md:min-h-[80px]">
+          <div className="bg-primary p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl shadow-primary/20 mb-4 md:mb-6 flex items-center justify-center min-w-[70px] min-h-[70px] md:min-w-[90px] md:min-h-[90px]">
             {storeSettings.logoUrl ? (
-              <img src={storeSettings.logoUrl} alt="Logo" className="h-8 w-8 md:h-12 md:w-12 object-contain invert brightness-0" />
+              <img src={storeSettings.logoUrl} alt="Logo" className="h-10 w-10 md:h-14 md:w-14 object-contain invert brightness-0" />
             ) : (
-              <Leaf className="h-8 w-8 md:h-10 md:w-10 text-white" />
+              <KompakLogo className="h-10 w-10 md:h-14 md:w-14 text-white" />
             )}
           </div>
           <h1 className="text-2xl md:text-4xl font-black tracking-tight text-[#1a1f2b]">{storeSettings.name}</h1>
-          <p className="text-muted-foreground font-bold mt-1 md:mt-2 uppercase tracking-widest text-[8px] md:text-[11px]">Sistem Point of Sale Modern</p>
+          <p className="text-muted-foreground font-bold mt-1 md:mt-2 uppercase tracking-[0.3em] text-[8px] md:text-[10px]">Sistem Kasir Enterprise</p>
         </div>
 
-        <Card className="border-none shadow-[0_30px_60px_-12px_rgba(0,0,0,0.08)] rounded-[2rem] md:rounded-[3rem] p-2 md:p-4 bg-white overflow-hidden">
-          <CardHeader className="text-center pb-4 md:pb-8 pt-6 md:pt-8 px-4">
-            <CardTitle className="text-xl md:text-2xl font-black">Masuk</CardTitle>
-            <CardDescription className="text-[10px] md:text-sm font-medium">Masukkan kredensial Anda untuk memulai sesi</CardDescription>
+        <Card className="border-none shadow-[0_40px_80px_-15px_rgba(0,0,0,0.1)] rounded-[2.5rem] md:rounded-[3.5rem] p-2 md:p-4 bg-white overflow-hidden">
+          <CardHeader className="text-center pb-4 md:pb-8 pt-6 md:pt-10 px-4">
+            <CardTitle className="text-xl md:text-2xl font-black">Masuk Akun</CardTitle>
+            <CardDescription className="text-[10px] md:text-sm font-medium">Gunakan akses staf untuk memulai sesi kasir</CardDescription>
           </CardHeader>
           
           <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4 md:space-y-6 px-6 md:px-8">
+            <CardContent className="space-y-4 md:space-y-6 px-6 md:px-10">
               <div className="space-y-2">
                 <Label className="font-black text-[9px] uppercase tracking-[0.2em] text-muted-foreground ml-1">Username</Label>
                 <div className="relative">
-                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                  <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30" />
                   <Input 
                     placeholder="Username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="h-12 md:h-16 rounded-xl md:rounded-[1.25rem] border-2 bg-muted/5 focus-visible:ring-primary/20 pl-11 md:pl-14 font-bold text-sm md:text-lg"
+                    className="h-14 md:h-16 rounded-2xl border-2 bg-muted/5 focus-visible:ring-primary/20 pl-14 font-bold text-sm md:text-lg"
                     required
                   />
                 </div>
               </div>
               
               <div className="space-y-2">
-                <div className="flex justify-between items-center ml-1">
-                  <Label className="font-black text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Sandi</Label>
-                </div>
+                <Label className="font-black text-[9px] uppercase tracking-[0.2em] text-muted-foreground ml-1">Kata Sandi</Label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                  <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30" />
                   <Input 
                     type={showPassword ? "text" : "password"}
-                    placeholder="Kata sandi"
+                    placeholder="Sandi Staf"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 md:h-16 rounded-xl md:rounded-[1.25rem] border-2 bg-muted/5 focus-visible:ring-primary/20 pl-11 md:pl-14 pr-11 md:pr-14 font-bold text-sm md:text-lg"
+                    className="h-14 md:h-16 rounded-2xl border-2 bg-muted/5 focus-visible:ring-primary/20 pl-14 pr-14 font-bold text-sm md:text-lg"
                     required
                   />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-primary transition-colors"
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-primary transition-colors"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
             </CardContent>
             
-            <CardFooter className="px-6 md:px-8 pb-8 md:pb-10 pt-4 md:pt-6">
+            <CardFooter className="px-6 md:px-10 pb-10 md:pb-14 pt-6 md:pt-8">
               <Button 
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-14 md:h-18 rounded-xl md:rounded-[1.25rem] text-base md:text-lg font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 gap-3"
+                className="w-full h-16 md:h-20 rounded-2xl text-base md:text-xl font-black bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/30 gap-3"
               >
                 {isLoading ? (
-                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <LogIn className="h-5 w-5 md:h-6 md:w-6" />
-                    Masuk Sekarang
+                    <LogIn className="h-6 w-6" />
+                    Buka Sesi Kasir
                   </>
                 )}
               </Button>
@@ -122,8 +136,8 @@ export function LoginView() {
           </form>
         </Card>
         
-        <p className="text-center mt-8 md:mt-12 text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-60">
-          &copy; {new Date().getFullYear()} KOMPAK POS • MODERN POS SYSTEM
+        <p className="text-center mt-10 md:mt-14 text-[8px] md:text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">
+          &copy; {new Date().getFullYear()} KOMPAK POS • PREMIUM ENTERPRISE SYSTEM
         </p>
       </div>
     </div>
