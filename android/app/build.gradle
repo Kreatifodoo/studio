@@ -5,13 +5,13 @@ android {
     compileSdk 34
     defaultConfig {
         applicationId "com.nextpos.app"
-        minSdk 22
+        minSdk 23
         targetSdk 34
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Fragments and resources defined in @capacitor/android
+             // Fragments and resources should be kept
              ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
@@ -24,18 +24,15 @@ android {
 }
 
 repositories {
-    flatDir{
+    flatDir {
         dirs 'libs'
     }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:健全appcompat:1.6.1'
+    implementation 'androidx.appcompat:androidx-appcompat:1.6.1'
     implementation project(':capacitor-android')
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation project(':capacitor-cordova-android-plugins')
 }
 

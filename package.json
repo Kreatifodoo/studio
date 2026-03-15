@@ -10,7 +10,8 @@
     "static": "next build",
     "android:sync": "npm run static && npx cap sync",
     "android:open": "npx cap open android",
-    "android:build": "npm run static && npx cap sync && cd android && ./gradlew assembleDebug"
+    "android:build": "npm run static && npx cap sync && cd android && ./gradlew assembleDebug",
+    "android:apk": "cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^7.0.0",
