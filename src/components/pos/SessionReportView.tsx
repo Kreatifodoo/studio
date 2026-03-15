@@ -138,7 +138,7 @@ export function SessionReportView() {
                 <div className="grid grid-cols-2 gap-4 border-y border-dashed py-4">
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Mulai</p>
-                    <p className="text-[11px] font-bold">{format(new Date(session.startTime), 'dd MMM, HH:mm')}</p>
+                    <p className="text-11px] font-bold">{format(new Date(session.startTime), 'dd MMM, HH:mm')}</p>
                   </div>
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Selesai</p>
