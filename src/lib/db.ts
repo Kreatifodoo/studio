@@ -3,10 +3,10 @@ import Dexie, { type EntityTable } from 'dexie';
 import { 
   Product, Transaction, Category, PaymentMethod, 
   Fee, Session, Customer, PriceList, Package, 
-  Combo, PromoDiscount, StoreSettings, User 
+  Combo, PromoDiscount, User 
 } from '@/types/pos';
 
-export class NextPOSDatabase extends Dexie {
+export class KompakPOSDatabase extends Dexie {
   products!: EntityTable<Product, 'id'>;
   transactions!: EntityTable<Transaction, 'id'>;
   sessions!: EntityTable<Session, 'id'>;
@@ -21,7 +21,10 @@ export class NextPOSDatabase extends Dexie {
   config!: EntityTable<{ key: string; value: any }, 'key'>;
 
   constructor() {
-    super('NextPOS_DB');
+    super('KompakPOS_Enterprise_DB');
+    
+    // Schema Versioning & Advanced Indexing
+    // Indexing pada kolom yang sering dicari: sku, barcode, category, date, customerId
     this.version(1).stores({
       products: 'id, sku, barcode, name, category',
       transactions: 'id, date, status, customerId',
@@ -37,6 +40,24 @@ export class NextPOSDatabase extends Dexie {
       config: 'key'
     });
   }
+
+  // Method untuk menghapus semua data (untuk Restore)
+  async resetDatabase() {
+    await Promise.all([
+      this.products.clear(),
+      this.transactions.clear(),
+      this.sessions.clear(),
+      this.customers.clear(),
+      this.users.clear(),
+      this.paymentMethods.clear(),
+      this.fees.clear(),
+      this.priceLists.clear(),
+      this.packages.clear(),
+      this.combos.clear(),
+      this.promoDiscounts.clear(),
+      this.config.clear(),
+    ]);
+  }
 }
 
-export const db = new NextPOSDatabase();
+export const db = new KompakPOSDatabase();
