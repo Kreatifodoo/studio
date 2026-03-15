@@ -26,18 +26,23 @@ import {
   Search,
   Calendar as CalendarIcon,
   Layers,
-  Ticket
+  Ticket,
+  Boxes,
+  LayoutGrid,
+  Zap,
+  Tag
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 const COLORS = ['#3D8AF5', '#10b981', '#8b5cf6', '#f43f5e', '#f59e0b', '#06b6d4'];
 
 export function DashboardView() {
-  const { history, products, customers, packages } = usePOS();
+  const { history, products, customers, packages, combos } = usePOS();
   
   const [mounted, setMounted] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -71,14 +76,21 @@ export function DashboardView() {
     let revenue = 0;
     let savings = 0;
     let cost = 0;
+    let packageRev = 0;
+    let comboRev = 0;
+    let pricelistSavings = 0;
+    let promoDiscountSavings = 0;
     
     const categoryMap: Record<string, number> = {};
     const productMap: Record<string, { name: string, rev: number, qty: number }> = {};
+    const packageMap: Record<string, { name: string, rev: number, qty: number }> = {};
+    const comboMap: Record<string, { name: string, rev: number, qty: number }> = {};
     const dailyMap: Record<string, number> = {};
 
     filteredHistory.forEach(t => {
       revenue += t.total;
       savings += (t.totalSavings || 0);
+      promoDiscountSavings += (t.totalSavings || 0);
       
       const day = format(parseISO(t.date), 'EEE', { locale: id });
       dailyMap[day] = (dailyMap[day] || 0) + t.total;
@@ -86,12 +98,22 @@ export function DashboardView() {
       t.items.forEach(item => {
         let itemCost = 0;
         if (item.isPackage) {
+          packageRev += (item.price * item.quantity);
+          packageMap[item.productId] = packageMap[item.productId] || { name: item.name, rev: 0, qty: 0 };
+          packageMap[item.productId].rev += (item.price * item.quantity);
+          packageMap[item.productId].qty += item.quantity;
+
           const pkg = packages.find(p => p.id === item.productId);
           itemCost = pkg?.items.reduce((acc, pi) => {
             const p = products.find(prod => prod.id === pi.productId);
             return acc + (p?.costPrice || 0) * pi.quantity;
           }, 0) || 0;
         } else if (item.isCombo) {
+          comboRev += (item.price * item.quantity);
+          comboMap[item.productId] = comboMap[item.productId] || { name: item.name, rev: 0, qty: 0 };
+          comboMap[item.productId].rev += (item.price * item.quantity);
+          comboMap[item.productId].qty += item.quantity;
+
           itemCost = item.comboSelections?.reduce((acc, sel) => {
             const p = products.find(prod => prod.id === sel.productId);
             return acc + (p?.costPrice || 0);
@@ -103,25 +125,38 @@ export function DashboardView() {
           if (product) {
             categoryMap[product.category] = (categoryMap[product.category] || 0) + (item.price * item.quantity);
           }
+
+          // Pricelist/Grosir Savings insight (original price vs tiered price)
+          if (!item.promoId && item.price < item.originalPrice) {
+            pricelistSavings += (item.originalPrice - item.price) * item.quantity;
+          }
         }
         cost += (itemCost * item.quantity);
 
-        productMap[item.productId] = productMap[item.productId] || { name: item.name, rev: 0, qty: 0 };
-        productMap[item.productId].rev += (item.price * item.quantity);
-        productMap[item.productId].qty += item.quantity;
+        if (!item.isPackage && !item.isCombo) {
+          productMap[item.productId] = productMap[item.productId] || { name: item.name, rev: 0, qty: 0 };
+          productMap[item.productId].rev += (item.price * item.quantity);
+          productMap[item.productId].qty += item.quantity;
+        }
       });
     });
 
     const profit = revenue - cost;
     const topProducts = Object.values(productMap).sort((a, b) => b.rev - a.rev).slice(0, 5);
+    const topPackages = Object.values(packageMap).sort((a, b) => b.rev - a.rev).slice(0, 5);
+    const topCombos = Object.values(comboMap).sort((a, b) => b.rev - a.rev).slice(0, 5);
     const categoryData = Object.entries(categoryMap).map(([name, value]) => ({ name, value }));
     const chartData = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(day => ({
       name: day,
       sales: dailyMap[day] || 0
     }));
 
-    return { revenue, savings, cost, profit, categoryData, chartData, topProducts };
-  }, [filteredHistory, products, packages]);
+    return { 
+      revenue, savings, cost, profit, categoryData, chartData, topProducts, 
+      packageRev, comboRev, pricelistSavings, promoDiscountSavings,
+      topPackages, topCombos
+    };
+  }, [filteredHistory, products, packages, combos]);
 
   if (!mounted) return null;
 
@@ -160,7 +195,7 @@ export function DashboardView() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <StatCard title="Pendapatan" value={formatCurrency(stats.revenue)} trend="+12%" icon={DollarSign} color="bg-primary" />
-        <StatCard title="Promo" value={formatCurrency(stats.savings)} trend="Total" icon={Ticket} color="bg-accent" />
+        <StatCard title="Hemat Promo" value={formatCurrency(stats.savings)} trend="Total" icon={Ticket} color="bg-accent" />
         <StatCard title="Laba Kotor" value={formatCurrency(stats.profit)} trend="Net" icon={Wallet} color="bg-green-500" />
         <StatCard title="Transaksi" value={filteredHistory.length.toString()} trend="Orders" icon={ShoppingBag} color="bg-orange-500" />
       </div>
@@ -225,7 +260,7 @@ export function DashboardView() {
             <div className="flex flex-wrap gap-2 mt-2 justify-center">
               {stats.categoryData.slice(0, 4).map((cat, idx) => (
                 <div key={idx} className="flex items-center gap-1">
-                  <div className="width-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                   <span className="text-[8px] font-bold text-muted-foreground">{cat.name}</span>
                 </div>
               ))}
@@ -234,10 +269,110 @@ export function DashboardView() {
         </Card>
       </div>
 
+      <div className="flex flex-col gap-1 mt-4">
+        <h3 className="text-lg md:text-xl font-black flex items-center gap-2">
+          <Zap className="text-yellow-500 h-5 w-5" /> Analisis Penawaran & Paket
+        </h3>
+        <p className="text-[10px] md:text-sm text-muted-foreground">Detail performa paket bundling dan harga khusus</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col gap-2">
+          <div className="flex justify-between items-center">
+            <Boxes className="text-accent h-5 w-5" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Paket</span>
+          </div>
+          <p className="text-base font-black">{formatCurrency(stats.packageRev)}</p>
+          <p className="text-[9px] font-bold text-muted-foreground">Total Penjualan Paket</p>
+        </div>
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col gap-2">
+          <div className="flex justify-between items-center">
+            <LayoutGrid className="text-primary h-5 w-5" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Combo</span>
+          </div>
+          <p className="text-base font-black">{formatCurrency(stats.comboRev)}</p>
+          <p className="text-[9px] font-bold text-muted-foreground">Total Penjualan Combo</p>
+        </div>
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col gap-2">
+          <div className="flex justify-between items-center">
+            <Tag className="text-green-500 h-5 w-5" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Grosir</span>
+          </div>
+          <p className="text-base font-black">{formatCurrency(stats.pricelistSavings)}</p>
+          <p className="text-[9px] font-bold text-muted-foreground">Hemat Harga Bertingkat</p>
+        </div>
+        <div className="p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col gap-2">
+          <div className="flex justify-between items-center">
+            <Ticket className="text-rose-500 h-5 w-5" />
+            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Diskon</span>
+          </div>
+          <p className="text-base font-black">{formatCurrency(stats.promoDiscountSavings)}</p>
+          <p className="text-[9px] font-bold text-muted-foreground">Hemat Kupon / Promo</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
         <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
           <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6">
-            <BarChart3 className="text-primary h-4 w-4 md:h-5 md:w-5" /> Produk Terlaris
+            <Boxes className="text-accent h-4 w-4 md:h-5 md:w-5" /> Paket Terlaris
+          </CardTitle>
+          <div className="space-y-4">
+            {stats.topPackages.map((pkg, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-muted/10 rounded-xl md:rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-black text-[10px] md:text-xs">
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <p className="font-black text-xs md:text-sm">{pkg.name}</p>
+                    <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{pkg.qty} Terjual</p>
+                  </div>
+                </div>
+                <p className="font-black text-xs md:text-sm text-primary">{formatCurrency(pkg.rev)}</p>
+              </div>
+            ))}
+            {stats.topPackages.length === 0 && (
+              <div className="text-center py-10 opacity-30">
+                 <Boxes className="h-10 w-10 mx-auto mb-2" />
+                 <p className="font-bold text-xs">Belum ada paket terjual</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
+          <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6">
+            <LayoutGrid className="text-primary h-4 w-4 md:h-5 md:w-5" /> Combo Terlaris
+          </CardTitle>
+          <div className="space-y-4">
+            {stats.topCombos.map((combo, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-muted/10 rounded-xl md:rounded-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-[10px] md:text-xs">
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <p className="font-black text-xs md:text-sm">{combo.name}</p>
+                    <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{combo.qty} Terjual</p>
+                  </div>
+                </div>
+                <p className="font-black text-xs md:text-sm text-primary">{formatCurrency(combo.rev)}</p>
+              </div>
+            ))}
+            {stats.topCombos.length === 0 && (
+              <div className="text-center py-10 opacity-30">
+                 <LayoutGrid className="h-10 w-10 mx-auto mb-2" />
+                 <p className="font-bold text-xs">Belum ada combo terjual</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+        <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
+          <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6">
+            <BarChart3 className="text-primary h-4 w-4 md:h-5 md:w-5" /> Produk Terlaris (Satuan)
           </CardTitle>
           <div className="space-y-4">
             {stats.topProducts.map((prod, idx) => (
@@ -314,7 +449,7 @@ function StatCard({ title, value, trend, icon: Icon, color }: any) {
   return (
     <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-6 bg-white overflow-hidden relative group">
       <div className="flex justify-between items-start mb-3 md:mb-4">
-        <div className={`${color} p-2 md:p-4 rounded-xl md:rounded-2xl text-white`}>
+        <div className={cn(color, "p-2 md:p-4 rounded-xl md:rounded-2xl text-white")}>
           <Icon className="h-4 w-4 md:h-6 md:w-6" />
         </div>
         <span className="text-[7px] md:text-[10px] font-black px-2 py-1 rounded-lg bg-muted text-muted-foreground uppercase tracking-widest">
