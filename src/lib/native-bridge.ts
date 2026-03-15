@@ -1,11 +1,9 @@
-
 "use client";
 
 import { Transaction } from '@/types/pos';
 
 /**
  * Deteksi apakah aplikasi berjalan di platform native (Android/iOS).
- * Menggunakan pengecekan window.Capacitor untuk Next.js safety.
  */
 export const isNative = () => {
   if (typeof window === 'undefined') return false;
@@ -13,7 +11,7 @@ export const isNative = () => {
 };
 
 /**
- * Memulai pemindaian barcode menggunakan kamera perangkat.
+ * Memulai pemindaian barcode menggunakan MLKit native.
  */
 export async function startScan(): Promise<string | null> {
   if (!isNative()) {
@@ -38,9 +36,7 @@ export async function startScan(): Promise<string | null> {
     if (barcodes.length > 0) {
       try {
         await Haptics.impact({ style: ImpactStyle.Heavy });
-      } catch (hErr) {
-        // Haptics fail is non-critical
-      }
+      } catch (hErr) {}
       return barcodes[0].displayValue;
     }
     

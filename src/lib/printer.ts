@@ -34,7 +34,6 @@ export async function printReceipt(order: Transaction, storeName: string) {
     const { BluetoothPrinter } = await import('@kduma-autoid/capacitor-bluetooth-printer');
     const content = formatReceipt(order, storeName);
     
-    // Properti yang benar adalah 'data', bukan 'content'
     await BluetoothPrinter.print({ data: content });
     return true;
   } catch (error) {
@@ -65,7 +64,7 @@ function formatReceipt(order: Transaction, storeName: string): string {
   content += `Metode: ${order.paymentMethod || 'Tunai'}\n`;
   content += line;
   content += `\x1b\x61\x01`; // Align Center
-  content += `TERIMA KASIH\n\n\n\n`; // Padding for paper cutter
+  content += `TERIMA KASIH\n\n\n\n`;
   
   return content;
 }
