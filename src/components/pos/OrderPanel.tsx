@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronRight, UserPlus, User, Phone, Package as PackageIcon, LayoutGrid, Tag } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronDown, UserPlus, User, Search, Check, X } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from '@/components/ui/badge';
 import { PaymentDialog } from './PaymentDialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,17 +27,27 @@ export function OrderPanel({ isMobile = false }: OrderPanelProps) {
   const { 
     cart, removeFromCart, updateQuantity, updateNote, clearCart, 
     addTransaction, fees, currentSession, customers, addCustomer,
-    selectedCustomerId, setSelectedCustomerId, packages, products, combos
+    selectedCustomerId, setSelectedCustomerId
   } = usePOS();
   
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
+  const [isCustomerPopoverOpen, setIsCustomerPopoverOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
   
   const [newCustName, setNewCustName] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
 
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch) return customers;
+    return customers.filter(c => 
+      c.name.toLowerCase().includes(customerSearch.toLowerCase()) || 
+      c.phone.includes(customerSearch)
+    );
+  }, [customers, customerSearch]);
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const totalPromoSavings = cart.reduce((acc, item) => acc + (item.promoSavings * item.quantity), 0);
@@ -117,18 +126,104 @@ export function OrderPanel({ isMobile = false }: OrderPanelProps) {
               <UserPlus className="h-3 w-3 md:h-3.5 md:w-3.5" />
             </button>
           </div>
-          <Select 
-            value={selectedCustomerId || "none"} 
-            onValueChange={(val) => setSelectedCustomerId(val === "none" ? null : val)}
-          >
-            <SelectTrigger className="border-none bg-transparent shadow-none h-auto p-0 text-xs md:text-sm font-bold focus:ring-0">
-              <SelectValue placeholder="Pelanggan Umum (Walk-in)" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl md:rounded-2xl">
-              <SelectItem value="none">Pelanggan Umum (Walk-in)</SelectItem>
-              {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          
+          <Popover open={isCustomerPopoverOpen} onOpenChange={setIsCustomerPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                role="combobox"
+                aria-expanded={isCustomerPopoverOpen}
+                className="w-full justify-between border-none bg-transparent shadow-none h-auto p-0 text-xs md:text-sm font-bold hover:bg-transparent focus:ring-0 group"
+              >
+                <span className="truncate">
+                  {selectedCustomer ? selectedCustomer.name : "Pelanggan Umum (Walk-in)"}
+                </span>
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0 rounded-2xl border-none shadow-2xl overflow-hidden bg-white" align="start">
+              <div className="p-3 border-b bg-muted/5">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                  <Input 
+                    placeholder="Cari pelanggan..." 
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="h-10 pl-9 rounded-xl border-none bg-muted/20 focus-visible:ring-primary/20 text-xs font-bold"
+                  />
+                  {customerSearch && (
+                    <button 
+                      onClick={() => setCustomerSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-muted-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <ScrollArea className="h-[250px]">
+                <div className="p-2 space-y-1">
+                  <button
+                    onClick={() => {
+                      setSelectedCustomerId(null);
+                      setIsCustomerPopoverOpen(false);
+                      setCustomerSearch('');
+                    }}
+                    className={cn(
+                      "flex items-center justify-between w-full px-4 py-3 rounded-xl text-left text-xs font-bold transition-all",
+                      !selectedCustomerId ? "bg-primary text-white" : "hover:bg-muted/50"
+                    )}
+                  >
+                    Pelanggan Umum (Walk-in)
+                    {!selectedCustomerId && <Check className="h-3 w-3" />}
+                  </button>
+                  
+                  {filteredCustomers.map((customer) => (
+                    <button
+                      key={customer.id}
+                      onClick={() => {
+                        setSelectedCustomerId(customer.id);
+                        setIsCustomerPopoverOpen(false);
+                        setCustomerSearch('');
+                      }}
+                      className={cn(
+                        "flex items-center justify-between w-full px-4 py-3 rounded-xl text-left transition-all",
+                        selectedCustomerId === customer.id ? "bg-primary text-white" : "hover:bg-muted/50"
+                      )}
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold leading-tight">{customer.name}</span>
+                        <span className={cn(
+                          "text-[9px] font-medium opacity-60",
+                          selectedCustomerId === customer.id ? "text-white" : "text-muted-foreground"
+                        )}>{customer.phone}</span>
+                      </div>
+                      {selectedCustomerId === customer.id && <Check className="h-3 w-3" />}
+                    </button>
+                  ))}
+
+                  {filteredCustomers.length === 0 && (
+                    <div className="py-10 text-center opacity-30">
+                      <Search className="h-8 w-8 mx-auto mb-2" />
+                      <p className="text-[10px] font-bold">Tidak ditemukan</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+              <div className="p-2 border-t bg-muted/5">
+                <Button 
+                  onClick={() => {
+                    setIsCustomerPopoverOpen(false);
+                    setIsNewCustomerOpen(true);
+                  }}
+                  variant="ghost" 
+                  className="w-full h-10 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 gap-2"
+                >
+                  <UserPlus className="h-3.5 w-3.5" /> Tambah Pelanggan
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
