@@ -30,11 +30,22 @@ import {
   Boxes,
   LayoutGrid,
   Zap,
-  Tag
+  Tag,
+  Flame,
+  Turtle,
+  PackageX,
+  Clock
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { format, subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -47,14 +58,15 @@ export function DashboardView() {
   const [mounted, setMounted] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [period, setPeriod] = useState('30');
 
   useEffect(() => {
     setMounted(true);
     const end = new Date();
-    const start = subDays(end, 30);
+    const start = subDays(end, parseInt(period));
     setStartDate(format(start, 'yyyy-MM-dd'));
     setEndDate(format(end, 'yyyy-MM-dd'));
-  }, []);
+  }, [period]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -86,6 +98,10 @@ export function DashboardView() {
     const packageMap: Record<string, { name: string, rev: number, qty: number }> = {};
     const comboMap: Record<string, { name: string, rev: number, qty: number }> = {};
     const dailyMap: Record<string, number> = {};
+    const productSalesQty: Record<string, number> = {};
+
+    // Initialize product sales qty
+    products.forEach(p => productSalesQty[p.id] = 0);
 
     filteredHistory.forEach(t => {
       revenue += t.total;
@@ -124,9 +140,9 @@ export function DashboardView() {
           
           if (product) {
             categoryMap[product.category] = (categoryMap[product.category] || 0) + (item.price * item.quantity);
+            productSalesQty[product.id] = (productSalesQty[product.id] || 0) + item.quantity;
           }
 
-          // Pricelist/Grosir Savings insight (original price vs tiered price)
           if (!item.promoId && item.price < item.originalPrice) {
             pricelistSavings += (item.originalPrice - item.price) * item.quantity;
           }
@@ -151,44 +167,84 @@ export function DashboardView() {
       sales: dailyMap[day] || 0
     }));
 
+    // Stock Movement Logic
+    const allProductMovement = products.map(p => ({
+      id: p.id,
+      name: p.name,
+      qtySold: productSalesQty[p.id] || 0,
+      stock: p.onHandQty,
+      sku: p.sku
+    }));
+
+    const fastMoving = allProductMovement
+      .filter(p => p.qtySold > 0)
+      .sort((a, b) => b.qtySold - a.qtySold)
+      .slice(0, 5);
+
+    const slowMoving = allProductMovement
+      .filter(p => p.qtySold > 0)
+      .sort((a, b) => a.qtySold - b.qtySold)
+      .slice(0, 5);
+
+    const deadStock = allProductMovement
+      .filter(p => p.qtySold === 0 && p.stock > 0)
+      .slice(0, 5);
+
     return { 
       revenue, savings, cost, profit, categoryData, chartData, topProducts, 
       packageRev, comboRev, pricelistSavings, promoDiscountSavings,
-      topPackages, topCombos
+      topPackages, topCombos, fastMoving, slowMoving, deadStock
     };
   }, [filteredHistory, products, packages, combos]);
 
   if (!mounted) return null;
 
   return (
-    <div className="flex flex-col gap-4 md:gap-8 pb-20">
+    <div className="flex flex-col gap-4 md:gap-8 pb-24">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-black">Dasbor</h2>
           <p className="text-[10px] md:text-sm text-muted-foreground">Analisis performa bisnis Anda</p>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4 bg-white p-2 md:p-4 rounded-2xl md:rounded-[2rem] shadow-sm border border-muted/50 w-full lg:w-auto overflow-x-auto">
-          <div className="flex flex-col gap-0.5">
-            <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dari</Label>
-            <Input 
-              type="date" 
-              value={startDate} 
-              onChange={(e) => setStartDate(e.target.value)}
-              className="h-8 md:h-10 border-none bg-muted/20 rounded-lg md:rounded-xl font-bold text-xs"
-            />
+        <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 bg-white p-2 md:p-4 rounded-2xl md:rounded-[2rem] shadow-sm border border-muted/50 w-full lg:w-auto">
+          <div className="flex items-center gap-2 w-full md:w-auto mr-2">
+            <Clock className="h-4 w-4 text-primary" />
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="h-10 w-full md:w-[140px] border-none bg-muted/20 font-bold rounded-xl text-xs">
+                <SelectValue placeholder="Pilih Periode" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-none shadow-2xl">
+                <SelectItem value="1">Hari Ini</SelectItem>
+                <SelectItem value="7">7 Hari Terakhir</SelectItem>
+                <SelectItem value="14">14 Hari Terakhir</SelectItem>
+                <SelectItem value="21">21 Hari Terakhir</SelectItem>
+                <SelectItem value="30">30 Hari Terakhir</SelectItem>
+                <SelectItem value="45">45 Hari Terakhir</SelectItem>
+                <SelectItem value="60">60 Hari Terakhir</SelectItem>
+                <SelectItem value="90">90 Hari Terakhir</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ke</Label>
-            <Input 
-              type="date" 
-              value={endDate} 
-              onChange={(e) => setEndDate(e.target.value)}
-              className="h-8 md:h-10 border-none bg-muted/20 rounded-lg md:rounded-xl font-bold text-xs"
-            />
-          </div>
-          <div className="bg-primary/10 p-2 md:p-3 rounded-xl text-primary flex-shrink-0">
-            <CalendarIcon className="h-4 w-4 md:h-5 md:w-5" />
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="flex flex-col gap-0.5">
+              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dari</Label>
+              <Input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => {setStartDate(e.target.value); setPeriod('custom');}}
+                className="h-8 md:h-10 border-none bg-muted/20 rounded-lg md:rounded-xl font-bold text-xs"
+              />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ke</Label>
+              <Input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => {setEndDate(e.target.value); setPeriod('custom');}}
+                className="h-8 md:h-10 border-none bg-muted/20 rounded-lg md:rounded-xl font-bold text-xs"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -311,7 +367,79 @@ export function DashboardView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+      <div className="flex flex-col gap-1 mt-8">
+        <h3 className="text-lg md:text-xl font-black flex items-center gap-2">
+          <BarChart3 className="text-primary h-5 w-5" /> Analisis Pergerakan Stok (Moving Items)
+        </h3>
+        <p className="text-[10px] md:text-sm text-muted-foreground">Pantau kesehatan stok berdasarkan volume penjualan di periode terpilih</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
+        <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
+          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6">
+            <Flame className="text-orange-500 h-4 w-4 md:h-5 md:w-5" /> Fast Moving
+          </CardTitle>
+          <div className="space-y-4">
+            {stats.fastMoving.map((p, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-orange-50/30 rounded-xl md:rounded-2xl border border-orange-100">
+                <div>
+                  <p className="font-black text-xs md:text-sm">{p.name}</p>
+                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-black text-xs md:text-sm text-orange-600">{p.qtySold} Unit</p>
+                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Stok: {p.stock}</p>
+                </div>
+              </div>
+            ))}
+            {stats.fastMoving.length === 0 && <div className="py-10 text-center opacity-20"><Flame className="h-10 w-10 mx-auto" /></div>}
+          </div>
+        </Card>
+
+        <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
+          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6">
+            <Turtle className="text-blue-500 h-4 w-4 md:h-5 md:w-5" /> Slow Moving
+          </CardTitle>
+          <div className="space-y-4">
+            {stats.slowMoving.map((p, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-blue-50/30 rounded-xl md:rounded-2xl border border-blue-100">
+                <div>
+                  <p className="font-black text-xs md:text-sm">{p.name}</p>
+                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-black text-xs md:text-sm text-blue-600">{p.qtySold} Unit</p>
+                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Stok: {p.stock}</p>
+                </div>
+              </div>
+            ))}
+            {stats.slowMoving.length === 0 && <div className="py-10 text-center opacity-20"><Turtle className="h-10 w-10 mx-auto" /></div>}
+          </div>
+        </Card>
+
+        <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
+          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6">
+            <PackageX className="text-destructive h-4 w-4 md:h-5 md:w-5" /> Dead Stock
+          </CardTitle>
+          <div className="space-y-4">
+            {stats.deadStock.map((p, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-rose-50/30 rounded-xl md:rounded-2xl border border-rose-100">
+                <div>
+                  <p className="font-black text-xs md:text-sm">{p.name}</p>
+                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-black text-xs md:text-sm text-destructive">0 Terjual</p>
+                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Sisa Stok: {p.stock}</p>
+                </div>
+              </div>
+            ))}
+            {stats.deadStock.length === 0 && <div className="py-10 text-center opacity-20"><PackageX className="h-10 w-10 mx-auto" /></div>}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 mt-4">
         <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
           <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6">
             <Boxes className="text-accent h-4 w-4 md:h-5 md:w-5" /> Paket Terlaris
