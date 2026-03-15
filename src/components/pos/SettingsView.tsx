@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -34,7 +34,9 @@ import {
   Mail,
   MapPin,
   History,
-  CreditCard
+  CreditCard,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -76,6 +78,7 @@ export function SettingsView() {
   } = usePOS();
   
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('customers');
   const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
   const [restoreJson, setRestoreJson] = useState('');
@@ -128,6 +131,17 @@ export function SettingsView() {
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProductForm(prev => ({ ...prev, image: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleBackup = async () => {
@@ -471,19 +485,18 @@ export function SettingsView() {
                   <Input 
                     value={productForm.barcode || ''} 
                     onChange={(e) => setProductForm({ ...productForm, barcode: e.target.value })} 
-                    className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                    className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20 flex-1" 
                     placeholder="8880001"
                   />
-                  {editingProduct && (
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="h-12 w-12 rounded-xl border-2 border-primary/20 text-primary hover:bg-primary/5"
-                      onClick={() => window.print()}
-                    >
-                      <Printer className="h-5 w-5" />
-                    </Button>
-                  )}
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    type="button"
+                    className="h-12 w-12 rounded-xl border-2 border-primary/20 text-primary hover:bg-primary/5 active:scale-95 transition-all"
+                    onClick={() => window.print()}
+                  >
+                    <Printer className="h-5 w-5" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -518,14 +531,46 @@ export function SettingsView() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Gambar Produk</Label>
-              <Input 
-                value={productForm.image || ''} 
-                onChange={(e) => setProductForm({ ...productForm, image: e.target.value })} 
-                className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
-                placeholder="https://picsum.photos/seed/..."
-              />
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Gambar Produk</Label>
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 space-y-2">
+                  <Input 
+                    value={productForm.image || ''} 
+                    onChange={(e) => setProductForm({ ...productForm, image: e.target.value })} 
+                    className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                    placeholder="URL Gambar (https://...)"
+                  />
+                </div>
+                <div className="flex-none">
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleImageUpload} 
+                  />
+                  <Button 
+                    type="button"
+                    variant="secondary"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-12 rounded-xl bg-muted/50 hover:bg-muted font-bold gap-2 border-2 px-4"
+                  >
+                    <Upload className="h-4 w-4" /> Pilih File
+                  </Button>
+                </div>
+              </div>
+              {productForm.image && (
+                <div className="mt-2 relative w-32 h-32 rounded-2xl overflow-hidden border-4 border-white shadow-lg">
+                  <img src={productForm.image} className="w-full h-full object-cover" alt="Pratinjau" />
+                  <button 
+                    onClick={() => setProductForm({ ...productForm, image: '' })}
+                    className="absolute top-1 right-1 bg-destructive text-white p-1 rounded-full shadow-md"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter className="p-8 md:p-10 pt-4 bg-white border-t rounded-b-[2.5rem]">
@@ -555,12 +600,10 @@ export function SettingsView() {
             </Button>
           </DialogFooter>
         </DialogContent>
-        {/* Print View Wrapper */}
-        {editingProduct && (
-          <div className="hidden">
-            <BarcodePrintView product={editingProduct} />
-          </div>
-        )}
+        {/* Hidden Barcode Label for Printer */}
+        <div className="fixed -top-[1000px] left-0 print:static print:block">
+          <BarcodePrintView product={productForm} />
+        </div>
       </Dialog>
 
       {/* Pricelist Dialog */}
