@@ -494,9 +494,9 @@ export function SettingsView() {
             <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Produk</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Stok Awal</Label><Input type="number" value={productForm.onHandQty || 0} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value)})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Stok Awal</Label><Input type="number" value={productForm.onHandQty ?? 0} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
             </div>
-            <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Jual (Rp)</Label><Input type="number" value={productForm.price || 0} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value)})} className="h-12 rounded-xl border-2" /></div>
+            <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Jual (Rp)</Label><Input type="number" value={productForm.price ?? 0} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
             <div className="space-y-1">
               <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Kategori</Label>
               <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl">{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
@@ -524,7 +524,7 @@ export function SettingsView() {
               </div>
             </div>
 
-            <Separator />
+            <Separator className="my-4" />
 
             <div className="bg-primary/5 p-4 rounded-2xl border-2 border-primary/10 space-y-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-primary">Tambah Produk ke Daftar</p>
@@ -539,9 +539,9 @@ export function SettingsView() {
                 <div className="space-y-2">
                   <Label className="text-[9px] font-bold">Atur Tier Qty</Label>
                   <div className="grid grid-cols-3 gap-1">
-                    <Input type="number" placeholder="Min" value={newTier.minQty} onChange={(e) => setNewTier({...newTier, minQty: parseInt(e.target.value)})} className="h-9 rounded-lg text-xs" />
-                    <Input type="number" placeholder="Max" value={newTier.maxQty} onChange={(e) => setNewTier({...newTier, maxQty: parseInt(e.target.value)})} className="h-9 rounded-lg text-xs" />
-                    <Input type="number" placeholder="Harga" value={newTier.price} onChange={(e) => setNewTier({...newTier, price: parseFloat(e.target.value)})} className="h-9 rounded-lg text-xs" />
+                    <Input type="number" placeholder="Min" value={newTier.minQty ?? 0} onChange={(e) => setNewTier({...newTier, minQty: parseInt(e.target.value) || 0})} className="h-9 rounded-lg text-xs" />
+                    <Input type="number" placeholder="Max" value={newTier.maxQty ?? 0} onChange={(e) => setNewTier({...newTier, maxQty: parseInt(e.target.value) || 0})} className="h-9 rounded-lg text-xs" />
+                    <Input type="number" placeholder="Harga" value={newTier.price ?? 0} onChange={(e) => setNewTier({...newTier, price: parseFloat(e.target.value) || 0})} className="h-9 rounded-lg text-xs" />
                   </div>
                   <Button onClick={addTier} variant="outline" className="w-full h-8 rounded-lg gap-1 font-black text-[10px] bg-white"><Plus className="h-3 w-3" /> Tambah Tier</Button>
                 </div>
@@ -610,7 +610,7 @@ export function SettingsView() {
             <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Paket</Label><Input value={packageForm.name || ''} onChange={(e) => setPackageForm({...packageForm, name: e.target.value})} placeholder="Contoh: Paket Kenyang" className="h-12 rounded-xl border-2" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">SKU Paket</Label><Input value={packageForm.sku || ''} onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Paket</Label><Input type="number" value={packageForm.price || 0} onChange={(e) => setPackageForm({...packageForm, price: parseFloat(e.target.value)})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Paket</Label><Input type="number" value={packageForm.price ?? 0} onChange={(e) => setPackageForm({...packageForm, price: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
             </div>
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest text-center py-4">Penyusunan item paket akan tersedia di versi berikutnya.</p>
           </div>
@@ -626,7 +626,7 @@ export function SettingsView() {
             <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Combo</Label><Input value={comboForm.name || ''} onChange={(e) => setComboForm({...comboForm, name: e.target.value})} placeholder="Contoh: Menu Custom" className="h-12 rounded-xl border-2" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">SKU</Label><Input value={comboForm.sku || ''} onChange={(e) => setComboForm({...comboForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Dasar</Label><Input type="number" value={comboForm.basePrice || 0} onChange={(e) => setComboForm({...comboForm, basePrice: parseFloat(e.target.value)})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Dasar</Label><Input type="number" value={comboForm.basePrice ?? 0} onChange={(e) => setComboForm({...comboForm, basePrice: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
             </div>
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest text-center py-4">Pengaturan Grup Pilihan akan tersedia di versi berikutnya.</p>
           </div>
@@ -649,7 +649,7 @@ export function SettingsView() {
                 <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Jenis</Label>
                 <Select value={promoForm.type} onValueChange={(val: any) => setPromoForm({...promoForm, type: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="Percentage">Persentase (%)</SelectItem><SelectItem value="FixedAmount">Nominal (Rp)</SelectItem></SelectContent></Select>
               </div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nilai</Label><Input type="number" value={promoForm.value || 0} onChange={(e) => setPromoForm({...promoForm, value: parseFloat(e.target.value)})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nilai</Label><Input type="number" value={promoForm.value ?? 0} onChange={(e) => setPromoForm({...promoForm, value: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
             </div>
           </div>
           <DialogFooter><Button onClick={savePromo} className="w-full h-12 rounded-xl bg-primary font-black">Simpan Promo</Button></DialogFooter>
