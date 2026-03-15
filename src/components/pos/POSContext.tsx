@@ -195,6 +195,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
                 }
                 if (data.name) {
                   const cloudSettings: StoreSettings = {
+                    id: 'global_settings',
                     name: data.name,
                     currencySymbol: data.currencySymbol || 'Rp',
                     address: data.address || '',
@@ -602,12 +603,31 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     setView('reports');
   };
 
+  const getTieredPrice = useCallback((productId: string, quantity: number, basePrice: number) => {
+    const activePricelist = priceLists.find(pl => 
+      pl.enabled && 
+      pl.productId === productId &&
+      new Date(pl.startDate) <= new Date() &&
+      new Date(pl.endDate) >= new Date()
+    );
+
+    if (!activePricelist) return basePrice;
+
+    const tier = activePricelist.tiers.find(t => quantity >= t.minQty && quantity <= t.maxQty);
+    return tier ? tier.price : basePrice;
+  }, [priceLists]);
+
   const addToCart = (product: Product) => {
     if (!product.available || !currentSession) return;
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
-      if (existing) return prev.map(item => (item.productId === product.id && !item.isPackage && !item.isCombo) ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...prev, { id: Math.random().toString(36).substr(2, 9), productId: product.id, name: product.name, price: product.price, originalPrice: product.price, promoSavings: 0, quantity: 1, isPackage: false, isCombo: false }];
+      if (existing) {
+        const newQty = existing.quantity + 1;
+        const tieredPrice = getTieredPrice(product.id, newQty, product.price);
+        return prev.map(item => (item.productId === product.id && !item.isPackage && !item.isCombo) ? { ...item, quantity: newQty, price: tieredPrice } : item);
+      }
+      const tieredPrice = getTieredPrice(product.id, 1, product.price);
+      return [...prev, { id: Math.random().toString(36).substr(2, 9), productId: product.id, name: product.name, price: tieredPrice, originalPrice: product.price, promoSavings: 0, quantity: 1, isPackage: false, isCombo: false }];
     });
   };
 
@@ -628,7 +648,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeFromCart = (itemId: string) => setCart(prev => prev.filter(item => item.id !== itemId));
-  const updateQuantity = (itemId: string, delta: number) => setCart(prev => prev.map(item => item.id === itemId ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
+  
+  const updateQuantity = (itemId: string, delta: number) => {
+    setCart(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const newQty = Math.max(1, item.quantity + delta);
+        if (!item.isPackage && !item.isCombo) {
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+            const tieredPrice = getTieredPrice(product.id, newQty, product.price);
+            return { ...item, quantity: newQty, price: tieredPrice };
+          }
+        }
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
   const updateNote = (itemId: string, note: string) => setCart(prev => prev.map(item => item.id === itemId ? { ...item, note } : item));
   const clearCart = () => { setCart([]); setSelectedCustomerId(null); };
 

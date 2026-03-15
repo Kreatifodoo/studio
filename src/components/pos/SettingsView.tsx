@@ -29,11 +29,12 @@ import {
   Tag,
   Boxes,
   LayoutGrid,
-  Ticket
+  Ticket,
+  X
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
-  Product, PaymentMethod, Fee, Customer, Permission, PriceList, Package, Combo, PromoDiscount 
+  Product, PaymentMethod, Fee, Customer, Permission, PriceList, Package, Combo, PromoDiscount, PriceTier 
 } from '@/types/pos';
 import { 
   Dialog, 
@@ -92,6 +93,7 @@ export function SettingsView() {
   
   const [editingPricelist, setEditingPricelist] = useState<PriceList | null>(null);
   const [pricelistForm, setPricelistForm] = useState<Partial<PriceList>>({});
+  const [newTier, setNewTier] = useState<PriceTier>({ minQty: 1, maxQty: 999, price: 0 });
   
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [packageForm, setPackageForm] = useState<Partial<Package>>({});
@@ -193,6 +195,19 @@ export function SettingsView() {
     }
     setIsPricelistDialogOpen(false);
     toast({ title: "Pricelist Berhasil Disimpan" });
+  };
+
+  const addTier = () => {
+    if (newTier.price <= 0) return;
+    const currentTiers = pricelistForm.tiers || [];
+    setPricelistForm({ ...pricelistForm, tiers: [...currentTiers, newTier] });
+    setNewTier({ minQty: 1, maxQty: 999, price: 0 });
+  };
+
+  const removeTier = (idx: number) => {
+    const currentTiers = [...(pricelistForm.tiers || [])];
+    currentTiers.splice(idx, 1);
+    setPricelistForm({ ...pricelistForm, tiers: currentTiers });
   };
 
   const savePackage = () => {
@@ -471,13 +486,34 @@ export function SettingsView() {
       <Dialog open={isPricelistDialogOpen} onOpenChange={setIsPricelistDialogOpen}>
         <DialogContent className="max-w-[95vw] md:max-w-md rounded-[2rem] p-6 border-none">
           <DialogHeader><DialogTitle className="text-lg font-black">{editingPricelist ? 'Edit Pricelist' : 'Buat Pricelist Baru'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
             <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Aturan Harga</Label><Input value={pricelistForm.name || ''} onChange={(e) => setPricelistForm({...pricelistForm, name: e.target.value})} placeholder="Contoh: Harga Grosir" className="h-12 rounded-xl border-2" /></div>
             <div className="space-y-1">
               <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Pilih Produk</Label>
               <Select value={pricelistForm.productId} onValueChange={(val) => setPricelistForm({...pricelistForm, productId: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="Pilih Produk" /></SelectTrigger><SelectContent className="rounded-xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
             </div>
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest text-center py-4">Pengaturan Tier Harga akan tersedia di versi berikutnya.</p>
+            
+            <Separator className="my-4" />
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Aturan Tier Qty</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1"><Label className="text-[8px] font-bold">Min</Label><Input type="number" value={newTier.minQty} onChange={(e) => setNewTier({...newTier, minQty: parseInt(e.target.value)})} className="h-10 rounded-lg text-xs" /></div>
+                <div className="space-y-1"><Label className="text-[8px] font-bold">Max</Label><Input type="number" value={newTier.maxQty} onChange={(e) => setNewTier({...newTier, maxQty: parseInt(e.target.value)})} className="h-10 rounded-lg text-xs" /></div>
+                <div className="space-y-1"><Label className="text-[8px] font-bold">Harga Satuan</Label><Input type="number" value={newTier.price} onChange={(e) => setNewTier({...newTier, price: parseFloat(e.target.value)})} className="h-10 rounded-lg text-xs" /></div>
+              </div>
+              <Button onClick={addTier} variant="outline" className="w-full h-10 rounded-xl gap-2 font-black text-xs"><Plus className="h-3.5 w-3.5" /> Tambah Tier</Button>
+            </div>
+
+            <div className="space-y-2 mt-4">
+              {pricelistForm.tiers?.map((tier, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-dashed">
+                  <div className="text-[10px] font-bold">
+                    Qty: {tier.minQty} - {tier.maxQty} <span className="mx-2">→</span> <span className="text-primary">{formatCurrencyValue(tier.price)}</span>
+                  </div>
+                  <Button onClick={() => removeTier(idx)} variant="ghost" size="icon" className="h-7 w-7 text-destructive"><X className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
           </div>
           <DialogFooter><Button onClick={savePricelist} className="w-full h-12 rounded-xl bg-primary font-black">Simpan Aturan</Button></DialogFooter>
         </DialogContent>
