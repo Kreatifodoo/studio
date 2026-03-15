@@ -118,7 +118,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   // Dexie Reactive Queries
   const products = useLiveQuery(() => db.products.toArray()) || [];
   const history = useLiveQuery(() => db.transactions.orderBy('date').reverse().limit(100).toArray()) || [];
-  const sessions = useLiveQuery(() => db.sessions.orderBy('startTime').reverse().limit(20).toArray()) || [];
+  const sessions = useLiveQuery(() => db.sessions.orderBy('startTime').reverse().limit(100).toArray()) || [];
   const customers = useLiveQuery(() => db.customers.toArray()) || [];
   const paymentMethods = useLiveQuery(() => db.paymentMethods.toArray()) || [];
   const fees = useLiveQuery(() => db.fees.toArray()) || [];
@@ -261,14 +261,21 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       startTime: new Date().toISOString(),
       openingCash,
       status: 'Open',
-      transactionIds: []
+      transactionIds: [],
+      openedBy: currentUser?.name || 'Admin'
     };
     await db.sessions.put(newSession);
   };
 
   const closeSession = async (closingCash: number) => {
     if (!currentSession) return;
-    const closed: Session = { ...currentSession, endTime: new Date().toISOString(), closingCash, status: 'Closed' };
+    const closed: Session = { 
+      ...currentSession, 
+      endTime: new Date().toISOString(), 
+      closingCash, 
+      status: 'Closed',
+      closedBy: currentUser?.name || 'Admin'
+    };
     await db.sessions.put(closed);
     setLastClosedSession(closed);
     setTimeout(() => {

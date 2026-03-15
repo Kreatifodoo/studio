@@ -110,6 +110,8 @@ export interface Session {
   closingCash?: number;
   status: 'Open' | 'Closed';
   transactionIds: string[];
+  openedBy?: string;
+  closedBy?: string;
 }
 
 export interface PaymentMethod {

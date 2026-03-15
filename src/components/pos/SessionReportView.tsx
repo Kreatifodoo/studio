@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { usePOS } from './POSContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { 
   FileText, 
@@ -20,10 +20,14 @@ import {
   Clock,
   User,
   History,
-  ArrowRight
+  ArrowRight,
+  Filter,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 import { db } from '@/lib/db';
@@ -38,12 +42,28 @@ export function SessionReportView() {
   const [sessionTransactions, setSessionTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Filter States
+  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
   // Jika ada sesi yang baru saja ditutup, langsung buka detailnya
   useEffect(() => {
     if (lastClosedSession && !selectedSessionId) {
       setSelectedSessionId(lastClosedSession.id);
     }
   }, [lastClosedSession]);
+
+  const filteredSessions = useMemo(() => {
+    if (!startDate || !endDate) return sessions;
+    
+    return sessions.filter(s => {
+      const sDate = parseISO(s.startTime);
+      return isWithinInterval(sDate, {
+        start: startOfDay(parseISO(startDate)),
+        end: endOfDay(parseISO(endDate))
+      });
+    });
+  }, [sessions, startDate, endDate]);
 
   const selectedSession = useMemo(() => {
     return sessions.find(s => s.id === selectedSessionId) || null;
@@ -76,13 +96,39 @@ export function SessionReportView() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
 
+  const handleExportAllSessions = () => {
+    if (filteredSessions.length === 0) return;
+    
+    const headers = ["ID Sesi", "Mulai", "Selesai", "Kasir Pembuka", "Kasir Penutup", "Modal Awal", "Kas Akhir", "Total Transaksi", "Status"];
+    const rows = filteredSessions.map(s => [
+      s.id,
+      format(new Date(s.startTime), 'yyyy-MM-dd HH:mm'),
+      s.endTime ? format(new Date(s.endTime), 'yyyy-MM-dd HH:mm') : "-",
+      s.openedBy || "N/A",
+      s.closedBy || "N/A",
+      s.openingCash.toFixed(0),
+      (s.closingCash || 0).toFixed(0),
+      s.transactionIds.length,
+      s.status
+    ]);
+    
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Rekap_Semua_Sesi_${startDate}_to_${endDate}.csv`;
+    link.click();
+  };
+
   const handleExportCSV = () => {
     if (!selectedSession || sessionTransactions.length === 0) return;
-    const headers = ["ID", "Tanggal", "Jam", "Pelanggan", "Total", "Metode"];
+    const headers = ["ID", "Tanggal", "Jam", "Kasir", "Pelanggan", "Total", "Metode"];
     const rows = sessionTransactions.map(t => [
       t.id,
       format(new Date(t.date), 'yyyy-MM-dd'),
       format(new Date(t.date), 'HH:mm'),
+      t.staffName || "Admin",
       customers.find(c => c.id === t.customerId)?.name || "Umum",
       t.total.toFixed(0),
       t.paymentMethod || "N/A"
@@ -100,6 +146,7 @@ export function SessionReportView() {
     if (sessionTransactions.length === 0) return { totalSales: 0, totalTax: 0, totalSubtotal: 0, paymentsByMethod: {} };
     
     return sessionTransactions.reduce((acc, t) => {
+      if (t.status === 'Returned') return acc;
       acc.totalSales += t.total;
       acc.totalTax += t.tax;
       acc.totalSubtotal += t.subtotal;
@@ -112,15 +159,35 @@ export function SessionReportView() {
   if (!selectedSessionId) {
     return (
       <div className="flex flex-col gap-8 pb-24">
-        <div>
-          <h2 className="text-3xl font-black flex items-center gap-3">
-            <History className="text-primary h-8 w-8" /> Riwayat Sesi Kasir
-          </h2>
-          <p className="text-muted-foreground mt-1">Pilih sesi untuk melihat laporan detail dan ringkasan penjualan.</p>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div>
+            <h2 className="text-3xl font-black flex items-center gap-3">
+              <History className="text-primary h-8 w-8" /> Riwayat Sesi Kasir
+            </h2>
+            <p className="text-muted-foreground mt-1">Pilih sesi untuk melihat laporan detail dan ringkasan penjualan.</p>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3 bg-white p-4 rounded-[2rem] border shadow-sm w-full lg:w-auto">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dari Tanggal</Label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-10 rounded-xl border-none bg-muted/20 font-bold text-xs" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Hingga Tanggal</Label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-10 rounded-xl border-none bg-muted/20 font-bold text-xs" />
+            </div>
+            <Button 
+              onClick={handleExportAllSessions} 
+              disabled={filteredSessions.length === 0}
+              className="h-10 px-6 rounded-xl bg-green-600 hover:bg-green-700 font-black gap-2 shadow-lg shadow-green-600/20 ml-auto"
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Ekspor Excel (CSV)
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sessions.map((session) => (
+          {filteredSessions.map((session) => (
             <Card 
               key={session.id} 
               onClick={() => setSelectedSessionId(session.id)}
@@ -148,10 +215,18 @@ export function SessionReportView() {
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Mulai</p>
                     <p className="text-[11px] font-bold">{format(new Date(session.startTime), 'dd MMM, HH:mm')}</p>
+                    <p className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1 mt-1">
+                      <User className="h-2 w-2" /> {session.openedBy || 'Staff'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Selesai</p>
                     <p className="text-[11px] font-bold">{session.endTime ? format(new Date(session.endTime), 'dd MMM, HH:mm') : '-'}</p>
+                    {session.closedBy && (
+                      <p className="text-[8px] font-bold text-muted-foreground uppercase flex items-center gap-1 mt-1">
+                        <User className="h-2 w-2" /> {session.closedBy}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -168,10 +243,10 @@ export function SessionReportView() {
             </Card>
           ))}
 
-          {sessions.length === 0 && (
+          {filteredSessions.length === 0 && (
             <div className="col-span-full py-20 text-center opacity-30 flex flex-col items-center">
-              <History className="h-20 w-20 mb-4" />
-              <p className="text-xl font-bold">Belum ada riwayat sesi kasir</p>
+              <Calendar className="h-20 w-20 mb-4" />
+              <p className="text-xl font-bold">Tidak ada sesi di periode ini</p>
             </div>
           )}
         </div>
@@ -198,7 +273,7 @@ export function SessionReportView() {
               <h2 className="text-2xl md:text-3xl font-black flex items-center gap-2">
                 <FileText className="text-primary h-6 w-6 md:h-8 md:w-8" /> Laporan Sesi
               </h2>
-              <p className="text-[10px] md:text-sm text-muted-foreground mt-1">Sesi #{selectedSession.id}</p>
+              <p className="text-[10px] md:text-sm text-muted-foreground mt-1">Sesi #{selectedSession.id} • Dihandel Oleh: {selectedSession.openedBy || 'Admin'}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
@@ -206,7 +281,7 @@ export function SessionReportView() {
               <Printer className="h-4 w-4" /> Cetak Ringkasan
             </Button>
             <Button onClick={handleExportCSV} variant="outline" size="sm" className="flex-1 md:flex-none h-12 rounded-xl font-black gap-2 border-2">
-              <Download className="h-4 w-4" /> Unduh CSV
+              <Download className="h-4 w-4" /> Unduh CSV Sesi
             </Button>
           </div>
         </div>
@@ -216,7 +291,7 @@ export function SessionReportView() {
         <ReportStatCard title="Total Jual" value={isLoading ? "..." : formatCurrency(stats.totalSales)} icon={DollarSign} color="bg-primary" />
         <ReportStatCard title="Modal Awal" value={formatCurrency(selectedSession.openingCash)} icon={ArrowUpRight} color="bg-green-500" />
         <ReportStatCard title="Kas Akhir" value={formatCurrency(selectedSession.closingCash || 0)} icon={ArrowDownRight} color="bg-orange-500" />
-        <ReportStatCard title="Selisih" value={isLoading ? "..." : formatCurrency(cashDifference)} icon={PieChart} color={cashDifference === 0 ? "bg-accent" : "bg-destructive"} />
+        <ReportStatCard title="Selisih" value={isLoading ? "..." : formatCurrency(cashDifference)} icon={PieChart} color={Math.abs(cashDifference) < 100 ? "bg-accent" : "bg-destructive"} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
@@ -306,11 +381,17 @@ export function SessionReportView() {
                   <TableCell className="font-mono text-[10px] font-bold text-primary py-5">#{t.id}</TableCell>
                   <TableCell className="text-[10px] font-black uppercase py-5">{t.staffName || 'Admin'}</TableCell>
                   <TableCell className="py-5">
-                    <Badge variant="outline" className="rounded-lg text-[9px] font-black px-2 py-0.5 border-primary/20 text-primary">
-                      {t.paymentMethod}
+                    <Badge variant="outline" className={cn(
+                      "rounded-lg text-[9px] font-black px-2 py-0.5 border-primary/20 text-primary",
+                      t.status === 'Returned' && "border-destructive text-destructive"
+                    )}>
+                      {t.status === 'Returned' ? 'RETUR' : t.paymentMethod}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-black text-sm py-5">{formatCurrency(t.total)}</TableCell>
+                  <TableCell className={cn(
+                    "text-right font-black text-sm py-5",
+                    t.status === 'Returned' ? "text-muted-foreground line-through" : "text-foreground"
+                  )}>{formatCurrency(t.total)}</TableCell>
                 </TableRow>
               ))}
               {!isLoading && sessionTransactions.length === 0 && (
