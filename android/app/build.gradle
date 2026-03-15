@@ -2,16 +2,17 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.nextpos.app"
-    compileSdk 34
+    compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.nextpos.app"
-        minSdk 22
-        targetSdk 34
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             dashkb: ['--no-version-vectors']
+             // Leaves used PNG files uncompressed to reduce memory usage at runtime
+             noCompress 'png'
         }
     }
     buildTypes {
@@ -20,27 +21,25 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
 }
 
 repositories {
-    flatDir {
-        dirs 'libs'
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:androidx.appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation "androidx.appcompat:appcompat:$rootProject.ext.androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$rootProject.ext.androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core:$rootProject.ext.androidxCoreVersion"
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
+    testImplementation "junit:junit:$rootProject.ext.junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$rootProject.ext.androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$rootProject.ext.androidxEspressoCoreVersion"
 }
-
-apply from: 'capacitor.build.gradle'
 
 try {
     def servicesJSON = file('google-services.json')
