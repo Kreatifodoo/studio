@@ -8,7 +8,7 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig: NextConfig = {
-  output: 'export', // Penting untuk Capacitor
+  output: 'export', // Penting untuk Capacitor agar bisa dijalankan secara lokal di Android
   images: {
     unoptimized: true, // Diperlukan untuk mode static export
     remotePatterns: [

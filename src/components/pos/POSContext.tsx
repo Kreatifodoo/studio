@@ -173,6 +173,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   };
 
   const connectPrinter = async () => {
+    // Placeholder untuk simulasi koneksi native
     setPrinter({ name: 'Printer POS Mobile', status: 'connected', type: 'bluetooth' });
   };
 
