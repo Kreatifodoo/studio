@@ -32,7 +32,10 @@ import {
   X,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  History,
+  Calendar,
+  CreditCard
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -55,6 +58,9 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { ScrollArea } from '../ui/scroll-area';
 
 export function SettingsView() {
   const { 
@@ -64,7 +70,8 @@ export function SettingsView() {
     exportDatabase, importDatabase,
     priceLists, setPriceLists,
     users, setUsers, roles,
-    printer, connectPrinter, disconnectPrinter
+    printer, connectPrinter, disconnectPrinter,
+    history: allHistory
   } = usePOS();
   
   const { toast } = useToast();
@@ -118,6 +125,10 @@ export function SettingsView() {
     }
   ];
 
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+  };
+
   const handleBackup = async () => {
     try {
       await exportDatabase();
@@ -149,6 +160,12 @@ export function SettingsView() {
       toast({ variant: "destructive", title: "Gagal Pulihkan", description: "Format file tidak dikenali." });
     }
   };
+
+  // Customer transactions filter
+  const customerTransactions = useMemo(() => {
+    if (!editingCustomer) return [];
+    return allHistory.filter(t => t.customerId === editingCustomer.id);
+  }, [allHistory, editingCustomer]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -397,6 +414,7 @@ export function SettingsView() {
         </main>
       </div>
 
+      {/* Pricelist Dialog */}
       <Dialog open={isPricelistDialogOpen} onOpenChange={setIsPricelistDialogOpen}>
         <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[2.5rem] p-0 border-none shadow-2xl flex flex-col max-h-[90vh]">
           <div className="p-6 md:p-10 pb-4">
@@ -502,6 +520,7 @@ export function SettingsView() {
         </DialogContent>
       </Dialog>
 
+      {/* User Dialog */}
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
         <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
           <DialogHeader className="text-center">
@@ -546,39 +565,122 @@ export function SettingsView() {
         </DialogContent>
       </Dialog>
 
+      {/* Customer Dialog WITH HISTORY */}
       <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
-          <DialogHeader className="text-center">
-            <div className="bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6">
-              <Users className="h-10 w-10" />
-            </div>
-            <DialogTitle className="text-2xl font-black">Data Pelanggan</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label>
-              <Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nomor Telepon</Label>
-              <Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
-              <Input value={customerForm.email || ''} onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Alamat</Label>
-              <Textarea value={customerForm.address || ''} onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })} className="min-h-[100px] rounded-xl border-2 font-bold" />
+        <DialogContent className="max-w-[95vw] md:max-w-3xl rounded-[2.5rem] p-0 border-none shadow-2xl flex flex-col h-[90vh] md:h-auto md:max-h-[90vh] overflow-hidden">
+          <div className="p-8 md:p-10 pb-4 bg-primary/5">
+            <DialogHeader className="text-center md:text-left">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="bg-primary/10 w-24 h-24 rounded-[2rem] flex items-center justify-center text-primary shadow-inner">
+                  <Users className="h-12 w-12" />
+                </div>
+                <div className="flex-1">
+                  <DialogTitle className="text-3xl font-black mb-1">{editingCustomer ? 'Edit Data Pelanggan' : 'Pelanggan Baru'}</DialogTitle>
+                  <DialogDescription className="font-medium text-muted-foreground">Kelola informasi profil dan tinjau riwayat belanja pelanggan.</DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <div className="flex-1 flex flex-col overflow-hidden p-8 md:p-10 pt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+              {/* Profile Form */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge className="bg-primary/10 text-primary border-none font-black text-[10px] uppercase tracking-widest px-3">PROFIL</Badge>
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label>
+                    <Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })} className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" placeholder="Kiki Rizki" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nomor Telepon</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                      <Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })} className="h-12 rounded-xl border-2 font-bold pl-11 focus-visible:ring-primary/20" placeholder="081290882718" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                      <Input value={customerForm.email || ''} onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })} className="h-12 rounded-xl border-2 font-bold pl-11 focus-visible:ring-primary/20" placeholder="kiki@kreatifodoo.com" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Alamat Pengiriman / Kantor</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-4 h-4 w-4 text-muted-foreground/40" />
+                      <Textarea value={customerForm.address || ''} onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })} className="min-h-[100px] rounded-xl border-2 font-bold pl-11 py-3 focus-visible:ring-primary/20" placeholder="SOHO CAPITAL Podomoro City..." />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transaction History Section */}
+              <div className="flex flex-col h-full bg-muted/5 rounded-[2rem] p-6 border-2 border-primary/5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <History className="h-4 w-4" /> Riwayat Transaksi
+                  </h3>
+                  <Badge className="bg-primary/10 text-primary border-none font-black text-[10px] px-2">{customerTransactions.length} Order</Badge>
+                </div>
+
+                <ScrollArea className="flex-1">
+                  <div className="space-y-3 pr-2">
+                    {customerTransactions.length === 0 ? (
+                      <div className="py-20 text-center opacity-30 flex flex-col items-center">
+                        <Package className="h-10 w-10 mb-2" />
+                        <p className="font-bold text-xs uppercase tracking-widest">Belum ada transaksi</p>
+                      </div>
+                    ) : (
+                      customerTransactions.map((trx) => (
+                        <div key={trx.id} className="p-4 bg-white rounded-2xl border shadow-sm flex flex-col gap-2">
+                          <div className="flex justify-between items-start">
+                            <span className="font-black text-xs text-primary">#{trx.id}</span>
+                            <span className="text-[9px] font-bold text-muted-foreground">{format(new Date(trx.date), 'dd/MM/yy HH:mm')}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {trx.items.slice(0, 3).map((item, idx) => (
+                              <Badge key={idx} variant="outline" className="text-[8px] border-primary/10 text-muted-foreground">{item.quantity}x {item.name}</Badge>
+                            ))}
+                            {trx.items.length > 3 && <Badge variant="outline" className="text-[8px]">+ {trx.items.length - 3}</Badge>}
+                          </div>
+                          <div className="flex justify-between items-center mt-1 pt-2 border-t border-dashed">
+                             <div className="flex items-center gap-1.5">
+                               <CreditCard className="h-3 w-3 text-muted-foreground" />
+                               <span className="text-[9px] font-black uppercase text-muted-foreground">{trx.paymentMethod}</span>
+                             </div>
+                             <span className="font-black text-xs text-primary">{formatCurrency(trx.total)}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
           </div>
-          <DialogFooter className="pt-4">
-            <Button onClick={() => {
-              if (!customerForm.name || !customerForm.phone) return;
-              const newCust = { id: editingCustomer?.id || Math.random().toString(36).substr(2, 9).toUpperCase(), ...customerForm } as Customer;
-              setCustomers(editingCustomer ? customers.map(c => c.id === newCust.id ? newCust : c) : [...customers, newCust]);
-              setIsCustomerDialogOpen(false);
-            }} className="w-full h-14 rounded-2xl bg-primary font-black shadow-lg shadow-primary/20">Simpan Pelanggan</Button>
+          
+          <DialogFooter className="p-8 md:p-10 pt-4 bg-white border-t rounded-b-[2.5rem]">
+            <div className="flex gap-3 w-full">
+              <Button 
+                variant="outline"
+                onClick={() => setIsCustomerDialogOpen(false)}
+                className="flex-1 h-14 rounded-2xl font-bold border-2"
+              >
+                Batal
+              </Button>
+              <Button onClick={() => {
+                if (!customerForm.name || !customerForm.phone) return;
+                const newCust = { id: editingCustomer?.id || Math.random().toString(36).substr(2, 9).toUpperCase(), ...customerForm } as Customer;
+                setCustomers(editingCustomer ? customers.map(c => c.id === newCust.id ? newCust : c) : [...customers, newCust]);
+                setIsCustomerDialogOpen(false);
+              }} className="flex-[2] h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">
+                Simpan Pelanggan
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
