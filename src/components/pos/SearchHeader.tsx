@@ -1,7 +1,6 @@
-
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Bell, ScanLine } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { usePOS } from './POSContext';
@@ -10,6 +9,11 @@ import { isNative } from '@/lib/native-bridge';
 
 export function SearchHeader() {
   const { searchQuery, setSearchQuery, currentUser, roles, triggerNativeScan } = usePOS();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const currentRole = roles.find(r => r.id === currentUser?.roleId);
 
@@ -26,7 +30,7 @@ export function SearchHeader() {
           />
         </div>
         
-        {isNative() && (
+        {mounted && isNative() && (
           <button 
             onClick={triggerNativeScan}
             className="h-10 w-10 md:h-14 md:w-14 bg-primary text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"

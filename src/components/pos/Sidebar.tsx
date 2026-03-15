@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ShoppingCart, Clock, Settings, LogOut, FileText, XCircle, AlertCircle, CheckCircle2, DollarSign, ArrowRight, LayoutDashboard } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { cn } from '@/lib/utils';
@@ -30,17 +30,14 @@ export const KompakLogo = ({ className }: { className?: string }) => (
     xmlns="http://www.w3.org/2000/svg"
     className={className}
   >
-    {/* Vertical Column */}
     <path 
       d="M25 20C25 17.2386 27.2386 15 30 15H38C40.7614 15 43 17.2386 43 20V80C43 82.7614 40.7614 85 38 85H30C27.2386 85 25 82.7614 25 80V20Z" 
       fill="currentColor" 
     />
-    {/* Top Leaf Piece */}
     <path 
       d="M48 50C48 30.67 63.67 15 83 15V50H48Z" 
       fill="currentColor" 
     />
-    {/* Bottom Leaf Piece */}
     <path 
       d="M48 50H83V85C63.67 85 48 69.33 48 50Z" 
       fill="currentColor" 
@@ -54,8 +51,14 @@ export function Sidebar() {
     lastClosedSession, logout, currentUser, checkPermission, 
     printer, printSessionSummaryViaBluetooth 
   } = usePOS();
+  
+  const [mounted, setMounted] = useState(false);
   const [closingCash, setClosingCash] = useState('');
   const [showSummaryPreview, setShowSummaryPreview] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -65,7 +68,7 @@ export function Sidebar() {
     if (!currentSession) return { expected: 0, sales: 0, count: 0 };
     const sessionTransactions = history.filter(t => currentSession.transactionIds.includes(t.id));
     const cashSales = sessionTransactions
-      .filter(t => t.paymentMethod === 'Tunai')
+      .filter(t => t.paymentMethod === 'Tunai' && t.status !== 'Returned')
       .reduce((acc, t) => acc + t.total, 0);
     
     return {
@@ -105,6 +108,10 @@ export function Sidebar() {
       setShowSummaryPreview(true);
     }
   };
+
+  if (!mounted) return (
+    <aside className="w-16 md:w-24 bg-[#1a1f2b] flex flex-col items-center py-6 md:py-10 h-screen fixed left-0 top-0 z-50 border-r border-white/5" />
+  );
 
   return (
     <aside className="w-16 md:w-24 bg-[#1a1f2b] flex flex-col items-center py-6 md:py-10 justify-between h-screen fixed left-0 top-0 z-50 border-r border-white/5">
