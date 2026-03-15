@@ -87,7 +87,9 @@ export function SettingsView() {
   const [editingPricelist, setEditingPricelist] = useState<PriceList | null>(null);
   const [pricelistForm, setPricelistForm] = useState<Partial<PriceList>>({});
   const [currentSelectedProductId, setCurrentSelectedProductId] = useState<string>('');
-  const [newTier, setNewTier] = useState<PriceTier>({ minQty: 1, maxQty: 999, price: 0 });
+  
+  // Use string or undefined for local tier inputs to allow empty state in UI
+  const [newTier, setNewTier] = useState<{minQty?: number, maxQty?: number, price?: number}>({ minQty: 1, maxQty: 999, price: undefined });
   const [activeItemTiers, setActiveItemTiers] = useState<PriceTier[]>([]);
   
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
@@ -172,10 +174,17 @@ export function SettingsView() {
 
   const saveProduct = () => {
     if (!productForm.name || !productForm.sku) return;
+    const finalData = {
+      ...productForm,
+      price: productForm.price || 0,
+      costPrice: productForm.costPrice || 0,
+      onHandQty: productForm.onHandQty || 0
+    } as Product;
+
     if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...productForm } as Product : p));
+      setProducts(products.map(p => p.id === editingProduct.id ? { ...editingProduct, ...finalData } : p));
     } else {
-      setProducts([...products, { ...productForm, id: Math.random().toString(36).substr(2, 9), available: true, onHandQty: productForm.onHandQty || 0, barcode: productForm.barcode || productForm.sku, image: productForm.image || 'https://picsum.photos/seed/default/400/300' } as Product]);
+      setProducts([...products, { ...finalData, id: Math.random().toString(36).substr(2, 9), available: true, barcode: finalData.barcode || finalData.sku, image: finalData.image || 'https://picsum.photos/seed/default/400/300' }]);
     }
     setIsProductDialogOpen(false);
     toast({ title: "Produk Berhasil Disimpan" });
@@ -220,9 +229,13 @@ export function SettingsView() {
   };
 
   const addTier = () => {
-    if (newTier.price <= 0) return;
-    setActiveItemTiers([...activeItemTiers, newTier]);
-    setNewTier({ minQty: 1, maxQty: 999, price: 0 });
+    if (!newTier.price || !newTier.minQty) return;
+    setActiveItemTiers([...activeItemTiers, { 
+      minQty: newTier.minQty, 
+      maxQty: newTier.maxQty || 999, 
+      price: newTier.price 
+    }]);
+    setNewTier({ minQty: 1, maxQty: 999, price: undefined });
   };
 
   const removeTier = (idx: number) => {
@@ -233,10 +246,11 @@ export function SettingsView() {
 
   const savePackage = () => {
     if (!packageForm.name || !packageForm.sku) return;
+    const finalData = { ...packageForm, price: packageForm.price || 0 } as Package;
     if (editingPackage) {
-      setPackages(packages.map(pkg => pkg.id === editingPackage.id ? { ...editingPackage, ...packageForm } as Package : pkg));
+      setPackages(packages.map(pkg => pkg.id === editingPackage.id ? { ...editingPackage, ...finalData } : pkg));
     } else {
-      setPackages([...packages, { ...packageForm, id: Math.random().toString(36).substr(2, 9), enabled: true, items: packageForm.items || [] } as Package]);
+      setPackages([...packages, { ...finalData, id: Math.random().toString(36).substr(2, 9), enabled: true, items: packageForm.items || [] }]);
     }
     setIsPackageDialogOpen(false);
     toast({ title: "Paket Produk Berhasil Disimpan" });
@@ -244,10 +258,11 @@ export function SettingsView() {
 
   const saveCombo = () => {
     if (!comboForm.name || !comboForm.sku) return;
+    const finalData = { ...comboForm, basePrice: comboForm.basePrice || 0 } as Combo;
     if (editingCombo) {
-      setCombos(combos.map(c => c.id === editingCombo.id ? { ...editingCombo, ...comboForm } as Combo : c));
+      setCombos(combos.map(c => c.id === editingCombo.id ? { ...editingCombo, ...finalData } : c));
     } else {
-      setCombos([...combos, { ...comboForm, id: Math.random().toString(36).substr(2, 9), enabled: true, groups: comboForm.groups || [] } as Combo]);
+      setCombos([...combos, { ...finalData, id: Math.random().toString(36).substr(2, 9), enabled: true, groups: comboForm.groups || [] }]);
     }
     setIsComboDialogOpen(false);
     toast({ title: "Combo Pilihan Berhasil Disimpan" });
@@ -255,10 +270,11 @@ export function SettingsView() {
 
   const savePromo = () => {
     if (!promoForm.name || !promoForm.productId) return;
+    const finalData = { ...promoForm, value: promoForm.value || 0 } as PromoDiscount;
     if (editingPromo) {
-      setPromoDiscounts(promoDiscounts.map(p => p.id === editingPromo.id ? { ...editingPromo, ...promoForm } as PromoDiscount : p));
+      setPromoDiscounts(promoDiscounts.map(p => p.id === editingPromo.id ? { ...editingPromo, ...finalData } : p));
     } else {
-      setPromoDiscounts([...promoDiscounts, { ...promoForm, id: Math.random().toString(36).substr(2, 9), enabled: true, type: 'Percentage', startDate: new Date().toISOString(), endDate: new Date(Date.now() + 31536000000).toISOString() } as PromoDiscount]);
+      setPromoDiscounts([...promoDiscounts, { ...finalData, id: Math.random().toString(36).substr(2, 9), enabled: true, type: 'Percentage', startDate: new Date().toISOString(), endDate: new Date(Date.now() + 31536000000).toISOString() }]);
     }
     setIsPromoDialogOpen(false);
     toast({ title: "Program Diskon Berhasil Disimpan" });
@@ -387,7 +403,7 @@ export function SettingsView() {
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Logo Toko (Struk)</Label>
                 <div className="p-6 border-2 border-dashed rounded-[2rem] flex flex-col items-center gap-4 bg-muted/5 group hover:border-primary/40 transition-all">
-                  {storeSettings.logoUrl ? <img src={storeSettings.logoUrl} className="h-20 w-auto object-contain" /> : <div className="h-20 w-20 bg-white border rounded-xl flex items-center justify-center opacity-20"><ImageIcon className="h-10 w-10" /></div>}
+                  {storeSettings.logoUrl ? <img src={storeSettings.logoUrl} className="h-20 w-auto object-contain" alt="Logo" /> : <div className="h-20 w-20 bg-white border rounded-xl flex items-center justify-center opacity-20"><ImageIcon className="h-10 w-10" /></div>}
                   <Button onClick={() => logoInputRef.current?.click()} variant="outline" className="h-10 rounded-xl font-black bg-white">Ganti Logo Toko</Button>
                 </div>
               </div>
@@ -494,9 +510,25 @@ export function SettingsView() {
             <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Produk</Label><Input value={productForm.name || ''} onChange={(e) => setProductForm({...productForm, name: e.target.value})} className="h-12 rounded-xl border-2" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">SKU</Label><Input value={productForm.sku || ''} onChange={(e) => setProductForm({...productForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Stok Awal</Label><Input type="number" value={productForm.onHandQty ?? 0} onChange={(e) => setProductForm({...productForm, onHandQty: parseInt(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Stok Awal</Label>
+                <Input 
+                  type="number" 
+                  value={productForm.onHandQty ?? ''} 
+                  onChange={(e) => setProductForm({...productForm, onHandQty: e.target.value === '' ? undefined : parseInt(e.target.value)})} 
+                  className="h-12 rounded-xl border-2" 
+                />
+              </div>
             </div>
-            <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Jual (Rp)</Label><Input type="number" value={productForm.price ?? 0} onChange={(e) => setProductForm({...productForm, price: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Jual (Rp)</Label>
+              <Input 
+                type="number" 
+                value={productForm.price ?? ''} 
+                onChange={(e) => setProductForm({...productForm, price: e.target.value === '' ? undefined : parseFloat(e.target.value)})} 
+                className="h-12 rounded-xl border-2" 
+              />
+            </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Kategori</Label>
               <Select value={productForm.category} onValueChange={(val) => setProductForm({...productForm, category: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl">{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
@@ -539,9 +571,27 @@ export function SettingsView() {
                 <div className="space-y-2">
                   <Label className="text-[9px] font-bold">Atur Tier Qty</Label>
                   <div className="grid grid-cols-3 gap-1">
-                    <Input type="number" placeholder="Min" value={newTier.minQty ?? 0} onChange={(e) => setNewTier({...newTier, minQty: parseInt(e.target.value) || 0})} className="h-9 rounded-lg text-xs" />
-                    <Input type="number" placeholder="Max" value={newTier.maxQty ?? 0} onChange={(e) => setNewTier({...newTier, maxQty: parseInt(e.target.value) || 0})} className="h-9 rounded-lg text-xs" />
-                    <Input type="number" placeholder="Harga" value={newTier.price ?? 0} onChange={(e) => setNewTier({...newTier, price: parseFloat(e.target.value) || 0})} className="h-9 rounded-lg text-xs" />
+                    <Input 
+                      type="number" 
+                      placeholder="Min" 
+                      value={newTier.minQty ?? ''} 
+                      onChange={(e) => setNewTier({...newTier, minQty: e.target.value === '' ? undefined : parseInt(e.target.value)})} 
+                      className="h-9 rounded-lg text-xs" 
+                    />
+                    <Input 
+                      type="number" 
+                      placeholder="Max" 
+                      value={newTier.maxQty ?? ''} 
+                      onChange={(e) => setNewTier({...newTier, maxQty: e.target.value === '' ? undefined : parseInt(e.target.value)})} 
+                      className="h-9 rounded-lg text-xs" 
+                    />
+                    <Input 
+                      type="number" 
+                      placeholder="Harga" 
+                      value={newTier.price ?? ''} 
+                      onChange={(e) => setNewTier({...newTier, price: e.target.value === '' ? undefined : parseFloat(e.target.value)})} 
+                      className="h-9 rounded-lg text-xs" 
+                    />
                   </div>
                   <Button onClick={addTier} variant="outline" className="w-full h-8 rounded-lg gap-1 font-black text-[10px] bg-white"><Plus className="h-3 w-3" /> Tambah Tier</Button>
                 </div>
@@ -610,7 +660,15 @@ export function SettingsView() {
             <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Paket</Label><Input value={packageForm.name || ''} onChange={(e) => setPackageForm({...packageForm, name: e.target.value})} placeholder="Contoh: Paket Kenyang" className="h-12 rounded-xl border-2" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">SKU Paket</Label><Input value={packageForm.sku || ''} onChange={(e) => setPackageForm({...packageForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Paket</Label><Input type="number" value={packageForm.price ?? 0} onChange={(e) => setPackageForm({...packageForm, price: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Paket</Label>
+                <Input 
+                  type="number" 
+                  value={packageForm.price ?? ''} 
+                  onChange={(e) => setPackageForm({...packageForm, price: e.target.value === '' ? undefined : parseFloat(e.target.value)})} 
+                  className="h-12 rounded-xl border-2" 
+                />
+              </div>
             </div>
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest text-center py-4">Penyusunan item paket akan tersedia di versi berikutnya.</p>
           </div>
@@ -626,7 +684,15 @@ export function SettingsView() {
             <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Combo</Label><Input value={comboForm.name || ''} onChange={(e) => setComboForm({...comboForm, name: e.target.value})} placeholder="Contoh: Menu Custom" className="h-12 rounded-xl border-2" /></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">SKU</Label><Input value={comboForm.sku || ''} onChange={(e) => setComboForm({...comboForm, sku: e.target.value})} className="h-12 rounded-xl border-2" /></div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Dasar</Label><Input type="number" value={comboForm.basePrice ?? 0} onChange={(e) => setComboForm({...comboForm, basePrice: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Harga Dasar</Label>
+                <Input 
+                  type="number" 
+                  value={comboForm.basePrice ?? ''} 
+                  onChange={(e) => setComboForm({...comboForm, basePrice: e.target.value === '' ? undefined : parseFloat(e.target.value)})} 
+                  className="h-12 rounded-xl border-2" 
+                />
+              </div>
             </div>
             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest text-center py-4">Pengaturan Grup Pilihan akan tersedia di versi berikutnya.</p>
           </div>
@@ -649,7 +715,15 @@ export function SettingsView() {
                 <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Jenis</Label>
                 <Select value={promoForm.type} onValueChange={(val: any) => setPromoForm({...promoForm, type: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="Percentage">Persentase (%)</SelectItem><SelectItem value="FixedAmount">Nominal (Rp)</SelectItem></SelectContent></Select>
               </div>
-              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nilai</Label><Input type="number" value={promoForm.value ?? 0} onChange={(e) => setPromoForm({...promoForm, value: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl border-2" /></div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nilai</Label>
+                <Input 
+                  type="number" 
+                  value={promoForm.value ?? ''} 
+                  onChange={(e) => setPromoForm({...promoForm, value: e.target.value === '' ? undefined : parseFloat(e.target.value)})} 
+                  className="h-12 rounded-xl border-2" 
+                />
+              </div>
             </div>
           </div>
           <DialogFooter><Button onClick={savePromo} className="w-full h-12 rounded-xl bg-primary font-black">Simpan Promo</Button></DialogFooter>
