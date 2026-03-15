@@ -48,6 +48,7 @@ export function SessionReportView() {
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
+    // Client-side initialization to avoid hydration mismatch
     const today = format(new Date(), 'yyyy-MM-dd');
     setStartDate(today);
     setEndDate(today);
