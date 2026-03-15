@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -24,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export function HistoryView() {
-  const { history, returnTransaction, customers } = usePOS();
+  const { history, returnTransaction, customers, currentUser } = usePOS();
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
@@ -37,7 +38,7 @@ export function HistoryView() {
   };
 
   const handleReturn = async (id: string) => {
-    await returnTransaction(id);
+    await returnTransaction(id, currentUser?.name);
     toast({
       title: "Berhasil Retur",
       description: `Transaksi #${id} telah diretur dan stok diperbarui.`,
@@ -106,6 +107,18 @@ export function HistoryView() {
                             Pelanggan: <span className="text-foreground">{customer?.name || 'Umum (Walk-in)'}</span>
                           </p>
                         </div>
+
+                        {isReturned && t.returnDate && (
+                          <div className="mt-4 p-3 bg-destructive/5 rounded-xl inline-block border border-destructive/10">
+                            <p className="text-[10px] text-destructive font-black uppercase tracking-wider flex items-center gap-2">
+                              <RotateCcw className="h-3 w-3" />
+                              Detail Retur
+                            </p>
+                            <p className="text-[11px] font-bold text-destructive/80 mt-1">
+                              Diretur pada {format(new Date(t.returnDate), 'PPP p', { locale: id })} oleh <span className="uppercase">{t.returnedBy || 'Sistem'}</span>
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -135,7 +148,7 @@ export function HistoryView() {
                             <AlertDialogHeader>
                               <AlertDialogTitle className="text-2xl font-black">Konfirmasi Retur</AlertDialogTitle>
                               <AlertDialogDescription className="font-medium text-muted-foreground mt-2">
-                                Apakah Anda yakin ingin melakukan retur untuk transaksi <b>#{t.id}</b>? Stok barang akan dikembalikan dan pendapatan akan dikurangi.
+                                Apakah Anda yakin ingin melakukan retur untuk transaksi <b>#{t.id}</b>? Stok barang akan dikembalikan dan pendapatan akan dikurangi. Tindakan ini akan dicatat atas nama <b>{currentUser?.name}</b>.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter className="mt-6 gap-3">

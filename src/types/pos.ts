@@ -98,6 +98,8 @@ export interface Transaction {
   paymentReference?: string;
   customerId?: string;
   staffName?: string;
+  returnDate?: string;
+  returnedBy?: string;
 }
 
 export interface Session {

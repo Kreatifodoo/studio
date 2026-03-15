@@ -30,7 +30,7 @@ interface POSContextType {
   setSelectedCustomerId: (id: string | null) => void;
   history: Transaction[];
   addTransaction: (transaction: Transaction) => void;
-  returnTransaction: (transactionId: string) => Promise<void>;
+  returnTransaction: (transactionId: string, staffName?: string) => Promise<void>;
   currentSession: Session | null;
   sessions: Session[];
   openSession: (openingCash: number) => void;
@@ -115,7 +115,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: 'system' });
   const [lastClosedSession, setLastClosedSession] = useState<Session | null>(null);
 
-  // Dexie Reactive Queries - Limited history for performance
+  // Dexie Reactive Queries
   const products = useLiveQuery(() => db.products.toArray()) || [];
   const history = useLiveQuery(() => db.transactions.orderBy('date').reverse().limit(100).toArray()) || [];
   const sessions = useLiveQuery(() => db.sessions.orderBy('startTime').reverse().limit(20).toArray()) || [];
@@ -368,7 +368,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const returnTransaction = async (transactionId: string) => {
+  const returnTransaction = async (transactionId: string, staffName?: string) => {
     try {
       await db.transaction('rw', db.transactions, db.products, async () => {
         const t = await db.transactions.get(transactionId);
@@ -384,8 +384,12 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Update status
-        await db.transactions.update(transactionId, { status: 'Returned' });
+        // Update status with return tracking info
+        await db.transactions.update(transactionId, { 
+          status: 'Returned',
+          returnDate: new Date().toISOString(),
+          returnedBy: staffName
+        });
       });
     } catch (error) {
       console.error("Gagal retur transaksi:", error);
