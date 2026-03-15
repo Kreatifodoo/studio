@@ -1,20 +1,29 @@
 
 {
-  "name": "nextn",
+  "name": "nextpos-order",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "NODE_ENV=production next build",
-    "start": "next start",
+    "build": "next build",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "static": "next build",
+    "android:sync": "npx cap sync",
+    "android:open": "npx cap open android",
+    "android:build": "npm run static && npx cap sync && npx cap open android"
   },
   "dependencies": {
+    "@capacitor-mlkit/barcode-scanning": "^7.0.0",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/keyboard": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0",
     "@genkit-ai/google-genai": "^1.28.0",
     "@hookform/resolvers": "^4.1.3",
+    "@kduma-autoid/capacitor-bluetooth-printer": "^0.0.1",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-avatar": "^1.1.3",
@@ -47,6 +56,7 @@
     "genkit": "^1.28.0",
     "lucide-react": "^0.475.0",
     "next": "15.5.9",
+    "next-pwa": "^5.6.0",
     "patch-package": "^8.0.0",
     "react": "^19.2.1",
     "react-day-picker": "^9.11.3",
@@ -58,6 +68,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
     "@types/node": "^20",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
@@ -65,5 +76,10 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@kduma-autoid/capacitor-bluetooth-printer": {
+      "@capacitor/core": "$@capacitor/core"
+    }
   }
 }

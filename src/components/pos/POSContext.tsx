@@ -10,6 +10,7 @@ import {
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { startScan, isNative } from '@/lib/native-bridge';
 
 interface POSContextType {
   activeCategory: Category;
@@ -73,6 +74,7 @@ interface POSContextType {
   printViaBluetooth: (transaction: Transaction) => Promise<boolean>;
   printSessionSummaryViaBluetooth: (session: Session) => Promise<boolean>;
   printBarcodeViaBluetooth: (product: Product) => Promise<boolean>;
+  triggerNativeScan: () => Promise<void>;
 }
 
 const INITIAL_ROLES: Role[] = [
@@ -112,12 +114,12 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [view, setView] = useState<AppView>('pos');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: 'system' });
+  const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: isNative() ? 'bluetooth' : 'system' });
   const [lastClosedSession, setLastClosedSession] = useState<Session | null>(null);
 
   // Dexie Reactive Queries
   const products = useLiveQuery(() => db.products.toArray()) || [];
-  const history = useLiveQuery(() => db.transactions.orderBy('date').reverse().limit(100).toArray()) || [];
+  const history = useLiveQuery(() => db.transactions.orderBy('date').reverse().limit(50).toArray()) || [];
   const sessions = useLiveQuery(() => db.sessions.orderBy('startTime').reverse().limit(100).toArray()) || [];
   const customers = useLiveQuery(() => db.customers.toArray()) || [];
   const paymentMethods = useLiveQuery(() => db.paymentMethods.toArray()) || [];
@@ -158,12 +160,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     initDb();
   }, []);
 
+  const triggerNativeScan = async () => {
+    const code = await startScan();
+    if (code) {
+      const product = products.find(p => p.barcode === code || p.sku === code);
+      if (product) {
+        addToCart(product);
+      } else {
+        setSearchQuery(code);
+      }
+    }
+  };
+
   const connectPrinter = async () => {
-    setPrinter({ name: 'Printer Bluetooth Lokal', status: 'connected', type: 'bluetooth' });
+    setPrinter({ name: 'Printer POS Mobile', status: 'connected', type: 'bluetooth' });
   };
 
   const disconnectPrinter = () => {
-    setPrinter({ name: null, status: 'disconnected', type: 'system' });
+    setPrinter({ name: null, status: 'disconnected', type: isNative() ? 'bluetooth' : 'system' });
   };
 
   const setProducts = useCallback((data: Product[]) => db.products.clear().then(() => db.products.bulkPut(data)), []);
@@ -417,7 +431,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       products, setProducts, categories: INITIAL_CATEGORIES, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
       users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded,
-      printer, connectPrinter, disconnectPrinter, printViaBluetooth: async () => true, printSessionSummaryViaBluetooth: async () => true, printBarcodeViaBluetooth: async () => true
+      printer, connectPrinter, disconnectPrinter, triggerNativeScan, 
+      printViaBluetooth: async () => true, printSessionSummaryViaBluetooth: async () => true, printBarcodeViaBluetooth: async () => true
     }}>
       {children}
     </POSContext.Provider>

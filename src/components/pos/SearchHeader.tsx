@@ -1,26 +1,39 @@
+
 "use client";
 
 import React from 'react';
-import { Search, Bell } from 'lucide-react';
+import { Search, Bell, ScanLine } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { usePOS } from './POSContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { isNative } from '@/lib/native-bridge';
 
 export function SearchHeader() {
-  const { searchQuery, setSearchQuery, currentUser, roles } = usePOS();
+  const { searchQuery, setSearchQuery, currentUser, roles, triggerNativeScan } = usePOS();
   
   const currentRole = roles.find(r => r.id === currentUser?.roleId);
 
   return (
     <header className="flex items-center justify-between gap-3 md:gap-8 py-3 md:py-6 mb-1">
-      <div className="relative flex-1 max-w-xl">
-        <Search className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-muted-foreground/60" />
-        <Input
-          placeholder="Cari..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 md:pl-14 h-10 md:h-14 bg-white border-none shadow-sm rounded-xl md:rounded-2xl text-xs md:text-base font-medium placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 transition-all"
-        />
+      <div className="relative flex-1 max-w-xl flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-muted-foreground/60" />
+          <Input
+            placeholder="Cari produk atau scan barcode..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 md:pl-14 h-10 md:h-14 bg-white border-none shadow-sm rounded-xl md:rounded-2xl text-xs md:text-base font-medium placeholder:text-muted-foreground/40 focus-visible:ring-primary/20 transition-all"
+          />
+        </div>
+        
+        {isNative() && (
+          <button 
+            onClick={triggerNativeScan}
+            className="h-10 w-10 md:h-14 md:w-14 bg-primary text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition-all"
+          >
+            <ScanLine className="h-5 w-5 md:h-6 md:w-6" />
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
