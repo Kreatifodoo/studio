@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -34,7 +35,8 @@ import {
   Flame,
   Turtle,
   PackageX,
-  Clock
+  Clock,
+  RotateCcw
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -88,6 +90,7 @@ export function DashboardView() {
     let revenue = 0;
     let savings = 0;
     let cost = 0;
+    let returnAmount = 0;
     let packageRev = 0;
     let comboRev = 0;
     let pricelistSavings = 0;
@@ -100,10 +103,14 @@ export function DashboardView() {
     const dailyMap: Record<string, number> = {};
     const productSalesQty: Record<string, number> = {};
 
-    // Initialize product sales qty
     products.forEach(p => productSalesQty[p.id] = 0);
 
     filteredHistory.forEach(t => {
+      if (t.status === 'Returned') {
+        returnAmount += t.total;
+        return; // Skip from active stats
+      }
+
       revenue += t.total;
       savings += (t.totalSavings || 0);
       promoDiscountSavings += (t.totalSavings || 0);
@@ -158,16 +165,11 @@ export function DashboardView() {
     });
 
     const profit = revenue - cost;
-    const topProducts = Object.values(productMap).sort((a, b) => b.rev - a.rev).slice(0, 5);
-    const topPackages = Object.values(packageMap).sort((a, b) => b.rev - a.rev).slice(0, 5);
-    const topCombos = Object.values(comboMap).sort((a, b) => b.rev - a.rev).slice(0, 5);
-    const categoryData = Object.entries(categoryMap).map(([name, value]) => ({ name, value }));
     const chartData = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(day => ({
       name: day,
       sales: dailyMap[day] || 0
     }));
 
-    // Stock Movement Logic
     const allProductMovement = products.map(p => ({
       id: p.id,
       name: p.name,
@@ -176,24 +178,17 @@ export function DashboardView() {
       sku: p.sku
     }));
 
-    const fastMoving = allProductMovement
-      .filter(p => p.qtySold > 0)
-      .sort((a, b) => b.qtySold - a.qtySold)
-      .slice(0, 5);
-
-    const slowMoving = allProductMovement
-      .filter(p => p.qtySold > 0)
-      .sort((a, b) => a.qtySold - b.qtySold)
-      .slice(0, 5);
-
-    const deadStock = allProductMovement
-      .filter(p => p.qtySold === 0 && p.stock > 0)
-      .slice(0, 5);
-
     return { 
-      revenue, savings, cost, profit, categoryData, chartData, topProducts, 
+      revenue, savings, cost, profit, returnAmount,
+      categoryData: Object.entries(categoryMap).map(([name, value]) => ({ name, value })), 
+      chartData, 
+      topProducts: Object.values(productMap).sort((a, b) => b.rev - a.rev).slice(0, 5),
       packageRev, comboRev, pricelistSavings, promoDiscountSavings,
-      topPackages, topCombos, fastMoving, slowMoving, deadStock
+      topPackages: Object.values(packageMap).sort((a, b) => b.rev - a.rev).slice(0, 5), 
+      topCombos: Object.values(comboMap).sort((a, b) => b.rev - a.rev).slice(0, 5),
+      fastMoving: allProductMovement.filter(p => p.qtySold > 0).sort((a, b) => b.qtySold - a.qtySold).slice(0, 5),
+      slowMoving: allProductMovement.filter(p => p.qtySold > 0).sort((a, b) => a.qtySold - b.qtySold).slice(0, 5),
+      deadStock: allProductMovement.filter(p => p.qtySold === 0 && p.stock > 0).slice(0, 5)
     };
   }, [filteredHistory, products, packages, combos]);
 
@@ -229,31 +224,21 @@ export function DashboardView() {
           <div className="flex items-center gap-2 w-full md:w-auto">
             <div className="flex flex-col gap-0.5">
               <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dari</Label>
-              <Input 
-                type="date" 
-                value={startDate} 
-                onChange={(e) => {setStartDate(e.target.value); setPeriod('custom');}}
-                className="h-8 md:h-10 border-none bg-muted/20 rounded-lg md:rounded-xl font-bold text-xs"
-              />
+              <Input type="date" value={startDate} onChange={(e) => {setStartDate(e.target.value); setPeriod('custom');}} className="h-8 md:h-10 border-none bg-muted/20 rounded-lg md:rounded-xl font-bold text-xs" />
             </div>
             <div className="flex flex-col gap-0.5">
               <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ke</Label>
-              <Input 
-                type="date" 
-                value={endDate} 
-                onChange={(e) => {setEndDate(e.target.value); setPeriod('custom');}}
-                className="h-8 md:h-10 border-none bg-muted/20 rounded-lg md:rounded-xl font-bold text-xs"
-              />
+              <Input type="date" value={endDate} onChange={(e) => {setEndDate(e.target.value); setPeriod('custom');}} className="h-8 md:h-10 border-none bg-muted/20 rounded-lg md:rounded-xl font-bold text-xs" />
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <StatCard title="Pendapatan" value={formatCurrency(stats.revenue)} trend="+12%" icon={DollarSign} color="bg-primary" />
-        <StatCard title="Hemat Promo" value={formatCurrency(stats.savings)} trend="Total" icon={Ticket} color="bg-accent" />
+        <StatCard title="Pendapatan Bersih" value={formatCurrency(stats.revenue)} trend="+12%" icon={DollarSign} color="bg-primary" />
+        <StatCard title="Retur Barang" value={formatCurrency(stats.returnAmount)} trend="Total" icon={RotateCcw} color="bg-rose-500" />
         <StatCard title="Laba Kotor" value={formatCurrency(stats.profit)} trend="Net" icon={Wallet} color="bg-green-500" />
-        <StatCard title="Transaksi" value={filteredHistory.length.toString()} trend="Orders" icon={ShoppingBag} color="bg-orange-500" />
+        <StatCard title="Transaksi" value={filteredHistory.filter(t => t.status !== 'Returned').length.toString()} trend="Orders" icon={ShoppingBag} color="bg-orange-500" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
@@ -275,10 +260,7 @@ export function DashboardView() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '10px', fontWeight: 'bold' }} />
                 <YAxis axisLine={false} tickLine={false} style={{ fontSize: '10px', fontWeight: 'bold' }} />
-                <Tooltip 
-                  formatter={(val: number) => formatCurrency(val)}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
+                <Tooltip formatter={(val: number) => formatCurrency(val)} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                 <Area type="monotone" dataKey="sales" stroke="#3D8AF5" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -294,23 +276,10 @@ export function DashboardView() {
           <CardContent className="h-[200px] md:h-[300px] px-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie
-                  data={stats.categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={70}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {stats.categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
+                <Pie data={stats.categoryData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value">
+                  {stats.categoryData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
-                <Tooltip 
-                  formatter={(val: number) => formatCurrency(val)}
-                  contentStyle={{ borderRadius: '12px', border: 'none' }}
-                />
+                <Tooltip formatter={(val: number) => formatCurrency(val)} contentStyle={{ borderRadius: '12px', border: 'none' }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-wrap gap-2 mt-2 justify-center">
@@ -326,213 +295,97 @@ export function DashboardView() {
       </div>
 
       <div className="flex flex-col gap-1 mt-4">
-        <h3 className="text-lg md:text-xl font-black flex items-center gap-2">
-          <Zap className="text-yellow-500 h-5 w-5" /> Analisis Penawaran & Paket
-        </h3>
+        <h3 className="text-lg md:text-xl font-black flex items-center gap-2"><Zap className="text-yellow-500 h-5 w-5" /> Analisis Penawaran & Paket</h3>
         <p className="text-[10px] md:text-sm text-muted-foreground">Detail performa paket bundling dan harga khusus</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col gap-2">
-          <div className="flex justify-between items-center">
-            <Boxes className="text-accent h-5 w-5" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Paket</span>
-          </div>
+          <div className="flex justify-between items-center"><Boxes className="text-accent h-5 w-5" /><span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Paket</span></div>
           <p className="text-base font-black">{formatCurrency(stats.packageRev)}</p>
           <p className="text-[9px] font-bold text-muted-foreground">Total Penjualan Paket</p>
         </div>
         <div className="p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col gap-2">
-          <div className="flex justify-between items-center">
-            <LayoutGrid className="text-primary h-5 w-5" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Combo</span>
-          </div>
+          <div className="flex justify-between items-center"><LayoutGrid className="text-primary h-5 w-5" /><span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Combo</span></div>
           <p className="text-base font-black">{formatCurrency(stats.comboRev)}</p>
           <p className="text-[9px] font-bold text-muted-foreground">Total Penjualan Combo</p>
         </div>
         <div className="p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col gap-2">
-          <div className="flex justify-between items-center">
-            <Tag className="text-green-500 h-5 w-5" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Grosir</span>
-          </div>
+          <div className="flex justify-between items-center"><Tag className="text-green-500 h-5 w-5" /><span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Grosir</span></div>
           <p className="text-base font-black">{formatCurrency(stats.pricelistSavings)}</p>
           <p className="text-[9px] font-bold text-muted-foreground">Hemat Harga Bertingkat</p>
         </div>
         <div className="p-4 bg-white rounded-2xl shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col gap-2">
-          <div className="flex justify-between items-center">
-            <Ticket className="text-rose-500 h-5 w-5" />
-            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Diskon</span>
-          </div>
+          <div className="flex justify-between items-center"><Ticket className="text-rose-500 h-5 w-5" /><span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Diskon</span></div>
           <p className="text-base font-black">{formatCurrency(stats.promoDiscountSavings)}</p>
           <p className="text-[9px] font-bold text-muted-foreground">Hemat Kupon / Promo</p>
         </div>
       </div>
 
       <div className="flex flex-col gap-1 mt-8">
-        <h3 className="text-lg md:text-xl font-black flex items-center gap-2">
-          <BarChart3 className="text-primary h-5 w-5" /> Analisis Pergerakan Stok (Moving Items)
-        </h3>
+        <h3 className="text-lg md:text-xl font-black flex items-center gap-2"><BarChart3 className="text-primary h-5 w-5" /> Analisis Pergerakan Stok</h3>
         <p className="text-[10px] md:text-sm text-muted-foreground">Pantau kesehatan stok berdasarkan volume penjualan di periode terpilih</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
         <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
-          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6">
-            <Flame className="text-orange-500 h-4 w-4 md:h-5 md:w-5" /> Fast Moving
-          </CardTitle>
+          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6"><Flame className="text-orange-500 h-4 w-4 md:h-5 md:w-5" /> Fast Moving</CardTitle>
           <div className="space-y-4">
             {stats.fastMoving.map((p, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-orange-50/30 rounded-xl md:rounded-2xl border border-orange-100">
-                <div>
-                  <p className="font-black text-xs md:text-sm">{p.name}</p>
-                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-xs md:text-sm text-orange-600">{p.qtySold} Unit</p>
-                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Stok: {p.stock}</p>
-                </div>
+                <div><p className="font-black text-xs md:text-sm">{p.name}</p><p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p></div>
+                <div className="text-right"><p className="font-black text-xs md:text-sm text-orange-600">{p.qtySold} Unit</p><p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Stok: {p.stock}</p></div>
               </div>
             ))}
-            {stats.fastMoving.length === 0 && <div className="py-10 text-center opacity-20"><Flame className="h-10 w-10 mx-auto" /></div>}
           </div>
         </Card>
 
         <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
-          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6">
-            <Turtle className="text-blue-500 h-4 w-4 md:h-5 md:w-5" /> Slow Moving
-          </CardTitle>
+          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6"><Turtle className="text-blue-500 h-4 w-4 md:h-5 md:w-5" /> Slow Moving</CardTitle>
           <div className="space-y-4">
             {stats.slowMoving.map((p, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-blue-50/30 rounded-xl md:rounded-2xl border border-blue-100">
-                <div>
-                  <p className="font-black text-xs md:text-sm">{p.name}</p>
-                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-xs md:text-sm text-blue-600">{p.qtySold} Unit</p>
-                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Stok: {p.stock}</p>
-                </div>
+                <div><p className="font-black text-xs md:text-sm">{p.name}</p><p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p></div>
+                <div className="text-right"><p className="font-black text-xs md:text-sm text-blue-600">{p.qtySold} Unit</p><p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Stok: {p.stock}</p></div>
               </div>
             ))}
-            {stats.slowMoving.length === 0 && <div className="py-10 text-center opacity-20"><Turtle className="h-10 w-10 mx-auto" /></div>}
           </div>
         </Card>
 
         <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
-          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6">
-            <PackageX className="text-destructive h-4 w-4 md:h-5 md:w-5" /> Dead Stock
-          </CardTitle>
+          <CardTitle className="text-sm md:text-base font-black flex items-center gap-2 mb-6"><PackageX className="text-destructive h-4 w-4 md:h-5 md:w-5" /> Dead Stock</CardTitle>
           <div className="space-y-4">
             {stats.deadStock.map((p, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-rose-50/30 rounded-xl md:rounded-2xl border border-rose-100">
-                <div>
-                  <p className="font-black text-xs md:text-sm">{p.name}</p>
-                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-xs md:text-sm text-destructive">0 Terjual</p>
-                  <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Sisa Stok: {p.stock}</p>
-                </div>
+                <div><p className="font-black text-xs md:text-sm">{p.name}</p><p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{p.sku}</p></div>
+                <div className="text-right"><p className="font-black text-xs md:text-sm text-destructive">0 Terjual</p><p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">Sisa: {p.stock}</p></div>
               </div>
             ))}
-            {stats.deadStock.length === 0 && <div className="py-10 text-center opacity-20"><PackageX className="h-10 w-10 mx-auto" /></div>}
           </div>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 mt-4">
         <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
-          <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6">
-            <Boxes className="text-accent h-4 w-4 md:h-5 md:w-5" /> Paket Terlaris
-          </CardTitle>
-          <div className="space-y-4">
-            {stats.topPackages.map((pkg, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-muted/10 rounded-xl md:rounded-2xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-black text-[10px] md:text-xs">
-                    {idx + 1}
-                  </div>
-                  <div>
-                    <p className="font-black text-xs md:text-sm">{pkg.name}</p>
-                    <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{pkg.qty} Terjual</p>
-                  </div>
-                </div>
-                <p className="font-black text-xs md:text-sm text-primary">{formatCurrency(pkg.rev)}</p>
-              </div>
-            ))}
-            {stats.topPackages.length === 0 && (
-              <div className="text-center py-10 opacity-30">
-                 <Boxes className="h-10 w-10 mx-auto mb-2" />
-                 <p className="font-bold text-xs">Belum ada paket terjual</p>
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
-          <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6">
-            <LayoutGrid className="text-primary h-4 w-4 md:h-5 md:w-5" /> Combo Terlaris
-          </CardTitle>
-          <div className="space-y-4">
-            {stats.topCombos.map((combo, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-muted/10 rounded-xl md:rounded-2xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-[10px] md:text-xs">
-                    {idx + 1}
-                  </div>
-                  <div>
-                    <p className="font-black text-xs md:text-sm">{combo.name}</p>
-                    <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{combo.qty} Terjual</p>
-                  </div>
-                </div>
-                <p className="font-black text-xs md:text-sm text-primary">{formatCurrency(combo.rev)}</p>
-              </div>
-            ))}
-            {stats.topCombos.length === 0 && (
-              <div className="text-center py-10 opacity-30">
-                 <LayoutGrid className="h-10 w-10 mx-auto mb-2" />
-                 <p className="font-bold text-xs">Belum ada combo terjual</p>
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
-        <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
-          <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6">
-            <BarChart3 className="text-primary h-4 w-4 md:h-5 md:w-5" /> Produk Terlaris (Satuan)
-          </CardTitle>
+          <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6"><BarChart3 className="text-primary h-4 w-4 md:h-5 md:w-5" /> Produk Terlaris</CardTitle>
           <div className="space-y-4">
             {stats.topProducts.map((prod, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 md:p-4 bg-muted/10 rounded-xl md:rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-[10px] md:text-xs">
-                    {idx + 1}
-                  </div>
-                  <div>
-                    <p className="font-black text-xs md:text-sm">{prod.name}</p>
-                    <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{prod.qty} Terjual</p>
-                  </div>
+                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-[10px] md:text-xs">{idx + 1}</div>
+                  <div><p className="font-black text-xs md:text-sm">{prod.name}</p><p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{prod.qty} Terjual</p></div>
                 </div>
                 <p className="font-black text-xs md:text-sm text-primary">{formatCurrency(prod.rev)}</p>
               </div>
             ))}
-            {stats.topProducts.length === 0 && (
-              <div className="text-center py-10 opacity-30">
-                 <Search className="h-10 w-10 mx-auto mb-2" />
-                 <p className="font-bold text-xs">Belum ada data</p>
-              </div>
-            )}
           </div>
         </Card>
 
         <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-8 bg-white">
-          <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6">
-            <Trophy className="text-orange-500 h-4 w-4 md:h-5 md:w-5" /> Pelanggan Loyal
-          </CardTitle>
+          <CardTitle className="text-lg md:text-xl font-black flex items-center gap-2 mb-6"><Trophy className="text-orange-500 h-4 w-4 md:h-5 md:w-5" /> Pelanggan Loyal</CardTitle>
           <div className="space-y-4">
             {Object.entries(filteredHistory.reduce((acc: any, t) => {
-              if (t.customerId) {
+              if (t.customerId && t.status !== 'Returned') {
                 if (!acc[t.customerId]) acc[t.customerId] = { total: 0, count: 0 };
                 acc[t.customerId].total += t.total;
                 acc[t.customerId].count += 1;
@@ -546,9 +399,7 @@ export function DashboardView() {
             .map(({ customer, total, count }: any, idx) => (
               <div key={customer.id} className="flex items-center justify-between p-3 md:p-4 bg-muted/10 rounded-xl md:rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8 md:h-10 md:h-10 border-2 border-white shadow-sm">
-                    <AvatarFallback className="bg-primary text-white font-bold text-[10px]">{customer.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                  <Avatar className="h-8 w-8 md:h-10 md:h-10 border-2 border-white shadow-sm"><AvatarFallback className="bg-primary text-white font-bold text-[10px]">{customer.name.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                   <div>
                     <p className="font-black text-xs md:text-sm">{customer.name}</p>
                     <div className="flex items-center gap-2">
@@ -560,12 +411,6 @@ export function DashboardView() {
                 <p className="font-black text-xs md:text-sm text-primary">{formatCurrency(total)}</p>
               </div>
             ))}
-            {filteredHistory.filter(t => t.customerId).length === 0 && (
-              <div className="text-center py-10 opacity-30">
-                 <PackageIcon className="h-10 w-10 mx-auto mb-2" />
-                 <p className="font-bold text-xs">Belum ada pelanggan</p>
-              </div>
-            )}
           </div>
         </Card>
       </div>
@@ -577,12 +422,8 @@ function StatCard({ title, value, trend, icon: Icon, color }: any) {
   return (
     <Card className="rounded-2xl md:rounded-[2.5rem] border-none shadow-sm p-4 md:p-6 bg-white overflow-hidden relative group">
       <div className="flex justify-between items-start mb-3 md:mb-4">
-        <div className={cn(color, "p-2 md:p-4 rounded-xl md:rounded-2xl text-white")}>
-          <Icon className="h-4 w-4 md:h-6 md:w-6" />
-        </div>
-        <span className="text-[7px] md:text-[10px] font-black px-2 py-1 rounded-lg bg-muted text-muted-foreground uppercase tracking-widest">
-          {trend}
-        </span>
+        <div className={cn(color, "p-2 md:p-4 rounded-xl md:rounded-2xl text-white")}><Icon className="h-4 w-4 md:h-6 md:w-6" /></div>
+        <span className="text-[7px] md:text-[10px] font-black px-2 py-1 rounded-lg bg-muted text-muted-foreground uppercase tracking-widest">{trend}</span>
       </div>
       <div>
         <p className="text-[8px] md:text-xs text-muted-foreground font-black uppercase tracking-widest mb-0.5">{title}</p>

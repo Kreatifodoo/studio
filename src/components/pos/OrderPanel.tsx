@@ -477,8 +477,8 @@ export function OrderPanel({ isMobile = false }: OrderPanelProps) {
 
                       <div className="flex justify-between items-center pt-4 border-t-2 border-primary/5 border-dashed">
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-green-500 text-white border-none font-black text-[9px] uppercase tracking-widest px-2 py-0.5">
-                            {trx.paymentMethod || 'TUNAI'}
+                          <Badge className={cn("text-white border-none font-black text-[9px] uppercase tracking-widest px-2 py-0.5", trx.status === 'Returned' ? 'bg-destructive' : 'bg-green-500')}>
+                            {trx.status === 'Returned' ? 'RETUR' : (trx.paymentMethod || 'TUNAI')}
                           </Badge>
                         </div>
                         <div className="text-right">
@@ -511,7 +511,7 @@ export function OrderPanel({ isMobile = false }: OrderPanelProps) {
         total={total}
         onSuccess={(methodName, reference) => {
           addTransaction({
-            id: Math.random().toString(36).substr(2, 8).toUpperCase(),
+            id: Date.now().toString(),
             date: new Date().toISOString(),
             items: [...cart],
             subtotal,

@@ -93,7 +93,7 @@ export interface Transaction {
   tax: number;
   total: number;
   totalSavings: number;
-  status: 'Completed' | 'Pending';
+  status: 'Completed' | 'Pending' | 'Returned';
   paymentMethod?: string;
   paymentReference?: string;
   customerId?: string;

@@ -30,6 +30,7 @@ interface POSContextType {
   setSelectedCustomerId: (id: string | null) => void;
   history: Transaction[];
   addTransaction: (transaction: Transaction) => void;
+  returnTransaction: (transactionId: string) => Promise<void>;
   currentSession: Session | null;
   sessions: Session[];
   openSession: (openingCash: number) => void;
@@ -114,9 +115,9 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: 'system' });
   const [lastClosedSession, setLastClosedSession] = useState<Session | null>(null);
 
-  // Dexie Reactive Queries - Limited history to prevent memory freeze
+  // Dexie Reactive Queries - Limited history for performance
   const products = useLiveQuery(() => db.products.toArray()) || [];
-  const history = useLiveQuery(() => db.transactions.orderBy('date').reverse().limit(50).toArray()) || [];
+  const history = useLiveQuery(() => db.transactions.orderBy('date').reverse().limit(100).toArray()) || [];
   const sessions = useLiveQuery(() => db.sessions.orderBy('startTime').reverse().limit(20).toArray()) || [];
   const customers = useLiveQuery(() => db.customers.toArray()) || [];
   const paymentMethods = useLiveQuery(() => db.paymentMethods.toArray()) || [];
@@ -256,7 +257,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const openSession = async (openingCash: number) => {
     const newSession: Session = {
-      id: Math.random().toString(36).substr(2, 9).toUpperCase(),
+      id: Date.now().toString(),
       startTime: new Date().toISOString(),
       openingCash,
       status: 'Open',
@@ -270,7 +271,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     const closed: Session = { ...currentSession, endTime: new Date().toISOString(), closingCash, status: 'Closed' };
     await db.sessions.put(closed);
     setLastClosedSession(closed);
-    // Explicitly set view to reports after a slight delay to ensure DB update is reactive
     setTimeout(() => {
       setView('reports');
     }, 100);
@@ -368,8 +368,32 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const returnTransaction = async (transactionId: string) => {
+    try {
+      await db.transaction('rw', db.transactions, db.products, async () => {
+        const t = await db.transactions.get(transactionId);
+        if (!t || t.status === 'Returned') return;
+
+        // Restore Stock
+        for (const item of t.items) {
+          if (!item.isPackage && !item.isCombo) {
+            const product = await db.products.get(item.productId);
+            if (product) {
+              await db.products.update(product.id, { onHandQty: product.onHandQty + item.quantity });
+            }
+          }
+        }
+
+        // Update status
+        await db.transactions.update(transactionId, { status: 'Returned' });
+      });
+    } catch (error) {
+      console.error("Gagal retur transaksi:", error);
+    }
+  };
+
   const addCustomer = (customer: Omit<Customer, 'id'>) => {
-    const id = Math.random().toString(36).substr(2, 9).toUpperCase();
+    const id = Date.now().toString();
     const newCust = { id, ...customer };
     db.customers.put(newCust);
     return id;
@@ -378,7 +402,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   return (
     <POSContext.Provider value={{
       activeCategory, setActiveCategory, searchQuery, setSearchQuery, cart, addToCart, addPackageToCart, addComboToCart, removeFromCart, updateQuantity, updateNote, clearCart,
-      selectedCustomerId, setSelectedCustomerId, history, addTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
+      selectedCustomerId, setSelectedCustomerId, history, addTransaction, returnTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
       products, setProducts, categories: INITIAL_CATEGORIES, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
       users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded,
