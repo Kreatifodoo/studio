@@ -19,10 +19,14 @@ export function ProductGrid() {
   } = usePOS();
 
   const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState<Date | null>(null);
   const [selectedCombo, setSelectedCombo] = useState<Combo | null>(null);
   const [comboSelections, setComboSelections] = useState<{ [groupId: string]: string }>({});
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { 
+    setMounted(true);
+    setNow(new Date());
+  }, []);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -85,7 +89,7 @@ export function ProductGrid() {
           <Card key={combo.id} onClick={() => setSelectedCombo(combo)} className="group overflow-hidden rounded-xl md:rounded-2xl border-none shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-300 bg-white flex flex-col h-full cursor-pointer border-t-2 border-t-primary/20">
             <div className="relative aspect-video bg-primary/5 flex items-center justify-center"><LayoutGrid className="h-6 w-6 md:h-10 md:w-10 text-primary/10" /></div>
             <div className="p-2 md:p-4 flex flex-col flex-1">
-              <h3 className="text-[10px] md:text-sm font-black line-clamp-1 mb-0.5">{combo.name}</h3>
+              <h3 className="text-[10px] md:sm font-black line-clamp-1 mb-0.5">{combo.name}</h3>
               <div className="mt-auto flex justify-between items-center">
                 <span className="text-[9px] md:text-xs font-black text-primary">{formatCurrency(combo.basePrice)}</span>
                 <span className="text-[7px] md:text-[8px] font-black uppercase text-primary/60 border border-primary/20 px-1 rounded">OPSI</span>
@@ -98,7 +102,7 @@ export function ProductGrid() {
           <Card key={pkg.id} onClick={() => addPackageToCart(pkg)} className="group overflow-hidden rounded-xl md:rounded-2xl border-none shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-300 bg-white flex flex-col h-full cursor-pointer border-t-2 border-t-accent/20">
             <div className="relative aspect-video bg-accent/5 flex items-center justify-center"><Box className="h-6 w-6 md:h-10 md:w-10 text-accent/10" /></div>
             <div className="p-2 md:p-4 flex flex-col flex-1">
-              <h3 className="text-[10px] md:text-sm font-black line-clamp-1 mb-0.5">{pkg.name}</h3>
+              <h3 className="text-[10px] md:sm font-black line-clamp-1 mb-0.5">{pkg.name}</h3>
               <div className="mt-auto flex justify-between items-center">
                 <span className="text-[9px] md:text-xs font-black text-primary">{formatCurrency(pkg.price)}</span>
                 <span className="text-[7px] md:text-[8px] font-black uppercase bg-accent/10 text-accent px-1 rounded">PAKET</span>
@@ -110,7 +114,14 @@ export function ProductGrid() {
         {filteredProducts.map((product) => {
           const inCart = cart.find(i => i.productId === product.id && !i.isPackage);
           const stockLeft = product.onHandQty - (inCart?.quantity || 0);
-          const activePromo = promoDiscounts.find(pd => pd.enabled && pd.productId === product.id && new Date(pd.startDate) <= new Date() && new Date(pd.endDate) >= new Date());
+          
+          // Hydration safe check for active promo
+          const activePromo = now ? promoDiscounts.find(pd => 
+            pd.enabled && 
+            pd.productId === product.id && 
+            new Date(pd.startDate) <= now && 
+            new Date(pd.endDate) >= now
+          ) : null;
 
           return (
             <Card key={product.id} onClick={() => stockLeft > 0 && addToCart(product)} className={cn("group overflow-hidden rounded-xl md:rounded-2xl border-none shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-300 bg-white flex flex-col h-full cursor-pointer", stockLeft <= 0 && "opacity-80 grayscale-[0.5] cursor-not-allowed")}>
@@ -119,7 +130,7 @@ export function ProductGrid() {
                 {activePromo && <div className="absolute top-1 right-1"><Ticket className="h-3 w-3 text-rose-500 fill-rose-500" /></div>}
               </div>
               <div className="p-2 md:p-4 flex flex-col flex-1">
-                <h3 className="text-[10px] md:text-sm font-black line-clamp-1 mb-0.5">{product.name}</h3>
+                <h3 className="text-[10px] md:sm font-black line-clamp-1 mb-0.5">{product.name}</h3>
                 <div className="mt-auto flex justify-between items-end">
                   <div className="flex flex-col">
                     <span className="text-[9px] md:text-xs font-black text-primary">{formatCurrency(product.price)}</span>
