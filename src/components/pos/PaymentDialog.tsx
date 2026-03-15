@@ -26,7 +26,7 @@ interface PaymentDialogProps {
 }
 
 export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentDialogProps) {
-  const { paymentMethods, cart, printer, printViaBluetooth } = usePOS();
+  const { paymentMethods, cart, printer, printViaBluetooth, currentUser, selectedCustomerId } = usePOS();
   const [stage, setStage] = useState<'method' | 'cash-input' | 'ref-input' | 'success'>('method');
   const [transactionId, setTransactionId] = useState<string>('');
   const [selectedMethod, setSelectedMethod] = useState<string>('');
@@ -89,7 +89,9 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
       totalSavings: cart.reduce((acc, item) => acc + (item.promoSavings * item.quantity), 0),
       status: 'Completed',
       paymentMethod: methodName,
-      paymentReference: ref
+      paymentReference: ref,
+      staffName: currentUser?.name,
+      customerId: selectedCustomerId || undefined
     };
 
     setCurrentTransaction(mockTransaction);

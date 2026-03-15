@@ -30,7 +30,7 @@ export function OrderPanel({ isMobile = false }: OrderPanelProps) {
   const { 
     cart, removeFromCart, updateQuantity, updateNote, clearCart, 
     addTransaction, fees, currentSession, customers, addCustomer,
-    selectedCustomerId, setSelectedCustomerId, history: allHistory
+    selectedCustomerId, setSelectedCustomerId, history: allHistory, currentUser
   } = usePOS();
   
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -521,7 +521,8 @@ export function OrderPanel({ isMobile = false }: OrderPanelProps) {
             status: 'Completed',
             paymentMethod: methodName,
             paymentReference: reference,
-            customerId: selectedCustomerId || undefined
+            customerId: selectedCustomerId || undefined,
+            staffName: currentUser?.name
           });
           clearCart();
           setIsPaymentOpen(false);

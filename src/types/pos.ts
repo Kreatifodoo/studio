@@ -97,6 +97,7 @@ export interface Transaction {
   paymentMethod?: string;
   paymentReference?: string;
   customerId?: string;
+  staffName?: string;
 }
 
 export interface Session {

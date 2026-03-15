@@ -11,9 +11,13 @@ interface ReceiptViewProps {
 }
 
 export function ReceiptView({ transaction }: ReceiptViewProps) {
-  const { packages, products, storeSettings } = usePOS();
+  const { packages, products, storeSettings, customers } = usePOS();
   
   if (!transaction) return null;
+
+  const selectedCustomer = transaction.customerId 
+    ? customers.find(c => c.id === transaction.customerId) 
+    : null;
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
@@ -51,6 +55,18 @@ export function ReceiptView({ transaction }: ReceiptViewProps) {
           <span>METODE</span>
           <span className="font-bold">{transaction.paymentMethod}</span>
         </div>
+        {transaction.staffName && (
+          <div className="flex justify-between">
+            <span>KASIR</span>
+            <span className="font-bold uppercase">{transaction.staffName}</span>
+          </div>
+        )}
+        {selectedCustomer && (
+          <div className="flex justify-between">
+            <span>PELANGGAN</span>
+            <span className="font-bold uppercase">{selectedCustomer.name}</span>
+          </div>
+        )}
         {transaction.paymentReference && (
           <div className="flex justify-between">
             <span>REF</span>
