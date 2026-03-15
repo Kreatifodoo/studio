@@ -1,14 +1,12 @@
 
-import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
-import { connectBluetoothPrinter, printReceipt } from './printer';
 import { Transaction } from '@/types/pos';
 
 export const isNative = () => Capacitor.isNativePlatform();
 
 /**
  * Memulai pemindaian barcode menggunakan kamera perangkat.
+ * Diimpor secara dinamis untuk keamanan SSR.
  */
 export async function startScan(): Promise<string | null> {
   if (!isNative()) {
@@ -17,6 +15,9 @@ export async function startScan(): Promise<string | null> {
   }
 
   try {
+    const { BarcodeScanner, BarcodeFormat } = await import('@capacitor-mlkit/barcode-scanning');
+    const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
+
     const isSupported = await BarcodeScanner.isSupported();
     if (!isSupported.supported) return null;
 
@@ -44,10 +45,12 @@ export async function startScan(): Promise<string | null> {
  */
 export async function printReceiptNative(transaction: Transaction, storeName: string): Promise<boolean> {
   if (!isNative()) return false;
+  const { printReceipt } = await import('./printer');
   return await printReceipt(transaction, storeName);
 }
 
 export async function initPrinterNative(): Promise<string | null> {
   if (!isNative()) return null;
+  const { connectBluetoothPrinter } = await import('./printer');
   return await connectBluetoothPrinter();
 }

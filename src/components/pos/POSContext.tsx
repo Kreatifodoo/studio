@@ -114,7 +114,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [view, setView] = useState<AppView>('pos');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: isNative() ? 'bluetooth' : 'system' });
+  const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: 'system' });
   const [lastClosedSession, setLastClosedSession] = useState<Session | null>(null);
 
   // Dexie Reactive Queries
@@ -129,12 +129,21 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const packages = useLiveQuery(() => db.packages.toArray()) || [];
   const combos = useLiveQuery(() => db.combos.toArray()) || [];
   const promoDiscounts = useLiveQuery(() => db.promoDiscounts.toArray()) || [];
-  const storeSettingsData = useLiveQuery(() => db.config.get('storeSettings'));
   
+  const categoriesData = useLiveQuery(() => db.config.get('categories'));
+  const categories = categoriesData?.value || INITIAL_CATEGORIES;
+
+  const storeSettingsData = useLiveQuery(() => db.config.get('storeSettings'));
   const storeSettings = storeSettingsData?.value || INITIAL_STORE_SETTINGS;
+  
   const currentSession = sessions.find(s => s.status === 'Open') || null;
 
   useEffect(() => {
+    // Set printer type safely on client mount
+    if (isNative()) {
+      setPrinter(prev => ({ ...prev, type: 'bluetooth' }));
+    }
+
     async function initDb() {
       try {
         const prodCount = await db.products.count();
@@ -144,6 +153,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
           await db.paymentMethods.bulkPut(INITIAL_PAYMENT_METHODS);
           await db.fees.bulkPut(INITIAL_FEES);
           await db.config.put({ key: 'storeSettings', value: INITIAL_STORE_SETTINGS });
+          await db.config.put({ key: 'categories', value: INITIAL_CATEGORIES });
         }
 
         const savedUserId = localStorage.getItem('pos_current_user_id');
@@ -173,8 +183,18 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   };
 
   const connectPrinter = async () => {
-    // Placeholder untuk simulasi koneksi native
-    setPrinter({ name: 'Printer POS Mobile', status: 'connected', type: 'bluetooth' });
+    setPrinter(prev => ({ ...prev, status: 'connecting' }));
+    try {
+      const { initPrinterNative } = await import('@/lib/native-bridge');
+      const name = await initPrinterNative();
+      if (name) {
+        setPrinter({ name, status: 'connected', type: 'bluetooth' });
+      } else {
+        setPrinter({ name: null, status: 'disconnected', type: 'bluetooth' });
+      }
+    } catch (e) {
+      setPrinter({ name: null, status: 'disconnected', type: 'bluetooth' });
+    }
   };
 
   const disconnectPrinter = () => {
@@ -224,7 +244,11 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       const data = JSON.parse(json);
       if (data.app !== 'Kompak POS Enterprise') throw new Error('Format file tidak valid');
       
-      await db.transaction('rw', db.products, db.transactions, db.sessions, db.users, db.customers, db.paymentMethods, db.fees, db.priceLists, db.packages, db.combos, db.promoDiscounts, db.config, async () => {
+      await db.transaction('rw', [
+        db.products, db.transactions, db.sessions, db.users, db.customers, 
+        db.paymentMethods, db.fees, db.priceLists, db.packages, 
+        db.combos, db.promoDiscounts, db.config
+      ], async () => {
         await db.resetDatabase();
         if (data.products) await db.products.bulkPut(data.products);
         if (data.transactions) await db.transactions.bulkPut(data.transactions);
@@ -370,7 +394,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const addTransaction = async (t: Transaction) => {
     try {
-      await db.transaction('rw', db.transactions, db.products, db.sessions, async () => {
+      await db.transaction('rw', [db.transactions, db.products, db.sessions], async () => {
         await db.transactions.put(t);
         for (const item of t.items) {
           if (!item.isPackage && !item.isCombo) {
@@ -392,7 +416,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   const returnTransaction = async (transactionId: string, staffName?: string) => {
     try {
-      await db.transaction('rw', db.transactions, db.products, async () => {
+      await db.transaction('rw', [db.transactions, db.products], async () => {
         const t = await db.transactions.get(transactionId);
         if (!t || t.status === 'Returned') return;
 
@@ -429,11 +453,16 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     <POSContext.Provider value={{
       activeCategory, setActiveCategory, searchQuery, setSearchQuery, cart, addToCart, addPackageToCart, addComboToCart, removeFromCart, updateQuantity, updateNote, clearCart,
       selectedCustomerId, setSelectedCustomerId, history, addTransaction, returnTransaction, currentSession, sessions, openSession, closeSession, lastClosedSession, view, setView,
-      products, setProducts, categories: INITIAL_CATEGORIES, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
+      products, setProducts, categories, setCategories, paymentMethods, setPaymentMethods, fees, setFees, customers, setCustomers, addCustomer,
       priceLists, setPriceLists, packages, setPackages, combos, setCombos, promoDiscounts, setPromoDiscounts, storeSettings, setStoreSettings,
       users, setUsers, roles: INITIAL_ROLES, currentUser, login, logout, checkPermission, exportDatabase, importDatabase, isDbLoaded,
       printer, connectPrinter, disconnectPrinter, triggerNativeScan, 
-      printViaBluetooth: async () => true, printSessionSummaryViaBluetooth: async () => true, printBarcodeViaBluetooth: async () => true
+      printViaBluetooth: async (t) => {
+        const { printReceiptNative } = await import('@/lib/native-bridge');
+        return await printReceiptNative(t, storeSettings.name);
+      }, 
+      printSessionSummaryViaBluetooth: async () => true, 
+      printBarcodeViaBluetooth: async () => true
     }}>
       {children}
     </POSContext.Provider>
