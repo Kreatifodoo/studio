@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -44,9 +45,16 @@ export function SessionReportView() {
   const [sessionTransactions, setSessionTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Filter States
-  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  // Filter States - Initialize empty to avoid hydration mismatch
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  useEffect(() => {
+    // Set initial dates only on client
+    const today = format(new Date(), 'yyyy-MM-dd');
+    setStartDate(today);
+    setEndDate(today);
+  }, []);
 
   useEffect(() => {
     if (lastClosedSession && !selectedSessionId) {

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Transaction } from '@/types/pos';
 import { format } from 'date-fns';
 import { usePOS } from './POSContext';
@@ -12,7 +12,17 @@ interface ReceiptViewProps {
 
 export function ReceiptView({ transaction }: ReceiptViewProps) {
   const { packages, products, storeSettings, customers } = usePOS();
+  const [barcodeBars, setBarcodeBars] = useState<{width: string, show: boolean}[]>([]);
   
+  useEffect(() => {
+    // Generate random barcode bars only on the client to avoid hydration mismatch
+    const bars = [...Array(24)].map(() => ({
+      width: Math.random() > 0.5 ? 'w-0.5' : 'w-1',
+      show: Math.random() > 0.3
+    }));
+    setBarcodeBars(bars);
+  }, []);
+
   if (!transaction) return null;
 
   const selectedCustomer = transaction.customerId 
@@ -176,8 +186,8 @@ export function ReceiptView({ transaction }: ReceiptViewProps) {
         <div className="flex flex-col items-center gap-1 opacity-60">
           <div className="w-full h-8 bg-black flex flex-col items-center justify-center p-1">
              <div className="w-full h-full bg-white flex items-center justify-center gap-0.5 px-2">
-                {[...Array(24)].map((_, i) => (
-                  <div key={i} className={`h-full ${Math.random() > 0.5 ? 'w-0.5 bg-black' : 'w-1 bg-black'} ${Math.random() > 0.3 ? 'block' : 'hidden'}`}></div>
+                {barcodeBars.map((bar, i) => (
+                  <div key={i} className={`h-full ${bar.width} bg-black ${bar.show ? 'block' : 'hidden'}`}></div>
                 ))}
              </div>
           </div>

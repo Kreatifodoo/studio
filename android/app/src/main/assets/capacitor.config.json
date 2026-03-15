@@ -1,0 +1,8 @@
+{
+	"appId": "com.nextpos.app",
+	"appName": "NextPOS",
+	"webDir": "out",
+	"server": {
+		"androidScheme": "https"
+	}
+}

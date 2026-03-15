@@ -1,24 +1,19 @@
+
 "use client";
 
 import { Transaction } from '@/types/pos';
 
 /**
  * Deteksi apakah aplikasi berjalan di platform native (Android/iOS).
- * Aman untuk SSR karena mengecek kewujudan 'window'.
+ * Menggunakan pengecekan window.Capacitor untuk Next.js safety.
  */
 export const isNative = () => {
   if (typeof window === 'undefined') return false;
-  try {
-    const { Capacitor } = require('@capacitor/core');
-    return Capacitor.isNativePlatform();
-  } catch (e) {
-    return false;
-  }
+  return !!(window as any).Capacitor?.isNativePlatform?.();
 };
 
 /**
  * Memulai pemindaian barcode menggunakan kamera perangkat.
- * Menggunakan dynamic import untuk mencegah evaluasi saat build-time (SSR).
  */
 export async function startScan(): Promise<string | null> {
   if (!isNative()) {
@@ -41,7 +36,11 @@ export async function startScan(): Promise<string | null> {
     });
 
     if (barcodes.length > 0) {
-      await Haptics.impact({ style: ImpactStyle.Heavy });
+      try {
+        await Haptics.impact({ style: ImpactStyle.Heavy });
+      } catch (hErr) {
+        // Haptics fail is non-critical
+      }
       return barcodes[0].displayValue;
     }
     

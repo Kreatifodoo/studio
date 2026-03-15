@@ -1,0 +1,24 @@
+
+{
+  "name": "Kompak POS - Sistem Kasir Modern",
+  "short_name": "Kompak POS",
+  "description": "Sistem Point of Sale Canggih untuk Bisnis Anda",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F9FBFF",
+  "theme_color": "#3D8AF5",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/pos-icon/192/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://picsum.photos/seed/pos-icon/512/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

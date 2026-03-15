@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[610],{81610:(e,n,t)=>{t.d(n,{BluetoothPrinter:()=>i});var l,u=t(32587);!function(e){e.Unknown="unknown",e.Classic="classic",e.Le="le",e.Dual="dual"}(l||(l={}));let i=(0,u.registerPlugin)("BluetoothPrinter",{web:()=>t.e(448).then(t.bind(t,39448)).then(e=>new e.BluetoothPrinterWeb)})}}]);
