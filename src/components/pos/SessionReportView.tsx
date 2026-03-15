@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -311,7 +310,7 @@ export function SessionReportView() {
     );
   }
 
-  // Handle selectedSession null case for TypeScript to prevent build errors
+  // Safe check for selectedSession to prevent build errors
   if (!selectedSession) {
     return null;
   }
@@ -475,7 +474,7 @@ export function SessionReportView() {
       </Card>
       
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-[420px] p-0 border-none bg-transparent shadow-none">
+        <DialogContent className="max-w-[95vw] md:max-w-420px p-0 border-none bg-transparent shadow-none">
           <DialogHeader className="sr-only">
             <DialogTitle>Pratinjau Struk Sesi</DialogTitle>
           </DialogHeader>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Transaction } from '@/types/pos';
@@ -35,7 +34,7 @@ export async function printReceipt(order: Transaction, storeName: string) {
     const { BluetoothPrinter } = await import('@kduma-autoid/capacitor-bluetooth-printer');
     const content = formatReceipt(order, storeName);
     
-    // Perbaikan: Properti yang diharapkan adalah 'data', bukan 'content'
+    // Properti yang benar adalah 'data', bukan 'content'
     await BluetoothPrinter.print({ data: content });
     return true;
   } catch (error) {

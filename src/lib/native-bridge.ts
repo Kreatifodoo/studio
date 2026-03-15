@@ -1,10 +1,10 @@
-
 "use client";
 
 import { Transaction } from '@/types/pos';
 
 /**
  * Deteksi apakah aplikasi berjalan di platform native (Android/iOS).
+ * Aman untuk SSR karena mengecek kewujudan 'window'.
  */
 export const isNative = () => {
   if (typeof window === 'undefined') return false;
@@ -18,6 +18,7 @@ export const isNative = () => {
 
 /**
  * Memulai pemindaian barcode menggunakan kamera perangkat.
+ * Menggunakan dynamic import untuk mencegah evaluasi saat build-time (SSR).
  */
 export async function startScan(): Promise<string | null> {
   if (!isNative()) {
@@ -52,7 +53,7 @@ export async function startScan(): Promise<string | null> {
 }
 
 /**
- * Logika Pencetakan via Bluetooth Native
+ * Logika Pencetakan via Bluetooth Native.
  */
 export async function printReceiptNative(transaction: Transaction, storeName: string): Promise<boolean> {
   if (!isNative()) return false;
@@ -66,7 +67,7 @@ export async function printReceiptNative(transaction: Transaction, storeName: st
 }
 
 /**
- * Inisialisasi koneksi printer Bluetooth
+ * Inisialisasi koneksi printer Bluetooth.
  */
 export async function initPrinterNative(): Promise<string | null> {
   if (!isNative()) return null;

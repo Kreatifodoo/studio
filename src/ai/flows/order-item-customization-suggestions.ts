@@ -1,6 +1,5 @@
-'use server';
 /**
- * @fileOverview A Genkit flow for suggesting common customization options or dietary notes for menu items.
+ * @fileOverview A client-compatible function for suggesting common customization options or dietary notes for menu items.
  *
  * - getOrderItemCustomizationSuggestions - A function that suggests customization options or dietary notes for a given menu item.
  * - OrderItemCustomizationSuggestionsInput - The input type for the getOrderItemCustomizationSuggestions function.
@@ -39,6 +38,7 @@ export type OrderItemCustomizationSuggestionsOutput = z.infer<
 export async function getOrderItemCustomizationSuggestions(
   input: OrderItemCustomizationSuggestionsInput
 ): Promise<OrderItemCustomizationSuggestionsOutput> {
+  // Direct flow execution without 'use server' to support static export
   return orderItemCustomizationSuggestionsFlow(input);
 }
 
