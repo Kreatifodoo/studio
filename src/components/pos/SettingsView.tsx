@@ -151,7 +151,7 @@ export function SettingsView() {
       <html>
         <head>
           <title>Label Barcode - ${product.sku}</title>
-          <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&family=Poppins:wght@700;800&swap" rel="stylesheet">
           <style>
             @page { size: 40mm 30mm; margin: 0; }
             body { display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; width: 40mm; height: 30mm; }
