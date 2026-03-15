@@ -31,11 +31,12 @@ import {
   Boxes,
   LayoutGrid,
   Ticket,
-  X
+  X,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
-  Product, PaymentMethod, Fee, Customer, Permission, PriceList, Package, Combo, PromoDiscount, PriceTier 
+  Product, PaymentMethod, Fee, Customer, Permission, PriceList, Package, Combo, PromoDiscount, PriceTier, PriceListItem 
 } from '@/types/pos';
 import { 
   Dialog, 
@@ -72,9 +73,6 @@ export function SettingsView() {
   // Dialog States
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [isFeeDialogOpen, setIsFeeDialogOpen] = useState(false);
   const [isPricelistDialogOpen, setIsPricelistDialogOpen] = useState(false);
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
   const [isComboDialogOpen, setIsComboDialogOpen] = useState(false);
@@ -85,16 +83,12 @@ export function SettingsView() {
   const [productForm, setProductForm] = useState<Partial<Product>>({});
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customerForm, setCustomerForm] = useState<Partial<Customer>>({});
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [categoryForm, setCategoryForm] = useState('');
-  const [editingPayment, setEditingPayment] = useState<PaymentMethod | null>(null);
-  const [paymentForm, setPaymentForm] = useState<Partial<PaymentMethod>>({});
-  const [editingFee, setEditingFee] = useState<Fee | null>(null);
-  const [feeForm, setFeeForm] = useState<Partial<Fee>>({});
   
   const [editingPricelist, setEditingPricelist] = useState<PriceList | null>(null);
   const [pricelistForm, setPricelistForm] = useState<Partial<PriceList>>({});
+  const [currentSelectedProductId, setCurrentSelectedProductId] = useState<string>('');
   const [newTier, setNewTier] = useState<PriceTier>({ minQty: 1, maxQty: 999, price: 0 });
+  const [activeItemTiers, setActiveItemTiers] = useState<PriceTier[]>([]);
   
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [packageForm, setPackageForm] = useState<Partial<Package>>({});
@@ -187,12 +181,39 @@ export function SettingsView() {
     toast({ title: "Produk Berhasil Disimpan" });
   };
 
+  const addProductItemToPricelist = () => {
+    if (!currentSelectedProductId || activeItemTiers.length === 0) return;
+    const currentItems = pricelistForm.items || [];
+    const existingIdx = currentItems.findIndex(i => i.productId === currentSelectedProductId);
+    
+    const newItem = { productId: currentSelectedProductId, tiers: [...activeItemTiers] };
+    
+    if (existingIdx >= 0) {
+      currentItems[existingIdx] = newItem;
+      setPricelistForm({ ...pricelistForm, items: [...currentItems] });
+    } else {
+      setPricelistForm({ ...pricelistForm, items: [...currentItems, newItem] });
+    }
+    
+    setCurrentSelectedProductId('');
+    setActiveItemTiers([]);
+  };
+
+  const removeProductItemFromPricelist = (productId: string) => {
+    const currentItems = pricelistForm.items || [];
+    setPricelistForm({ ...pricelistForm, items: currentItems.filter(i => i.productId !== productId) });
+  };
+
   const savePricelist = () => {
-    if (!pricelistForm.name || !pricelistForm.productId) return;
+    if (!pricelistForm.name || !pricelistForm.startDate || !pricelistForm.endDate || (pricelistForm.items?.length || 0) === 0) {
+      toast({ variant: "destructive", title: "Gagal", description: "Lengkapi nama, tanggal, dan minimal 1 produk." });
+      return;
+    }
+    
     if (editingPricelist) {
       setPriceLists(priceLists.map(pl => pl.id === editingPricelist.id ? { ...editingPricelist, ...pricelistForm } as PriceList : pl));
     } else {
-      setPriceLists([...priceLists, { ...pricelistForm, id: Math.random().toString(36).substr(2, 9), enabled: true, startDate: new Date().toISOString(), endDate: new Date(Date.now() + 31536000000).toISOString(), tiers: pricelistForm.tiers || [] } as PriceList]);
+      setPriceLists([...priceLists, { ...pricelistForm, id: Math.random().toString(36).substr(2, 9), enabled: true } as PriceList]);
     }
     setIsPricelistDialogOpen(false);
     toast({ title: "Pricelist Berhasil Disimpan" });
@@ -200,15 +221,14 @@ export function SettingsView() {
 
   const addTier = () => {
     if (newTier.price <= 0) return;
-    const currentTiers = pricelistForm.tiers || [];
-    setPricelistForm({ ...pricelistForm, tiers: [...currentTiers, newTier] });
+    setActiveItemTiers([...activeItemTiers, newTier]);
     setNewTier({ minQty: 1, maxQty: 999, price: 0 });
   };
 
   const removeTier = (idx: number) => {
-    const currentTiers = [...(pricelistForm.tiers || [])];
-    currentTiers.splice(idx, 1);
-    setPricelistForm({ ...pricelistForm, tiers: currentTiers });
+    const tiers = [...activeItemTiers];
+    tiers.splice(idx, 1);
+    setActiveItemTiers(tiers);
   };
 
   const savePackage = () => {
@@ -274,12 +294,19 @@ export function SettingsView() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <CardTitle className="text-xl font-black">Master Pricelist (Grosir)</CardTitle>
-              <Button onClick={() => { setEditingPricelist(null); setPricelistForm({ tiers: [] }); setIsPricelistDialogOpen(true); }} className="h-10 rounded-xl bg-primary font-black text-xs px-4">Buat Baru</Button>
+              <Button onClick={() => { 
+                setEditingPricelist(null); 
+                setPricelistForm({ items: [], startDate: new Date().toISOString().split('T')[0], endDate: new Date(Date.now() + 31536000000).toISOString().split('T')[0] }); 
+                setIsPricelistDialogOpen(true); 
+              }} className="h-10 rounded-xl bg-primary font-black text-xs px-4">Buat Baru</Button>
             </div>
             <div className="grid grid-cols-1 gap-3">
               {priceLists.map(pl => (
                 <div key={pl.id} className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl">
-                  <div><p className="font-black text-sm">{pl.name}</p><p className="text-[10px] text-muted-foreground font-bold">{products.find(p => p.id === pl.productId)?.name || 'Produk'}</p></div>
+                  <div>
+                    <p className="font-black text-sm">{pl.name}</p>
+                    <p className="text-[10px] text-muted-foreground font-bold">{pl.items?.length || 0} Produk • {new Date(pl.startDate).toLocaleDateString()} - {new Date(pl.endDate).toLocaleDateString()}</p>
+                  </div>
                   <div className="flex gap-2">
                     <Switch checked={pl.enabled} onCheckedChange={(val) => setPriceLists(priceLists.map(p => p.id === pl.id ? {...p, enabled: val} : p))} />
                     <Button variant="ghost" size="icon" onClick={() => { setEditingPricelist(pl); setPricelistForm(pl); setIsPricelistDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
@@ -382,7 +409,7 @@ export function SettingsView() {
             </div>
             <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex gap-3">
               <Info className="h-5 w-5 text-blue-600 shrink-0" />
-              <p className="text-[10px] text-blue-800 leading-relaxed font-medium">Pastikan GPS (Lokasi) dan Bluetooth aktif pada perangkat Android Anda untuk mendeteksi printer termal.</p>
+              <p className="text-[10px] text-blue-800 leading-relaxed font-medium">Pastikan Bluetooth aktif pada perangkat Android Anda untuk mendeteksi printer termal.</p>
             </div>
           </div>
         );
@@ -485,38 +512,93 @@ export function SettingsView() {
 
       {/* Pricelist Dialog */}
       <Dialog open={isPricelistDialogOpen} onOpenChange={setIsPricelistDialogOpen}>
-        <DialogContent className="max-w-[95vw] md:max-w-md rounded-[2rem] p-6 border-none">
-          <DialogHeader><DialogTitle className="text-lg font-black">{editingPricelist ? 'Edit Pricelist' : 'Buat Pricelist Baru'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2 scrollbar-hide">
-            <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Aturan Harga</Label><Input value={pricelistForm.name || ''} onChange={(e) => setPricelistForm({...pricelistForm, name: e.target.value})} placeholder="Contoh: Harga Grosir" className="h-12 rounded-xl border-2" /></div>
-            <div className="space-y-1">
-              <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Pilih Produk</Label>
-              <Select value={pricelistForm.productId} onValueChange={(val) => setPricelistForm({...pricelistForm, productId: val})}><SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="Pilih Produk" /></SelectTrigger><SelectContent className="rounded-xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>
-            </div>
-            
-            <Separator className="my-4" />
-            <div className="space-y-3">
-              <Label className="text-[10px] font-black uppercase tracking-widest ml-1">Aturan Tier Qty</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1"><Label className="text-[8px] font-bold">Min</Label><Input type="number" value={newTier.minQty} onChange={(e) => setNewTier({...newTier, minQty: parseInt(e.target.value)})} className="h-10 rounded-lg text-xs" /></div>
-                <div className="space-y-1"><Label className="text-[8px] font-bold">Max</Label><Input type="number" value={newTier.maxQty} onChange={(e) => setNewTier({...newTier, maxQty: parseInt(e.target.value)})} className="h-10 rounded-lg text-xs" /></div>
-                <div className="space-y-1"><Label className="text-[8px] font-bold">Harga Satuan</Label><Input type="number" value={newTier.price} onChange={(e) => setNewTier({...newTier, price: parseFloat(e.target.value)})} className="h-10 rounded-lg text-xs" /></div>
+        <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[2rem] p-6 border-none overflow-hidden flex flex-col">
+          <DialogHeader><DialogTitle className="text-lg font-black">{editingPricelist ? 'Edit Aturan Pricelist' : 'Buat Pricelist Baru'}</DialogTitle></DialogHeader>
+          
+          <div className="flex-1 space-y-6 py-4 overflow-y-auto pr-2 scrollbar-hide">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Nama Aturan</Label><Input value={pricelistForm.name || ''} onChange={(e) => setPricelistForm({...pricelistForm, name: e.target.value})} placeholder="Contoh: Harga Grosir" className="h-12 rounded-xl border-2" /></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Berlaku Mulai</Label><Input type="date" value={pricelistForm.startDate?.split('T')[0]} onChange={(e) => setPricelistForm({...pricelistForm, startDate: e.target.value})} className="h-12 rounded-xl border-2" /></div>
+                <div className="space-y-1"><Label className="text-[10px] font-black uppercase tracking-widest ml-1">Sampai</Label><Input type="date" value={pricelistForm.endDate?.split('T')[0]} onChange={(e) => setPricelistForm({...pricelistForm, endDate: e.target.value})} className="h-12 rounded-xl border-2" /></div>
               </div>
-              <Button onClick={addTier} variant="outline" className="w-full h-10 rounded-xl gap-2 font-black text-xs"><Plus className="h-3.5 w-3.5" /> Tambah Tier</Button>
             </div>
 
-            <div className="space-y-2 mt-4">
-              {pricelistForm.tiers?.map((tier, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-dashed">
-                  <div className="text-[10px] font-bold">
-                    Qty: {tier.minQty} - {tier.maxQty} <span className="mx-2">→</span> <span className="text-primary">{formatCurrencyValue(tier.price)}</span>
-                  </div>
-                  <Button onClick={() => removeTier(idx)} variant="ghost" size="icon" className="h-7 w-7 text-destructive"><X className="h-4 w-4" /></Button>
+            <Separator />
+
+            <div className="bg-primary/5 p-4 rounded-2xl border-2 border-primary/10 space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary">Tambah Produk ke Daftar</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-[9px] font-bold">Pilih Produk</Label>
+                  <Select value={currentSelectedProductId} onValueChange={setCurrentSelectedProductId}>
+                    <SelectTrigger className="h-10 rounded-xl border-2 bg-white"><SelectValue placeholder="Pilih..." /></SelectTrigger>
+                    <SelectContent className="rounded-xl">{products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
-              ))}
+                <div className="space-y-2">
+                  <Label className="text-[9px] font-bold">Atur Tier Qty</Label>
+                  <div className="grid grid-cols-3 gap-1">
+                    <Input type="number" placeholder="Min" value={newTier.minQty} onChange={(e) => setNewTier({...newTier, minQty: parseInt(e.target.value)})} className="h-9 rounded-lg text-xs" />
+                    <Input type="number" placeholder="Max" value={newTier.maxQty} onChange={(e) => setNewTier({...newTier, maxQty: parseInt(e.target.value)})} className="h-9 rounded-lg text-xs" />
+                    <Input type="number" placeholder="Harga" value={newTier.price} onChange={(e) => setNewTier({...newTier, price: parseFloat(e.target.value)})} className="h-9 rounded-lg text-xs" />
+                  </div>
+                  <Button onClick={addTier} variant="outline" className="w-full h-8 rounded-lg gap-1 font-black text-[10px] bg-white"><Plus className="h-3 w-3" /> Tambah Tier</Button>
+                </div>
+              </div>
+
+              {activeItemTiers.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {activeItemTiers.map((t, idx) => (
+                    <Badge key={idx} variant="secondary" className="gap-1.5 py-1 px-3 bg-white border border-primary/20 text-[9px] font-black">
+                      Qty {t.minQty}-{t.maxQty} → {formatCurrencyValue(t.price)}
+                      <X className="h-3 w-3 cursor-pointer text-destructive" onClick={() => removeTier(idx)} />
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              <Button 
+                onClick={addProductItemToPricelist} 
+                disabled={!currentSelectedProductId || activeItemTiers.length === 0}
+                className="w-full h-10 rounded-xl bg-primary font-black text-xs"
+              >
+                Tambahkan Produk ke Aturan
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Produk dalam Pricelist ini:</p>
+              <div className="space-y-2">
+                {pricelistForm.items?.map((item, idx) => {
+                  const prod = products.find(p => p.id === item.productId);
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white border-2 rounded-2xl">
+                      <div>
+                        <p className="font-black text-xs">{prod?.name || 'Produk'}</p>
+                        <p className="text-[9px] text-muted-foreground font-bold">{item.tiers.length} Level Harga</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { 
+                          setCurrentSelectedProductId(item.productId); 
+                          setActiveItemTiers([...item.tiers]); 
+                        }}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeProductItemFromPricelist(item.productId)}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {(pricelistForm.items?.length || 0) === 0 && (
+                  <div className="py-10 text-center border-2 border-dashed rounded-2xl opacity-30">
+                    <Tag className="h-8 w-8 mx-auto mb-2" />
+                    <p className="text-[10px] font-bold">Belum ada produk ditambahkan</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          <DialogFooter><Button onClick={savePricelist} className="w-full h-12 rounded-xl bg-primary font-black">Simpan Aturan</Button></DialogFooter>
+          
+          <DialogFooter className="pt-4"><Button onClick={savePricelist} className="w-full h-12 rounded-xl bg-primary font-black shadow-lg shadow-primary/20">Simpan Seluruh Aturan</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

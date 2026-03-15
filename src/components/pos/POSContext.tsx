@@ -604,17 +604,25 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getTieredPrice = useCallback((productId: string, quantity: number, basePrice: number) => {
+    const now = new Date();
+    // Find all active pricelists for this product
     const activePricelist = priceLists.find(pl => 
       pl.enabled && 
-      pl.productId === productId &&
-      new Date(pl.startDate) <= new Date() &&
-      new Date(pl.endDate) >= new Date()
+      new Date(pl.startDate) <= now &&
+      new Date(pl.endDate) >= now &&
+      pl.items.some(item => item.productId === productId)
     );
 
     if (!activePricelist) return basePrice;
 
-    const tier = activePricelist.tiers.find(t => quantity >= t.minQty && quantity <= t.maxQty);
-    return tier ? tier.price : basePrice;
+    const productItem = activePricelist.items.find(item => item.productId === productId);
+    if (!productItem) return basePrice;
+
+    // Sort tiers by quantity descending to find the highest matching tier
+    const sortedTiers = [...productItem.tiers].sort((a, b) => b.minQty - a.minQty);
+    const matchingTier = sortedTiers.find(t => quantity >= t.minQty);
+    
+    return matchingTier ? matchingTier.price : basePrice;
   }, [priceLists]);
 
   const addToCart = (product: Product) => {

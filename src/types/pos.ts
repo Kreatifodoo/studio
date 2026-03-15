@@ -139,13 +139,17 @@ export interface PriceTier {
   price: number;
 }
 
+export interface PriceListItem {
+  productId: string;
+  tiers: PriceTier[];
+}
+
 export interface PriceList {
   id: string;
-  productId: string;
   name: string;
   startDate: string;
   endDate: string;
-  tiers: PriceTier[];
+  items: PriceListItem[];
   enabled: boolean;
 }
 
