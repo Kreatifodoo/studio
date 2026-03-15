@@ -82,7 +82,7 @@ const INITIAL_ROLES: Role[] = [
 ];
 
 const INITIAL_USERS: User[] = [
-  { id: 'u1', username: 'admin', name: 'Admin Utama', email: 'admin@nextpos.com', roleId: 'admin', status: 'Active', avatarUrl: 'https://picsum.photos/seed/admin/100/100', password: 'password' },
+  { id: 'u1', username: 'admin', name: 'Admin Utama', email: 'admin@kompakpos.id', roleId: 'admin', status: 'Active', avatarUrl: 'https://picsum.photos/seed/admin/100/100', password: 'password' },
 ];
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
@@ -97,9 +97,9 @@ const INITIAL_FEES: Fee[] = [
 ];
 
 const INITIAL_STORE_SETTINGS: StoreSettings = {
-  name: 'NextPOS Indonesia',
+  name: 'Kompak POS',
   currencySymbol: 'Rp',
-  address: 'Jl. Contoh Alamat No. 123, Jakarta',
+  address: 'Jl. Contoh Alamat No. 123, Indonesia',
   headerNote: 'Terima Kasih Atas Kunjungan Anda!',
   footerNote: 'Barang yang sudah dibeli tidak dapat dikembalikan.',
   logoUrl: ''
@@ -136,11 +136,9 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [btCharacteristic, setBtCharacteristic] = useState<any>(null);
   const [btDevice, setBtDevice] = useState<any>(null);
 
-  // Initialize Firebase Auth & Load persistence
   useEffect(() => {
     async function initDb() {
       try {
-        // Sign in anonymously to satisfy security rules
         if (auth && !auth.currentUser) {
           await signInAnonymously(auth);
         }
@@ -179,14 +177,12 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
         setPromoDiscountsState(dbPromos);
         if (dbSettings) setStoreSettingsState(dbSettings.value);
 
-        // Persistent Login from localStorage
         const savedUserId = localStorage.getItem('pos_current_user_id');
         if (savedUserId) {
           const user = finalUsers.find(u => u.id === savedUserId);
           if (user) setCurrentUser(user);
         }
 
-        // Persistent Config from Firestore
         if (firestore) {
           const configRef = doc(firestore, 'app_configurations', 'global_settings');
           getDoc(configRef)
@@ -270,7 +266,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       const printerName = device.name || 'Printer Bluetooth';
       setPrinter({ name: printerName, status: 'connected', type: 'bluetooth' });
       
-      // Save to Firestore
       if (firestore) {
         const configRef = doc(firestore, 'app_configurations', 'global_settings');
         const data = {
@@ -532,7 +527,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `backup_pos_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `backup_kompakpos_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }, []);

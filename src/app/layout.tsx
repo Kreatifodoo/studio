@@ -5,13 +5,13 @@ import { FirebaseClientProvider } from "@/firebase";
 import { POSProvider } from '@/components/pos/POSContext';
 
 export const metadata: Metadata = {
-  title: 'NextPOS - Sistem Kasir Modern',
+  title: 'Kompak POS - Sistem Kasir Modern',
   description: 'Sistem Point of Sale Canggih untuk Bisnis Anda',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'NextPOS',
+    title: 'Kompak POS',
   },
   formatDetection: {
     telephone: false,

@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Lock, User as UserIcon, LogIn, UtensilsCrossed, Eye, EyeOff } from 'lucide-react';
+import { Lock, User as UserIcon, LogIn, Leaf, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function LoginView() {
@@ -48,7 +48,7 @@ export function LoginView() {
             {storeSettings.logoUrl ? (
               <img src={storeSettings.logoUrl} alt="Logo" className="h-8 w-8 md:h-12 md:w-12 object-contain invert brightness-0" />
             ) : (
-              <UtensilsCrossed className="h-8 w-8 md:h-10 md:w-10 text-white" />
+              <Leaf className="h-8 w-8 md:h-10 md:w-10 text-white" />
             )}
           </div>
           <h1 className="text-2xl md:text-4xl font-black tracking-tight text-[#1a1f2b]">{storeSettings.name}</h1>
@@ -122,7 +122,7 @@ export function LoginView() {
         </Card>
         
         <p className="text-center mt-8 md:mt-12 text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-60">
-          &copy; {new Date().getFullYear()} NEXTPOS • MODERN POS SYSTEM
+          &copy; {new Date().getFullYear()} KOMPAK POS • MODERN POS SYSTEM
         </p>
       </div>
     </div>
