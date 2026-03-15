@@ -1,8 +1,7 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { POSProvider, usePOS } from '@/components/pos/POSContext';
+import { usePOS } from '@/components/pos/POSContext';
 import { Sidebar } from '@/components/pos/Sidebar';
 import { SearchHeader } from '@/components/pos/SearchHeader';
 import { ProductGrid } from '@/components/pos/ProductGrid';
@@ -19,7 +18,7 @@ import { ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
-function POSLayout() {
+export default function Home() {
   const { view, currentSession, currentUser, isDbLoaded, cart } = usePOS();
   const [isClient, setIsClient] = useState(false);
   const isMobile = useIsMobile();
@@ -107,13 +106,5 @@ function POSLayout() {
         </Sheet>
       )}
     </div>
-  );
-}
-
-export default function Home() {
-  return (
-    <POSProvider>
-      <POSLayout />
-    </POSProvider>
   );
 }

@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -22,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 import { Permission, Session } from '@/types/pos';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 export function Sidebar() {
   const { 
@@ -72,26 +71,30 @@ export function Sidebar() {
     });
   }, [checkPermission]);
 
-  const handleCloseSession = async () => {
+  const handleCloseSession = async (shouldPrint: boolean) => {
     if (!currentSession) return;
 
-    const sessionToPrint: Session = {
+    const finalAmount = parseFloat(closingCash) || 0;
+    
+    const sessionData: Session = {
       ...currentSession,
       endTime: new Date().toISOString(),
-      closingCash: currentClosingAmount,
+      closingCash: finalAmount,
       status: 'Closed'
     };
 
-    closeSession(currentClosingAmount);
+    closeSession(finalAmount);
     setClosingCash('');
-    setShowSummaryPreview(true);
 
-    if (printer.status === 'connected') {
-      await printSessionSummaryViaBluetooth(sessionToPrint);
-    } else {
-      setTimeout(() => {
-        window.print();
-      }, 800);
+    if (shouldPrint) {
+      setShowSummaryPreview(true);
+      if (printer.status === 'connected') {
+        await printSessionSummaryViaBluetooth(sessionData);
+      } else {
+        setTimeout(() => {
+          window.print();
+        }, 800);
+      }
     }
   };
 
@@ -214,13 +217,21 @@ export function Sidebar() {
 
               <AlertDialogFooter className="gap-3 sm:flex-col sm:gap-3">
                 <AlertDialogCancel className="rounded-xl h-14 font-bold border-2 text-sm mt-0 border-muted-foreground/10 hover:bg-muted/50 transition-all">Kembali</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={handleCloseSession}
-                  className="rounded-xl h-16 bg-primary hover:bg-primary/90 font-black px-8 shadow-2xl shadow-primary/30 text-base gap-3 transition-all active:scale-95"
-                >
-                  Tutup & Cetak Laporan
-                  <ArrowRight className="h-5 w-5" />
-                </AlertDialogAction>
+                <div className="flex flex-col gap-3">
+                  <AlertDialogAction 
+                    onClick={() => handleCloseSession(false)}
+                    className="rounded-xl h-14 bg-muted hover:bg-muted/80 text-foreground font-bold px-8 transition-all active:scale-95"
+                  >
+                    Tutup Tanpa Cetak
+                  </AlertDialogAction>
+                  <AlertDialogAction 
+                    onClick={() => handleCloseSession(true)}
+                    className="rounded-xl h-16 bg-primary hover:bg-primary/90 font-black px-8 shadow-2xl shadow-primary/30 text-base gap-3 transition-all active:scale-95"
+                  >
+                    Tutup & Cetak Laporan
+                    <ArrowRight className="h-5 w-5" />
+                  </AlertDialogAction>
+                </div>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

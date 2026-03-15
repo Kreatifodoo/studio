@@ -2,6 +2,7 @@ import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from "@/firebase";
+import { POSProvider } from '@/components/pos/POSContext';
 
 export const metadata: Metadata = {
   title: 'NextPOS - Sistem Kasir Modern',
@@ -40,8 +41,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-background text-foreground" suppressHydrationWarning>
         <FirebaseClientProvider>
-          {children}
-          <Toaster />
+          <POSProvider>
+            {children}
+            <Toaster />
+          </POSProvider>
         </FirebaseClientProvider>
       </body>
     </html>

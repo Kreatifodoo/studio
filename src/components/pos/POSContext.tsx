@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
@@ -187,7 +186,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
           if (user) setCurrentUser(user);
         }
 
-        // Persistent Printer Config from Firestore
+        // Persistent Config from Firestore
         if (firestore) {
           const configRef = doc(firestore, 'app_configurations', 'global_settings');
           getDoc(configRef)
@@ -196,6 +195,18 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
                 const data = configDoc.data();
                 if (data.printerName) {
                   setPrinter(prev => ({ ...prev, name: data.printerName }));
+                }
+                if (data.name) {
+                  const cloudSettings: StoreSettings = {
+                    name: data.name,
+                    currencySymbol: data.currencySymbol || 'Rp',
+                    address: data.address || '',
+                    headerNote: data.headerNote || '',
+                    footerNote: data.footerNote || '',
+                    logoUrl: data.logoUrl || ''
+                  };
+                  setStoreSettingsState(cloudSettings);
+                  db.config.put({ key: 'storeSettings', value: cloudSettings });
                 }
               }
             })
@@ -259,7 +270,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       const printerName = device.name || 'Printer Bluetooth';
       setPrinter({ name: printerName, status: 'connected', type: 'bluetooth' });
       
-      // Save to Firestore for persistence
+      // Save to Firestore
       if (firestore) {
         const configRef = doc(firestore, 'app_configurations', 'global_settings');
         const data = {
@@ -296,7 +307,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     setBtCharacteristic(null);
     setPrinter({ name: null, status: 'disconnected', type: 'system' });
     
-    // Update Firestore
     if (firestore) {
       const configRef = doc(firestore, 'app_configurations', 'global_settings');
       const data = {
@@ -450,10 +460,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       const center = "\x1b\x61\x01";
       const boldOn = "\x1b\x45\x01";
       const boldOff = "\x1b\x45\x00";
-      const barcodeHeight = "\x1d\x68\x60"; // Tinggi 96 dots
-      const barcodeWidth = "\x1d\x77\x03"; // Lebar 3
-      const barcodeHri = "\x1d\x48\x02"; // Teks HRI di bawah
-      const barcodeData = `\x1d\x6b\x04${product.barcode || product.sku}\x00`; // CODE39
+      const barcodeHeight = "\x1d\x68\x60"; 
+      const barcodeWidth = "\x1d\x77\x03"; 
+      const barcodeHri = "\x1d\x48\x02"; 
+      const barcodeData = `\x1d\x6b\x04${product.barcode || product.sku}\x00`; 
       const newLine = "\n";
       
       let label = init + center + boldOn + product.name.toUpperCase() + boldOff + newLine;
@@ -483,7 +493,24 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const setPackages = useCallback((data: Package[]) => { setPackagesState(data); db.packages.clear().then(() => db.packages.bulkPut(data)); }, []);
   const setCombos = useCallback((data: Combo[]) => { setCombosState(data); db.combos.clear().then(() => db.combos.bulkPut(data)); }, []);
   const setPromoDiscounts = useCallback((data: PromoDiscount[]) => { setPromoDiscountsState(data); db.promoDiscounts.clear().then(() => db.promoDiscounts.bulkPut(data)); }, []);
-  const setStoreSettings = useCallback((data: StoreSettings) => { setStoreSettingsState(data); db.config.put({ key: 'storeSettings', value: data }); }, []);
+  
+  const setStoreSettings = useCallback((data: StoreSettings) => { 
+    setStoreSettingsState(data); 
+    db.config.put({ key: 'storeSettings', value: data }); 
+    
+    if (firestore) {
+      const configRef = doc(firestore, 'app_configurations', 'global_settings');
+      setDoc(configRef, { id: 'global_settings', ...data, updatedAt: new Date().toISOString() }, { merge: true })
+        .catch(error => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: configRef.path,
+            operation: 'update',
+            requestResourceData: data
+          }));
+        });
+    }
+  }, [firestore]);
+
   const setUsers = useCallback((data: User[]) => { setUsersState(data); db.users.clear().then(() => db.users.bulkPut(data)); }, []);
 
   const exportDatabase = useCallback(async () => {
