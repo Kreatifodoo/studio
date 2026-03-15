@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -58,7 +57,8 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
   }, [open, reset]);
 
   const handleStartPayment = (methodName: string) => {
-    const newId = Math.random().toString(36).toUpperCase().slice(2, 10);
+    // Numerik only ID menggunakan timestamp
+    const newId = Date.now().toString();
     setSelectedMethod(methodName);
     setTransactionId(newId);
     
@@ -101,7 +101,7 @@ export function PaymentDialog({ open, onOpenChange, total, onSuccess }: PaymentD
     if (printer.status === 'connected') {
       await printViaBluetooth(mockTransaction);
     } else {
-      // Jika tidak ada Bluetooth, buka dialog print sistem (bisa ke PDF)
+      // Jika tidak ada Bluetooth, buka dialog print sistem
       setTimeout(() => {
         window.print();
       }, 500);
