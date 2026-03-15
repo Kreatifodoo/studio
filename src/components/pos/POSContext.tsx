@@ -10,7 +10,8 @@ import {
 import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES } from '@/lib/pos-data';
 import { db } from '@/lib/db';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { signInAnonymously } from 'firebase/auth';
+import { useFirestore, useAuth, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 interface POSContextType {
   activeCategory: Category;
@@ -109,6 +110,7 @@ const POSContext = createContext<POSContextType | undefined>(undefined);
 
 export function POSProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
+  const auth = useAuth();
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Category>('Semua');
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,10 +137,15 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [btCharacteristic, setBtCharacteristic] = useState<any>(null);
   const [btDevice, setBtDevice] = useState<any>(null);
 
-  // Load persistence
+  // Initialize Firebase Auth & Load persistence
   useEffect(() => {
     async function initDb() {
       try {
+        // Sign in anonymously to satisfy security rules
+        if (auth && !auth.currentUser) {
+          await signInAnonymously(auth);
+        }
+
         const [
           dbProducts, dbHistory, dbSessions, dbUsers, dbCustomers, 
           dbPM, dbFees, dbPL, dbPkgs, dbCombos, dbPromos, dbSettings
@@ -182,13 +189,22 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
         // Persistent Printer Config from Firestore
         if (firestore) {
-          const configDoc = await getDoc(doc(firestore, 'app_configurations', 'global_settings'));
-          if (configDoc.exists()) {
-            const data = configDoc.data();
-            if (data.printerName) {
-              setPrinter(prev => ({ ...prev, name: data.printerName }));
-            }
-          }
+          const configRef = doc(firestore, 'app_configurations', 'global_settings');
+          getDoc(configRef)
+            .then(configDoc => {
+              if (configDoc.exists()) {
+                const data = configDoc.data();
+                if (data.printerName) {
+                  setPrinter(prev => ({ ...prev, name: data.printerName }));
+                }
+              }
+            })
+            .catch(error => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: configRef.path,
+                operation: 'get'
+              }));
+            });
         }
 
         setIsDbLoaded(true);
@@ -198,7 +214,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       }
     }
     initDb();
-  }, [firestore]);
+  }, [firestore, auth]);
 
   const connectPrinter = async () => {
     try {
@@ -245,11 +261,21 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       
       // Save to Firestore for persistence
       if (firestore) {
-        setDoc(doc(firestore, 'app_configurations', 'global_settings'), {
+        const configRef = doc(firestore, 'app_configurations', 'global_settings');
+        const data = {
+          id: 'global_settings',
           printerName: printerName,
           printerConnected: true,
           updatedAt: new Date().toISOString()
-        }, { merge: true });
+        };
+        setDoc(configRef, data, { merge: true })
+          .catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: configRef.path,
+              operation: 'update',
+              requestResourceData: data
+            }));
+          });
       }
 
       device.addEventListener('gattserverdisconnected', () => {
@@ -272,10 +298,20 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     
     // Update Firestore
     if (firestore) {
-      setDoc(doc(firestore, 'app_configurations', 'global_settings'), {
+      const configRef = doc(firestore, 'app_configurations', 'global_settings');
+      const data = {
+        id: 'global_settings',
         printerConnected: false,
         updatedAt: new Date().toISOString()
-      }, { merge: true });
+      };
+      setDoc(configRef, data, { merge: true })
+        .catch(error => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: configRef.path,
+            operation: 'update',
+            requestResourceData: data
+          }));
+        });
     }
   };
 
