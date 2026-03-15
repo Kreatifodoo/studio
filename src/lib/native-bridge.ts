@@ -1,12 +1,26 @@
 
-import { Capacitor } from '@capacitor/core';
+"use client";
+
 import { Transaction } from '@/types/pos';
 
-export const isNative = () => Capacitor.isNativePlatform();
+/**
+ * Deteksi apakah aplikasi berjalan di platform native (Android/iOS).
+ * Aman untuk SSR karena memeriksa keberadaan window.
+ */
+export const isNative = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    // Gunakan require secara dinamis untuk menghindari evaluasi top-level pada server
+    const { Capacitor } = require('@capacitor/core');
+    return Capacitor.isNativePlatform();
+  } catch (e) {
+    return false;
+  }
+};
 
 /**
  * Memulai pemindaian barcode menggunakan kamera perangkat.
- * Diimpor secara dinamis untuk keamanan SSR.
+ * Diimpor secara dinamis untuk keamanan SSR dan efisiensi bundle.
  */
 export async function startScan(): Promise<string | null> {
   if (!isNative()) {
@@ -45,12 +59,25 @@ export async function startScan(): Promise<string | null> {
  */
 export async function printReceiptNative(transaction: Transaction, storeName: string): Promise<boolean> {
   if (!isNative()) return false;
-  const { printReceipt } = await import('./printer');
-  return await printReceipt(transaction, storeName);
+  try {
+    const { printReceipt } = await import('./printer');
+    return await printReceipt(transaction, storeName);
+  } catch (e) {
+    console.error('Gagal memuat modul printer:', e);
+    return false;
+  }
 }
 
+/**
+ * Inisialisasi koneksi printer Bluetooth
+ */
 export async function initPrinterNative(): Promise<string | null> {
   if (!isNative()) return null;
-  const { connectBluetoothPrinter } = await import('./printer');
-  return await connectBluetoothPrinter();
+  try {
+    const { connectBluetoothPrinter } = await import('./printer');
+    return await connectBluetoothPrinter();
+  } catch (e) {
+    console.error('Gagal inisialisasi printer:', e);
+    return null;
+  }
 }

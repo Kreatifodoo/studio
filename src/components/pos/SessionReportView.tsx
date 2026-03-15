@@ -54,7 +54,7 @@ export function SessionReportView() {
     if (lastClosedSession && !selectedSessionId) {
       setSelectedSessionId(lastClosedSession.id);
     }
-  }, [lastClosedSession]);
+  }, [lastClosedSession, selectedSessionId]);
 
   const filteredSessions = useMemo(() => {
     if (!startDate || !endDate) return sessions;
@@ -311,6 +311,9 @@ export function SessionReportView() {
     );
   }
 
+  // Handle selectedSession null case for TypeScript
+  if (!selectedSession) return null;
+
   const cashDifference = (selectedSession.closingCash || 0) - (selectedSession.openingCash + (stats.paymentsByMethod['Tunai'] || 0));
 
   return (
@@ -428,7 +431,7 @@ export function SessionReportView() {
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">ID Order</TableHead>
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Kasir</TableHead>
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Pelanggan</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Metode</TableHead>
+                <TableHead className="font-black text-[10px) uppercase tracking-widest h-12">Metode</TableHead>
                 <TableHead className="text-right font-black text-[10px] uppercase tracking-widest h-12">Total</TableHead>
               </TableRow>
             </TableHeader>

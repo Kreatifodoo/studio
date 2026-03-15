@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 export function HistoryView() {
   const { history, returnTransaction, customers, currentUser, priceLists, promoDiscounts } = usePOS();
@@ -218,5 +219,3 @@ export function HistoryView() {
     </div>
   );
 }
-
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';

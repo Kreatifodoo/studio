@@ -1,20 +1,26 @@
 
-import { BluetoothPrinter } from '@kduma-autoid/capacitor-bluetooth-printer';
+"use client";
+
 import { Transaction } from '@/types/pos';
 import { format } from 'date-fns';
 
 /**
  * Utilitas untuk menangani pencetakan ESC/POS via Bluetooth pada Android.
+ * Menggunakan dynamic import untuk plugin Capacitor agar aman dari SSR.
  */
 
 export async function connectBluetoothPrinter() {
+  if (typeof window === 'undefined') return null;
+  
   try {
+    const { BluetoothPrinter } = await import('@kduma-autoid/capacitor-bluetooth-printer');
     const { devices } = await BluetoothPrinter.list();
+    
     if (devices.length === 0) {
       throw new Error("Tidak ada printer Bluetooth ditemukan.");
     }
-    // Implementasi sederhana: Hubungkan ke perangkat pertama yang ditemukan
-    // Di produksi, biarkan pengguna memilih dari daftar.
+    
+    // Hubungkan ke perangkat pertama yang ditemukan (Sederhana untuk PoC)
     await BluetoothPrinter.connect({ address: devices[0].address });
     return devices[0].name;
   } catch (error) {
@@ -24,7 +30,10 @@ export async function connectBluetoothPrinter() {
 }
 
 export async function printReceipt(order: Transaction, storeName: string) {
+  if (typeof window === 'undefined') return false;
+
   try {
+    const { BluetoothPrinter } = await import('@kduma-autoid/capacitor-bluetooth-printer');
     const content = formatReceipt(order, storeName);
     await BluetoothPrinter.print({ content });
     return true;
@@ -46,7 +55,8 @@ function formatReceipt(order: Transaction, storeName: string): string {
   content += line;
   
   order.items.forEach(item => {
-    content += `${item.name.substring(0, 20)}\n`;
+    const name = item.name.length > 20 ? item.name.substring(0, 17) + "..." : item.name;
+    content += `${name}\n`;
     content += `${item.quantity} x ${item.price.toLocaleString()} = ${(item.quantity * item.price).toLocaleString()}\n`;
   });
   
@@ -55,7 +65,7 @@ function formatReceipt(order: Transaction, storeName: string): string {
   content += `Metode: ${order.paymentMethod || 'Tunai'}\n`;
   content += line;
   content += `\x1b\x61\x01`; // Align Center
-  content += `TERIMA KASIH\n\n\n\n`; // Padding for cutter
+  content += `TERIMA KASIH\n\n\n\n`; // Padding for paper cutter
   
   return content;
 }
