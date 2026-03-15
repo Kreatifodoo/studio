@@ -36,7 +36,10 @@ import {
   AlertTriangle,
   UserCog,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Phone,
+  Mail,
+  MapPin
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -50,7 +53,13 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -73,7 +82,7 @@ export function SettingsView() {
   } = usePOS();
   
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState('customers');
   const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
   const [restoreJson, setRestoreJson] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
@@ -91,16 +100,20 @@ export function SettingsView() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({});
 
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [customerForm, setCustomerForm] = useState<Partial<Customer>>({});
+
   const [editingPricelist, setEditingPricelist] = useState<PriceList | null>(null);
   const [pricelistForm, setPricelistForm] = useState<Partial<PriceList>>({ items: [] });
   
   const [currentSelectedProductId, setCurrentSelectedProductId] = useState<string>('');
-  const [newTier, setNewTier] = useState<{minQty?: string, maxQty?: string, price?: string}>({ minQty: '', maxQty: '' });
+  const [newTier, setNewTier] = useState<{minQty?: string, price?: string}>({ minQty: '', price: '' });
 
   const navGroups = [
     {
       title: "Katalog & Penjualan",
       items: [
+        { id: 'customers', icon: Users, label: 'Master Pelanggan', permission: 'manage_customers' },
         { id: 'products', icon: PackageIcon, label: 'Master Produk', permission: 'manage_products' },
         { id: 'pricelists', icon: Tag, label: 'Pricelist (Grosir)', permission: 'manage_products' },
         { id: 'packages', icon: Boxes, label: 'Paket Produk', permission: 'manage_products' },
@@ -115,7 +128,6 @@ export function SettingsView() {
         { id: 'printer', icon: Printer, label: 'Pengaturan Printer', permission: 'manage_settings' },
         { id: 'users', icon: UserCog, label: 'Manajemen User', permission: 'manage_users' },
         { id: 'database', icon: Database, label: 'Database & Backup', permission: 'manage_settings' },
-        { id: 'customers', icon: Users, label: 'Master Pelanggan', permission: 'manage_customers' },
       ]
     }
   ];
@@ -154,6 +166,43 @@ export function SettingsView() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'customers':
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="flex flex-col gap-1">
+                <CardTitle className="text-xl font-black">Master Pelanggan</CardTitle>
+                <CardDescription>Kelola database pelanggan setia Kompak POS.</CardDescription>
+              </div>
+              <Button onClick={() => { setEditingCustomer(null); setCustomerForm({}); setIsCustomerDialogOpen(true); }} className="h-10 rounded-xl bg-primary font-black px-4">Tambah Pelanggan</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {customers.map(c => (
+                <Card key={c.id} className="p-4 rounded-2xl border-none bg-muted/5 flex items-center justify-between group hover:bg-muted/10 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black">
+                      {c.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-black text-sm">{c.name}</p>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{c.phone}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => { setEditingCustomer(c); setCustomerForm(c); setIsCustomerDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive/50 hover:text-destructive" onClick={() => {
+                      if(confirm('Hapus pelanggan ini?')) {
+                        setCustomers(customers.filter(x => x.id !== c.id));
+                      }
+                    }}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                </Card>
+              ))}
+              {customers.length === 0 && <div className="col-span-2 py-20 text-center opacity-30 font-bold">Belum ada data pelanggan.</div>}
+            </div>
+          </div>
+        );
+
       case 'database':
         return (
           <div className="space-y-8">
@@ -172,10 +221,6 @@ export function SettingsView() {
                 <div><h3 className="font-black text-lg">Impor & Pulihkan</h3><p className="text-xs font-medium text-muted-foreground mt-2">Unggah file cadangan untuk memulihkan data.</p></div>
                 <label className="w-full"><Input type="file" className="hidden" accept=".json" onChange={handleFileImport} /><div className="w-full h-14 rounded-2xl border-2 flex items-center justify-center font-black cursor-pointer hover:bg-muted/10 transition-all">Pilih File Backup</div></label>
               </Card>
-            </div>
-            <div className="p-6 bg-orange-50 border-2 border-orange-100 rounded-[2rem] flex gap-4">
-              <AlertTriangle className="h-6 w-6 text-orange-600 shrink-0" />
-              <div><p className="text-xs font-black text-orange-900 uppercase tracking-widest mb-1">Peringatan Keamanan</p><p className="text-[11px] text-orange-800 leading-relaxed font-medium">Data Anda disimpan secara lokal 100% di perangkat ini. Lakukan backup secara rutin.</p></div>
             </div>
           </div>
         );
@@ -293,8 +338,37 @@ export function SettingsView() {
                   </div>
                 </Card>
               ))}
-              {priceLists.length === 0 && <div className="py-20 text-center opacity-30 font-bold">Belum ada aturan harga grosir.</div>}
             </div>
+          </div>
+        );
+
+      case 'general':
+        return (
+          <div className="space-y-6">
+             <div className="flex flex-col gap-1">
+                <CardTitle className="text-xl font-black">Identitas Toko</CardTitle>
+                <CardDescription>Atur nama, alamat, dan logo pada struk belanja.</CardDescription>
+              </div>
+              <div className="space-y-4">
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Toko / Bisnis</Label>
+                    <Input value={storeSettings.name} onChange={(e) => setStoreSettings({ ...storeSettings, name: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
+                 </div>
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Alamat Lengkap</Label>
+                    <Textarea value={storeSettings.address} onChange={(e) => setStoreSettings({ ...storeSettings, address: e.target.value })} className="min-h-[100px] rounded-xl border-2 font-bold" />
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Header Struk (Catatan Atas)</Label>
+                       <Input value={storeSettings.headerNote} onChange={(e) => setStoreSettings({ ...storeSettings, headerNote: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Footer Struk (Catatan Bawah)</Label>
+                       <Input value={storeSettings.footerNote} onChange={(e) => setStoreSettings({ ...storeSettings, footerNote: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
+                    </div>
+                 </div>
+              </div>
           </div>
         );
 
@@ -307,7 +381,7 @@ export function SettingsView() {
     <div className="flex flex-col gap-4 md:gap-8 h-full">
       <div className="flex flex-col gap-1">
         <h2 className="text-xl md:text-3xl font-black">Pengaturan Enterprise</h2>
-        <p className="text-[10px] md:text-sm text-muted-foreground">Kelola sistem operasional Kompak POS Anda di sini.</p>
+        <p className="text-[10px] md:text-sm text-muted-foreground">Kelola operasional Kompak POS Anda di sini.</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
@@ -336,6 +410,57 @@ export function SettingsView() {
           {renderTabContent()}
         </main>
       </div>
+
+      {/* Dialog Pelanggan */}
+      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
+          <DialogHeader className="text-center">
+            <div className="bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6">
+              <Users className="h-10 w-10" />
+            </div>
+            <DialogTitle className="text-2xl font-black">Data Pelanggan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label>
+              <Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nomor Telepon</Label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                <Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })} className="h-12 rounded-xl border-2 font-bold pl-11" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email (Opsional)</Label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                <Input value={customerForm.email || ''} onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })} className="h-12 rounded-xl border-2 font-bold pl-11" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Alamat (Opsional)</Label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-4 h-4 w-4 text-muted-foreground/40" />
+                <Textarea value={customerForm.address || ''} onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })} className="min-h-[100px] rounded-xl border-2 font-bold pl-11 pt-3" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="pt-4">
+            <Button onClick={() => {
+              if (!customerForm.name || !customerForm.phone) {
+                toast({ variant: "destructive", title: "Gagal", description: "Nama dan Telepon wajib diisi." });
+                return;
+              }
+              const newCust = { id: editingCustomer?.id || Math.random().toString(36).substr(2, 9).toUpperCase(), ...customerForm } as Customer;
+              setCustomers(editingCustomer ? customers.map(c => c.id === newCust.id ? newCust : c) : [...customers, newCust]);
+              setIsCustomerDialogOpen(false);
+              toast({ title: "Berhasil", description: "Data pelanggan disimpan." });
+            }} className="w-full h-14 rounded-2xl bg-primary font-black shadow-lg shadow-primary/20">Simpan Data</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog Master Pricelist */}
       <Dialog open={isPricelistDialogOpen} onOpenChange={setIsPricelistDialogOpen}>
@@ -366,7 +491,6 @@ export function SettingsView() {
           <Separator />
           
           <div className="flex-1 overflow-y-auto px-6 md:px-10 py-6 space-y-8 scrollbar-hide">
-            {/* Pemilihan Produk */}
             <div className="space-y-4">
               <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Tambahkan Produk</Label>
               <div className="flex gap-2">
@@ -389,10 +513,9 @@ export function SettingsView() {
               </div>
             </div>
 
-            {/* List Produk Terpilih */}
             <div className="space-y-6">
               <div className="flex items-center justify-between ml-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Daftar Produk & Tier Harga</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Daftar Produk Terpilih</p>
                 <Badge className="bg-muted text-muted-foreground font-black text-[9px]">{pricelistForm.items?.length || 0} ITEM</Badge>
               </div>
               
@@ -431,7 +554,7 @@ export function SettingsView() {
                               updatedItems[idx].tiers.push({ minQty: parseInt(newTier.minQty), maxQty: 999999, price: parseFloat(newTier.price) });
                               setPricelistForm({ ...pricelistForm, items: updatedItems });
                               setNewTier({ minQty: '', price: '' });
-                            }} variant="outline" className="h-10 w-full rounded-lg border-2 font-black text-[10px] text-primary">TAMBAH TIER</Button>
+                            }} variant="outline" className="h-10 w-full rounded-lg border-2 font-black text-[10px] text-primary">TAMBAH</Button>
                           </div>
                         </div>
 
@@ -545,4 +668,3 @@ export function SettingsView() {
     </div>
   );
 }
-
