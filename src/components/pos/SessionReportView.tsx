@@ -2,32 +2,18 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { usePOS } from './POSContext';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card } from '@/components/ui/card';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
 import { 
-  FileText, 
   DollarSign, 
   PieChart, 
   ArrowDownRight, 
   ArrowUpRight, 
-  Download, 
-  Printer, 
   ChevronLeft,
-  Calendar,
   Clock,
-  User,
-  History,
-  ArrowRight,
-  FileSpreadsheet
+  History
 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 import { db } from '@/lib/db';
 import { Transaction } from '@/types/pos';
 import { Badge } from '@/components/ui/badge';
@@ -35,12 +21,10 @@ import { cn } from '@/lib/utils';
 
 export function SessionReportView() {
   const { 
-    sessions, customers, lastClosedSession, 
-    priceLists, promoDiscounts
+    sessions, lastClosedSession 
   } = usePOS();
   
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [sessionTransactions, setSessionTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 

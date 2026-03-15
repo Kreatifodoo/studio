@@ -34,6 +34,7 @@ export async function printReceipt(order: Transaction, storeName: string) {
     const { BluetoothPrinter } = await import('@kduma-autoid/capacitor-bluetooth-printer');
     const content = formatReceipt(order, storeName);
     
+    // Updated to use the correct 'data' property expected by the plugin
     await BluetoothPrinter.print({ data: content });
     return true;
   } catch (error) {

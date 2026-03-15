@@ -10,7 +10,7 @@ interface ReceiptViewProps {
 }
 
 export function ReceiptView({ transaction }: ReceiptViewProps) {
-  const { packages, products, storeSettings, customers } = usePOS();
+  const { storeSettings, customers } = usePOS();
   const [barcodeBars, setBarcodeBars] = useState<{width: string, show: boolean}[]>([]);
   
   useEffect(() => {
@@ -42,7 +42,7 @@ export function ReceiptView({ transaction }: ReceiptViewProps) {
             <img src={storeSettings.logoUrl} alt="Store Logo" className="h-16 w-auto object-contain" />
           </div>
         )}
-        <h2 className="text-base font-black uppercase tracking-tighter" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
+        <h2 className="text-base font-black uppercase tracking-tighter" style={{ fontFamily: 'Poppins, sans-serif' }}>
           {storeSettings.name}
         </h2>
         {storeSettings.address && (

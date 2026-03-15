@@ -65,7 +65,6 @@ export function ProductGrid() {
 
   return (
     <div className="flex flex-col gap-3 md:gap-6 h-full">
-      {/* Category Slider */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide px-0.5">
         {categories.map((cat) => (
           <button 
@@ -83,7 +82,6 @@ export function ProductGrid() {
         ))}
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4 pb-20 md:pb-8">
         {filteredCombos.map((combo) => (
           <Card key={combo.id} onClick={() => setSelectedCombo(combo)} className="group overflow-hidden rounded-xl md:rounded-2xl border-none shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-300 bg-white flex flex-col h-full cursor-pointer border-t-2 border-t-primary/20">
@@ -146,7 +144,6 @@ export function ProductGrid() {
         })}
       </div>
 
-      {/* Dialogs */}
       <Dialog open={!!selectedCombo} onOpenChange={(open) => !open && setSelectedCombo(null)}>
         <DialogContent className="max-w-[95vw] sm:max-w-md rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6">
           <DialogHeader><DialogTitle className="text-sm md:text-lg font-black">{selectedCombo?.name}</DialogTitle></DialogHeader>
