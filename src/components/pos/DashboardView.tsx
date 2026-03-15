@@ -225,7 +225,7 @@ export function DashboardView() {
             <div className="flex flex-wrap gap-2 mt-2 justify-center">
               {stats.categoryData.slice(0, 4).map((cat, idx) => (
                 <div key={idx} className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                  <div className="width-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                   <span className="text-[8px] font-bold text-muted-foreground">{cat.name}</span>
                 </div>
               ))}
@@ -269,14 +269,18 @@ export function DashboardView() {
           </CardTitle>
           <div className="space-y-4">
             {Object.entries(filteredHistory.reduce((acc: any, t) => {
-              if (t.customerId) acc[t.customerId] = (acc[t.customerId] || 0) + t.total;
+              if (t.customerId) {
+                if (!acc[t.customerId]) acc[t.customerId] = { total: 0, count: 0 };
+                acc[t.customerId].total += t.total;
+                acc[t.customerId].count += 1;
+              }
               return acc;
             }, {}))
-            .map(([id, total]: any) => ({ customer: customers.find(c => c.id === id), total }))
+            .map(([id, data]: any) => ({ customer: customers.find(c => c.id === id), total: data.total, count: data.count }))
             .filter(item => !!item.customer)
             .sort((a, b) => b.total - a.total)
             .slice(0, 5)
-            .map(({ customer, total }: any, idx) => (
+            .map(({ customer, total, count }: any, idx) => (
               <div key={customer.id} className="flex items-center justify-between p-3 md:p-4 bg-muted/10 rounded-xl md:rounded-2xl">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8 md:h-10 md:h-10 border-2 border-white shadow-sm">
@@ -284,7 +288,10 @@ export function DashboardView() {
                   </Avatar>
                   <div>
                     <p className="font-black text-xs md:text-sm">{customer.name}</p>
-                    <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{customer.phone}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[8px] md:text-[10px] text-muted-foreground font-bold">{customer.phone}</p>
+                      <span className="text-[8px] md:text-[10px] text-primary font-black uppercase tracking-tighter bg-primary/5 px-1.5 rounded">{count} TRX</span>
+                    </div>
                   </div>
                 </div>
                 <p className="font-black text-xs md:text-sm text-primary">{formatCurrency(total)}</p>
