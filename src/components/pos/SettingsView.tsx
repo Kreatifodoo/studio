@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -16,34 +16,27 @@ import {
   Plus, 
   Trash2, 
   Pencil,
-  CreditCard,
-  Percent,
-  Package as PackageIcon,
   Users,
-  Layers,
-  Upload,
-  ImageIcon,
-  Printer,
-  Database,
-  Download,
-  Share2,
+  Package as PackageIcon,
   Tag,
   Boxes,
   LayoutGrid,
   Ticket,
-  X,
+  Printer,
+  Database,
+  Download,
+  Share2,
   Calendar as CalendarIcon,
   AlertTriangle,
   UserCog,
-  ShieldCheck,
-  CheckCircle2,
+  X,
   Phone,
   Mail,
   MapPin
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
-  Product, Customer, Permission, PriceList, Package, Combo, PromoDiscount, PriceTier, User
+  Product, Customer, Permission, PriceList, User
 } from '@/types/pos';
 import { 
   Dialog, 
@@ -66,17 +59,10 @@ import { cn } from '@/lib/utils';
 export function SettingsView() {
   const { 
     products, setProducts, 
-    categories, setCategories, 
-    paymentMethods, setPaymentMethods,
-    fees, setFees,
     customers, setCustomers,
     storeSettings, setStoreSettings,
-    checkPermission,
     exportDatabase, importDatabase,
     priceLists, setPriceLists,
-    packages, setPackages,
-    combos, setCombos,
-    promoDiscounts, setPromoDiscounts,
     users, setUsers, roles,
     printer, connectPrinter, disconnectPrinter
   } = usePOS();
@@ -107,27 +93,27 @@ export function SettingsView() {
   const [pricelistForm, setPricelistForm] = useState<Partial<PriceList>>({ items: [] });
   
   const [currentSelectedProductId, setCurrentSelectedProductId] = useState<string>('');
-  const [newTier, setNewTier] = useState<{minQty?: string, price?: string}>({ minQty: '', price: '' });
+  const [newTier, setNewTier] = useState({ minQty: '', price: '' });
 
   const navGroups = [
     {
       title: "Katalog & Penjualan",
       items: [
-        { id: 'customers', icon: Users, label: 'Master Pelanggan', permission: 'manage_customers' },
-        { id: 'products', icon: PackageIcon, label: 'Master Produk', permission: 'manage_products' },
-        { id: 'pricelists', icon: Tag, label: 'Pricelist (Grosir)', permission: 'manage_products' },
-        { id: 'packages', icon: Boxes, label: 'Paket Produk', permission: 'manage_products' },
-        { id: 'combos', icon: LayoutGrid, label: 'Combo / Pilihan', permission: 'manage_products' },
-        { id: 'promos', icon: Ticket, label: 'Program Diskon', permission: 'manage_products' },
+        { id: 'customers', icon: Users, label: 'Master Pelanggan' },
+        { id: 'products', icon: PackageIcon, label: 'Master Produk' },
+        { id: 'pricelists', icon: Tag, label: 'Pricelist (Grosir)' },
+        { id: 'packages', icon: Boxes, label: 'Paket Produk' },
+        { id: 'combos', icon: LayoutGrid, label: 'Combo / Pilihan' },
+        { id: 'promos', icon: Ticket, label: 'Program Diskon' },
       ]
     },
     {
       title: "Sistem & Toko",
       items: [
-        { id: 'general', icon: Store, label: 'Identitas Toko', permission: 'manage_settings' },
-        { id: 'printer', icon: Printer, label: 'Pengaturan Printer', permission: 'manage_settings' },
-        { id: 'users', icon: UserCog, label: 'Manajemen User', permission: 'manage_users' },
-        { id: 'database', icon: Database, label: 'Database & Backup', permission: 'manage_settings' },
+        { id: 'general', icon: Store, label: 'Identitas Toko' },
+        { id: 'printer', icon: Printer, label: 'Pengaturan Printer' },
+        { id: 'users', icon: UserCog, label: 'Manajemen User' },
+        { id: 'database', icon: Database, label: 'Database & Backup' },
       ]
     }
   ];
@@ -411,58 +397,6 @@ export function SettingsView() {
         </main>
       </div>
 
-      {/* Dialog Pelanggan */}
-      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
-          <DialogHeader className="text-center">
-            <div className="bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6">
-              <Users className="h-10 w-10" />
-            </div>
-            <DialogTitle className="text-2xl font-black">Data Pelanggan</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label>
-              <Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nomor Telepon</Label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                <Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })} className="h-12 rounded-xl border-2 font-bold pl-11" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email (Opsional)</Label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                <Input value={customerForm.email || ''} onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })} className="h-12 rounded-xl border-2 font-bold pl-11" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Alamat (Opsional)</Label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-4 h-4 w-4 text-muted-foreground/40" />
-                <Textarea value={customerForm.address || ''} onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })} className="min-h-[100px] rounded-xl border-2 font-bold pl-11 pt-3" />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="pt-4">
-            <Button onClick={() => {
-              if (!customerForm.name || !customerForm.phone) {
-                toast({ variant: "destructive", title: "Gagal", description: "Nama dan Telepon wajib diisi." });
-                return;
-              }
-              const newCust = { id: editingCustomer?.id || Math.random().toString(36).substr(2, 9).toUpperCase(), ...customerForm } as Customer;
-              setCustomers(editingCustomer ? customers.map(c => c.id === newCust.id ? newCust : c) : [...customers, newCust]);
-              setIsCustomerDialogOpen(false);
-              toast({ title: "Berhasil", description: "Data pelanggan disimpan." });
-            }} className="w-full h-14 rounded-2xl bg-primary font-black shadow-lg shadow-primary/20">Simpan Data</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Master Pricelist */}
       <Dialog open={isPricelistDialogOpen} onOpenChange={setIsPricelistDialogOpen}>
         <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[2.5rem] p-0 border-none shadow-2xl flex flex-col max-h-[90vh]">
           <div className="p-6 md:p-10 pb-4">
@@ -473,7 +407,7 @@ export function SettingsView() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Aturan</Label>
-                <Input value={pricelistForm.name || ''} onChange={(e) => setPricelistForm({ ...pricelistForm, name: e.target.value })} placeholder="Contoh: Promo Grosir Lebaran" className="h-12 rounded-xl border-2 font-bold" />
+                <Input value={pricelistForm.name || ''} onChange={(e) => setPricelistForm({ ...pricelistForm, name: e.target.value })} placeholder="Contoh: Promo Grosir" className="h-12 rounded-xl border-2 font-bold" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -487,10 +421,8 @@ export function SettingsView() {
               </div>
             </div>
           </div>
-
           <Separator />
-          
-          <div className="flex-1 overflow-y-auto px-6 md:px-10 py-6 space-y-8 scrollbar-hide">
+          <div className="flex-1 space-y-8 py-4 overflow-y-auto px-6 md:px-10 scrollbar-hide">
             <div className="space-y-4">
               <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Tambahkan Produk</Label>
               <div className="flex gap-2">
@@ -512,69 +444,46 @@ export function SettingsView() {
                 }} className="h-12 w-12 rounded-xl bg-primary shadow-lg shadow-primary/20"><Plus /></Button>
               </div>
             </div>
-
             <div className="space-y-6">
               <div className="flex items-center justify-between ml-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Daftar Produk Terpilih</p>
                 <Badge className="bg-muted text-muted-foreground font-black text-[9px]">{pricelistForm.items?.length || 0} ITEM</Badge>
               </div>
-              
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {pricelistForm.items?.map((item, idx) => {
                   const product = products.find(p => p.id === item.productId);
                   return (
-                    <Card key={idx} className="p-6 rounded-[2rem] border-2 border-primary/5 bg-muted/5 relative group">
+                    <Card key={idx} className="p-4 rounded-[1.5rem] border-2 border-primary/5 bg-muted/5 relative">
                       <button onClick={() => {
                         const filtered = pricelistForm.items?.filter((_, i) => i !== idx);
                         setPricelistForm({ ...pricelistForm, items: filtered });
-                      }} className="absolute top-4 right-4 text-muted-foreground/30 hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
-                      
-                      <div className="flex items-center gap-3 mb-6">
-                        <img src={product?.image} className="h-12 w-12 rounded-xl object-cover shadow-sm" alt="" />
-                        <div>
-                          <p className="font-black text-base">{product?.name || 'Produk'}</p>
-                          <p className="text-[10px] font-bold text-primary">Base: Rp {product?.price.toLocaleString()}</p>
-                        </div>
+                      }} className="absolute top-4 right-4 text-muted-foreground/30 hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+                      <div className="flex items-center gap-3 mb-4">
+                        <img src={product?.image} className="h-10 w-10 rounded-lg object-cover" alt="" />
+                        <p className="font-black text-sm">{product?.name}</p>
                       </div>
-
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-black text-muted-foreground ml-1">Min Qty</Label>
-                            <Input placeholder="Qty" type="number" value={newTier.minQty} onChange={(e) => setNewTier({ ...newTier, minQty: e.target.value })} className="h-10 rounded-lg border-2" />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-[8px] font-black text-muted-foreground ml-1">Harga Khusus</Label>
-                            <Input placeholder="Rp" type="number" value={newTier.price} onChange={(e) => setNewTier({ ...newTier, price: e.target.value })} className="h-10 rounded-lg border-2" />
-                          </div>
-                          <div className="flex items-end">
-                            <Button onClick={() => {
-                              if (!newTier.minQty || !newTier.price) return;
+                      <div className="grid grid-cols-3 gap-2 mb-4">
+                        <Input placeholder="Qty" value={newTier.minQty} onChange={(e) => setNewTier({ ...newTier, minQty: e.target.value })} className="h-10 rounded-lg border-2 font-bold" />
+                        <Input placeholder="Harga" value={newTier.price} onChange={(e) => setNewTier({ ...newTier, price: e.target.value })} className="h-10 rounded-lg border-2 font-bold" />
+                        <Button onClick={() => {
+                          if (!newTier.minQty || !newTier.price) return;
+                          const updatedItems = [...(pricelistForm.items || [])];
+                          updatedItems[idx].tiers.push({ minQty: parseInt(newTier.minQty) || 0, maxQty: 999999, price: parseFloat(newTier.price) || 0 });
+                          setPricelistForm({ ...pricelistForm, items: updatedItems });
+                          setNewTier({ minQty: '', price: '' });
+                        }} className="h-10 rounded-lg font-black text-[10px]">TAMBAH</Button>
+                      </div>
+                      <div className="space-y-2">
+                        {item.tiers.map((t, tIdx) => (
+                          <div key={tIdx} className="flex items-center justify-between bg-white p-2 rounded-lg border">
+                            <span className="text-[10px] font-bold">Min {t.minQty} Unit: Rp {t.price.toLocaleString()}</span>
+                            <button onClick={() => {
                               const updatedItems = [...(pricelistForm.items || [])];
-                              updatedItems[idx].tiers.push({ minQty: parseInt(newTier.minQty), maxQty: 999999, price: parseFloat(newTier.price) });
+                              updatedItems[idx].tiers = updatedItems[idx].tiers.filter((_, i) => i !== tIdx);
                               setPricelistForm({ ...pricelistForm, items: updatedItems });
-                              setNewTier({ minQty: '', price: '' });
-                            }} variant="outline" className="h-10 w-full rounded-lg border-2 font-black text-[10px] text-primary">TAMBAH</Button>
+                            }}><X className="h-3 w-3 text-destructive" /></button>
                           </div>
-                        </div>
-
-                        {item.tiers.length > 0 && (
-                          <div className="space-y-2 mt-4">
-                            {item.tiers.map((t, tIdx) => (
-                              <div key={tIdx} className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-primary/5">
-                                <div className="flex items-center gap-4">
-                                  <Badge className="bg-primary/10 text-primary font-black text-[9px]">MIN {t.minQty} UNIT</Badge>
-                                  <span className="font-black text-sm">Rp {t.price.toLocaleString()}</span>
-                                </div>
-                                <button onClick={() => {
-                                  const updatedItems = [...(pricelistForm.items || [])];
-                                  updatedItems[idx].tiers = updatedItems[idx].tiers.filter((_, i) => i !== tIdx);
-                                  setPricelistForm({ ...pricelistForm, items: updatedItems });
-                                }} className="text-muted-foreground/30 hover:text-destructive"><X className="h-4 w-4" /></button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        ))}
                       </div>
                     </Card>
                   );
@@ -582,19 +491,17 @@ export function SettingsView() {
               </div>
             </div>
           </div>
-
-          <DialogFooter className="p-6 md:p-10 pt-4 bg-white border-t rounded-b-[2.5rem]">
+          <DialogFooter className="p-6 bg-white border-t rounded-b-[2.5rem]">
             <Button onClick={() => {
               if (!pricelistForm.name) return;
               const newList = { id: editingPricelist?.id || Math.random().toString(36).substr(2, 9), ...pricelistForm } as PriceList;
               setPriceLists(editingPricelist ? priceLists.map(p => p.id === newList.id ? newList : p) : [...priceLists, newList]);
               setIsPricelistDialogOpen(false);
-            }} className="w-full h-16 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20">Simpan Pricelist</Button>
+            }} className="w-full h-14 rounded-2xl bg-primary font-black text-lg">Simpan Pricelist</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog User */}
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
         <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
           <DialogHeader className="text-center">
@@ -638,11 +545,47 @@ export function SettingsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      {/* Restore Confirmation Dialog */}
-      <Dialog open={isRestoreConfirmOpen} onOpenChange={setIsRestoreConfirmOpen}>
+
+      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
         <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
           <DialogHeader className="text-center">
+            <div className="bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center text-primary mx-auto mb-6">
+              <Users className="h-10 w-10" />
+            </div>
+            <DialogTitle className="text-2xl font-black">Data Pelanggan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Lengkap</Label>
+              <Input value={customerForm.name || ''} onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nomor Telepon</Label>
+              <Input value={customerForm.phone || ''} onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email</Label>
+              <Input value={customerForm.email || ''} onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })} className="h-12 rounded-xl border-2 font-bold" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Alamat</Label>
+              <Textarea value={customerForm.address || ''} onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })} className="min-h-[100px] rounded-xl border-2 font-bold" />
+            </div>
+          </div>
+          <DialogFooter className="pt-4">
+            <Button onClick={() => {
+              if (!customerForm.name || !customerForm.phone) return;
+              const newCust = { id: editingCustomer?.id || Math.random().toString(36).substr(2, 9).toUpperCase(), ...customerForm } as Customer;
+              setCustomers(editingCustomer ? customers.map(c => c.id === newCust.id ? newCust : c) : [...customers, newCust]);
+              setIsCustomerDialogOpen(false);
+            }} className="w-full h-14 rounded-2xl bg-primary font-black shadow-lg shadow-primary/20">Simpan Pelanggan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRestoreConfirmOpen} onOpenChange={setIsRestoreConfirmOpen}>
+        <DialogContent className="max-w-[90vw] md:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl text-center">
+          <DialogHeader>
             <div className="bg-destructive/10 w-20 h-20 rounded-[2rem] flex items-center justify-center text-destructive mx-auto mb-6">
               <AlertTriangle className="h-10 w-10" />
             </div>
@@ -651,15 +594,14 @@ export function SettingsView() {
               Tindakan ini akan <span className="text-destructive font-black">MENGHAPUS SELURUH DATA LOKAL SAAT INI</span>.
             </DialogDescription>
           </DialogHeader>
-          
           {isRestoring ? (
             <div className="py-10 space-y-4">
               <Progress value={undefined} className="h-2" />
-              <p className="text-center text-xs font-black text-primary animate-pulse uppercase tracking-widest">Memproses Basis Data...</p>
+              <p className="text-xs font-black text-primary animate-pulse">Memproses Basis Data...</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 pt-6">
-              <Button onClick={confirmRestore} className="h-16 rounded-2xl bg-destructive hover:bg-destructive/90 text-white font-black text-lg">Ya, Pulihkan Sekarang</Button>
+              <Button onClick={confirmRestore} className="h-14 rounded-2xl bg-destructive text-white font-black">Ya, Pulihkan Sekarang</Button>
               <Button variant="ghost" onClick={() => setIsRestoreConfirmOpen(false)} className="h-14 rounded-2xl font-bold">Batalkan</Button>
             </div>
           )}

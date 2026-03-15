@@ -2,7 +2,6 @@
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
-import { FirebaseClientProvider } from "@/firebase";
 import { POSProvider } from '@/components/pos/POSContext';
 
 export const metadata: Metadata = {
@@ -41,12 +40,10 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-body antialiased bg-background text-foreground" suppressHydrationWarning>
-        <FirebaseClientProvider>
-          <POSProvider>
-            {children}
-            <Toaster />
-          </POSProvider>
-        </FirebaseClientProvider>
+        <POSProvider>
+          {children}
+          <Toaster />
+        </POSProvider>
       </body>
     </html>
   );

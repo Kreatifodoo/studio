@@ -133,29 +133,31 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function initDb() {
-      const prodCount = await db.products.count();
-      if (prodCount === 0) {
-        await db.products.bulkPut(INITIAL_PRODUCTS);
-        await db.users.bulkPut(INITIAL_USERS);
-        await db.paymentMethods.bulkPut(INITIAL_PAYMENT_METHODS);
-        await db.fees.bulkPut(INITIAL_FEES);
-        await db.config.put({ key: 'storeSettings', value: INITIAL_STORE_SETTINGS });
-      }
+      try {
+        const prodCount = await db.products.count();
+        if (prodCount === 0) {
+          await db.products.bulkPut(INITIAL_PRODUCTS);
+          await db.users.bulkPut(INITIAL_USERS);
+          await db.paymentMethods.bulkPut(INITIAL_PAYMENT_METHODS);
+          await db.fees.bulkPut(INITIAL_FEES);
+          await db.config.put({ key: 'storeSettings', value: INITIAL_STORE_SETTINGS });
+        }
 
-      const savedUserId = localStorage.getItem('pos_current_user_id');
-      if (savedUserId) {
-        const user = await db.users.get(savedUserId);
-        if (user) setCurrentUser(user);
+        const savedUserId = localStorage.getItem('pos_current_user_id');
+        if (savedUserId) {
+          const user = await db.users.get(savedUserId);
+          if (user) setCurrentUser(user);
+        }
+      } catch (e) {
+        console.error("Gagal inisialisasi database lokal:", e);
+      } finally {
+        setIsDbLoaded(true);
       }
-      
-      setIsDbLoaded(true);
     }
     initDb();
   }, []);
 
   const connectPrinter = async () => {
-    // Bluetooth connection logic remains local
-    alert("Fitur Bluetooth Printer Aktif (Local Only)");
     setPrinter({ name: 'Printer Bluetooth Lokal', status: 'connected', type: 'bluetooth' });
   };
 
@@ -276,7 +278,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     const activePricelist = priceLists.find(pl => 
       pl.enabled && 
       new Date(pl.startDate) <= now &&
-      new Date(pl.endDate) >= now &&
+      (!pl.endDate || new Date(pl.endDate) >= now) &&
       pl.items.some(item => item.productId === productId)
     );
 
@@ -341,14 +343,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const updateNote = (itemId: string, note: string) => setCart(prev => prev.map(item => item.id === itemId ? { ...item, note } : item));
   const clearCart = () => { setCart([]); setSelectedCustomerId(null); };
 
-  // Advanced Transaction Handling with DEXIE TRANSACTIONS
   const addTransaction = async (t: Transaction) => {
     try {
       await db.transaction('rw', db.transactions, db.products, db.sessions, async () => {
-        // 1. Catat Transaksi
         await db.transactions.put(t);
-
-        // 2. Potong Stok Produk
         for (const item of t.items) {
           if (!item.isPackage && !item.isCombo) {
             const product = await db.products.get(item.productId);
@@ -357,8 +355,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
             }
           }
         }
-
-        // 3. Update Sesi
         if (currentSession) {
           const updatedSession = { ...currentSession, transactionIds: [...currentSession.transactionIds, t.id] };
           await db.sessions.put(updatedSession);
@@ -366,7 +362,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error) {
       console.error("Gagal memproses transaksi lokal:", error);
-      alert("Terjadi kesalahan sistem saat memproses transaksi.");
     }
   };
 
