@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">NextPOS</string>
+    <string name="title_activity_main">NextPOS</string>
+    <string name="package_name">com.nextpos.app</string>
+    <string name="custom_url_scheme">com.nextpos.app</string>
+</resources>
