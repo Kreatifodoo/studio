@@ -1,6 +1,6 @@
 
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
-import { Haptics, ImpactStyle } from '@capacitor-haptics';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { connectBluetoothPrinter, printReceipt } from './printer';
 import { Transaction } from '@/types/pos';
