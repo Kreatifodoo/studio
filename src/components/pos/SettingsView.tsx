@@ -34,13 +34,11 @@ import {
   Mail,
   MapPin,
   History,
-  Calendar,
-  CreditCard,
-  Package
+  CreditCard
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
-  Product, Customer, Permission, PriceList, User
+  Product, Customer, PriceList, User
 } from '@/types/pos';
 import { 
   Dialog, 
@@ -62,6 +60,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { ScrollArea } from '../ui/scroll-area';
+import { BarcodePrintView } from './BarcodePrintView';
 
 export function SettingsView() {
   const { 
@@ -72,7 +71,8 @@ export function SettingsView() {
     priceLists, setPriceLists,
     users, setUsers, roles,
     printer, connectPrinter, disconnectPrinter,
-    history: allHistory
+    history: allHistory,
+    categories
   } = usePOS();
   
   const { toast } = useToast();
@@ -162,7 +162,6 @@ export function SettingsView() {
     }
   };
 
-  // Customer transactions filter
   const customerTransactions = useMemo(() => {
     if (!editingCustomer) return [];
     return allHistory.filter(t => t.customerId === editingCustomer.id);
@@ -238,7 +237,7 @@ export function SettingsView() {
             </div>
             <Card className="rounded-[2rem] p-8 border-none bg-muted/10">
               <div className="flex flex-col items-center text-center gap-6">
-                <div className={cn("p-6 rounded-[2rem] transition-all duration-500", printer.status === 'connected' ? "bg-green-500 text-white shadow-xl shadow-green-500/20" : "bg-white text-muted-foreground shadow-sm")}>
+                <div className={cn("p-6 rounded-[2rem] transition-all duration-500", printer.status === 'connected' ? "bg-green-50 text-white shadow-xl shadow-green-500/20" : "bg-white text-muted-foreground shadow-sm")}>
                   <Printer className="h-12 w-12" />
                 </div>
                 <div>
@@ -297,14 +296,20 @@ export function SettingsView() {
                 <CardTitle className="text-xl font-black">Master Produk</CardTitle>
                 <CardDescription>Kelola katalog barang dagangan Anda.</CardDescription>
               </div>
-              <Button onClick={() => { setEditingProduct(null); setProductForm({ onHandQty: 0, price: 0, available: true }); setIsProductDialogOpen(true); }} className="h-10 rounded-xl bg-primary font-black px-4">Tambah</Button>
+              <Button onClick={() => { setEditingProduct(null); setProductForm({ onHandQty: 0, price: 0, available: true, category: 'Makanan Utama' }); setIsProductDialogOpen(true); }} className="h-10 rounded-xl bg-primary font-black px-4">Tambah</Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {products.map(p => (
                 <div key={p.id} className="flex items-center justify-between p-3 bg-muted/5 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
                   <div className="flex items-center gap-3">
                     <img src={p.image} className="h-10 w-10 rounded-lg object-cover border" alt={p.name} />
-                    <div><p className="font-black text-xs">{p.name}</p><p className="text-[10px] text-primary font-bold">Rp {p.price.toLocaleString()}</p></div>
+                    <div>
+                      <p className="font-black text-xs">{p.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] text-primary font-bold">{formatCurrency(p.price)}</p>
+                        <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">{p.sku}</p>
+                      </div>
+                    </div>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => { setEditingProduct(p); setProductForm(p); setIsProductDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                 </div>
@@ -414,6 +419,149 @@ export function SettingsView() {
           {renderTabContent()}
         </main>
       </div>
+
+      {/* Product Dialog */}
+      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+        <DialogContent className="max-w-[95vw] md:max-w-2xl rounded-[2.5rem] p-0 border-none shadow-2xl overflow-hidden">
+          <div className="p-8 md:p-10 pb-4 bg-primary/5">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black">{editingProduct ? 'Edit Produk' : 'Produk Baru'}</DialogTitle>
+              <DialogDescription>Kelola detail produk, harga, dan stok.</DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="p-8 md:p-10 pt-6 space-y-6 overflow-y-auto max-h-[70vh]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nama Produk</Label>
+                <Input 
+                  value={productForm.name || ''} 
+                  onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} 
+                  className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Kategori</Label>
+                <Select 
+                  value={productForm.category} 
+                  onValueChange={(val) => setProductForm({ ...productForm, category: val })}
+                >
+                  <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Kode SKU</Label>
+                <Input 
+                  value={productForm.sku || ''} 
+                  onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} 
+                  className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                  placeholder="Contoh: MU-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Barcode / EAN</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={productForm.barcode || ''} 
+                    onChange={(e) => setProductForm({ ...productForm, barcode: e.target.value })} 
+                    className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                    placeholder="8880001"
+                  />
+                  {editingProduct && (
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-12 w-12 rounded-xl border-2 border-primary/20 text-primary hover:bg-primary/5"
+                      onClick={() => window.print()}
+                    >
+                      <Printer className="h-5 w-5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Harga Jual</Label>
+                <Input 
+                  type="number" 
+                  value={productForm.price || 0} 
+                  onChange={(e) => setProductForm({ ...productForm, price: parseFloat(e.target.value) || 0 })} 
+                  className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Harga Pokok (Modal)</Label>
+                <Input 
+                  type="number" 
+                  value={productForm.costPrice || 0} 
+                  onChange={(e) => setProductForm({ ...productForm, costPrice: parseFloat(e.target.value) || 0 })} 
+                  className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Stok Tersedia</Label>
+                <Input 
+                  type="number" 
+                  value={productForm.onHandQty || 0} 
+                  onChange={(e) => setProductForm({ ...productForm, onHandQty: parseInt(e.target.value) || 0 })} 
+                  className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Gambar Produk</Label>
+              <Input 
+                value={productForm.image || ''} 
+                onChange={(e) => setProductForm({ ...productForm, image: e.target.value })} 
+                className="h-12 rounded-xl border-2 font-bold focus-visible:ring-primary/20" 
+                placeholder="https://picsum.photos/seed/..."
+              />
+            </div>
+          </div>
+          <DialogFooter className="p-8 md:p-10 pt-4 bg-white border-t rounded-b-[2.5rem]">
+            <Button 
+              onClick={() => {
+                if (!productForm.name || !productForm.sku) {
+                  toast({ variant: 'destructive', title: 'Data Tidak Lengkap', description: 'Nama dan SKU wajib diisi.' });
+                  return;
+                }
+                const newProd = { 
+                  id: editingProduct?.id || Math.random().toString(36).substr(2, 9), 
+                  available: true,
+                  ...productForm 
+                } as Product;
+                
+                if (editingProduct) {
+                  setProducts(products.map(p => p.id === newProd.id ? newProd : p));
+                } else {
+                  setProducts([...products, newProd]);
+                }
+                setIsProductDialogOpen(false);
+                toast({ title: 'Berhasil', description: 'Data produk telah disimpan.' });
+              }} 
+              className="w-full h-14 rounded-2xl bg-primary font-black text-lg shadow-xl shadow-primary/20"
+            >
+              Simpan Produk
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+        {/* Print View Wrapper */}
+        {editingProduct && (
+          <div className="hidden">
+            <BarcodePrintView product={editingProduct} />
+          </div>
+        )}
+      </Dialog>
 
       {/* Pricelist Dialog */}
       <Dialog open={isPricelistDialogOpen} onOpenChange={setIsPricelistDialogOpen}>
