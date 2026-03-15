@@ -5,12 +5,10 @@ import { Transaction } from '@/types/pos';
 
 /**
  * Deteksi apakah aplikasi berjalan di platform native (Android/iOS).
- * Aman untuk SSR karena memeriksa keberadaan window.
  */
 export const isNative = () => {
   if (typeof window === 'undefined') return false;
   try {
-    // Gunakan require secara dinamis untuk menghindari evaluasi top-level pada server
     const { Capacitor } = require('@capacitor/core');
     return Capacitor.isNativePlatform();
   } catch (e) {
@@ -20,7 +18,6 @@ export const isNative = () => {
 
 /**
  * Memulai pemindaian barcode menggunakan kamera perangkat.
- * Diimpor secara dinamis untuk keamanan SSR dan efisiensi bundle.
  */
 export async function startScan(): Promise<string | null> {
   if (!isNative()) {

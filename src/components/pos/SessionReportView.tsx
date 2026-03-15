@@ -256,7 +256,7 @@ export function SessionReportView() {
                 </div>
                 <Badge className={cn(
                   "font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-lg border-none",
-                  session.status === 'Open' ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"
+                  session.status === 'Open' ? "bg-green-50/10 text-green-600" : "bg-muted text-muted-foreground"
                 )}>
                   {session.status === 'Open' ? 'SEDANG BERJALAN' : 'TELAH DITUTUP'}
                 </Badge>
@@ -311,8 +311,10 @@ export function SessionReportView() {
     );
   }
 
-  // Handle selectedSession null case for TypeScript
-  if (!selectedSession) return null;
+  // Handle selectedSession null case for TypeScript to prevent build errors
+  if (!selectedSession) {
+    return null;
+  }
 
   const cashDifference = (selectedSession.closingCash || 0) - (selectedSession.openingCash + (stats.paymentsByMethod['Tunai'] || 0));
 
@@ -431,7 +433,7 @@ export function SessionReportView() {
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">ID Order</TableHead>
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Kasir</TableHead>
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Pelanggan</TableHead>
-                <TableHead className="font-black text-[10px) uppercase tracking-widest h-12">Metode</TableHead>
+                <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Metode</TableHead>
                 <TableHead className="text-right font-black text-[10px] uppercase tracking-widest h-12">Total</TableHead>
               </TableRow>
             </TableHeader>

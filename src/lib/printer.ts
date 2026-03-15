@@ -6,7 +6,6 @@ import { format } from 'date-fns';
 
 /**
  * Utilitas untuk menangani pencetakan ESC/POS via Bluetooth pada Android.
- * Menggunakan dynamic import untuk plugin Capacitor agar aman dari SSR.
  */
 
 export async function connectBluetoothPrinter() {
@@ -20,7 +19,7 @@ export async function connectBluetoothPrinter() {
       throw new Error("Tidak ada printer Bluetooth ditemukan.");
     }
     
-    // Hubungkan ke perangkat pertama yang ditemukan (Sederhana untuk PoC)
+    // Hubungkan ke perangkat pertama yang ditemukan
     await BluetoothPrinter.connect({ address: devices[0].address });
     return devices[0].name;
   } catch (error) {
@@ -35,7 +34,9 @@ export async function printReceipt(order: Transaction, storeName: string) {
   try {
     const { BluetoothPrinter } = await import('@kduma-autoid/capacitor-bluetooth-printer');
     const content = formatReceipt(order, storeName);
-    await BluetoothPrinter.print({ content });
+    
+    // Perbaikan: Properti yang diharapkan adalah 'data', bukan 'content'
+    await BluetoothPrinter.print({ data: content });
     return true;
   } catch (error) {
     console.error("Gagal mencetak struk:", error);
