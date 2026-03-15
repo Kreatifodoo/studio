@@ -20,7 +20,6 @@ import {
   User,
   History,
   ArrowRight,
-  Filter,
   FileSpreadsheet
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -30,14 +29,14 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 import { db } from '@/lib/db';
-import { Transaction, Session } from '@/types/pos';
+import { Transaction } from '@/types/pos';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export function SessionReportView() {
   const { 
     sessions, customers, lastClosedSession, 
-    priceLists, promoDiscounts, packages, combos 
+    priceLists, promoDiscounts
   } = usePOS();
   
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -310,7 +309,6 @@ export function SessionReportView() {
     );
   }
 
-  // Safe check for selectedSession to prevent build errors
   if (!selectedSession) {
     return null;
   }

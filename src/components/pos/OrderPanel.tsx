@@ -1,13 +1,11 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { ShoppingBag, Trash2, Plus, Minus, Wand2, CreditCard, ChevronDown, UserPlus, User, Search, Check, X, History, Calendar, Package } from 'lucide-react';
+import { ShoppingBag, Trash2, Plus, Minus, CreditCard, ChevronDown, UserPlus, User, Search, Check, X, History, Calendar } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { getOrderItemCustomizationSuggestions } from '@/ai/flows/order-item-customization-suggestions';
 import {
   Popover,
   PopoverContent,
@@ -28,12 +26,11 @@ interface OrderPanelProps {
 
 export function OrderPanel({ isMobile = false }: OrderPanelProps) {
   const { 
-    cart, removeFromCart, updateQuantity, updateNote, clearCart, 
+    cart, removeFromCart, updateQuantity, clearCart, 
     addTransaction, fees, currentSession, customers, addCustomer,
     selectedCustomerId, setSelectedCustomerId, history: allHistory, currentUser
   } = usePOS();
   
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   const [isCustomerPopoverOpen, setIsCustomerPopoverOpen] = useState(false);
@@ -92,16 +89,6 @@ export function OrderPanel({ isMobile = false }: OrderPanelProps) {
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
-  };
-
-  const handleAISuggestions = async (itemName: string) => {
-    setSuggestions([]);
-    try {
-      const result = await getOrderItemCustomizationSuggestions({ itemName });
-      setSuggestions(result.suggestions);
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   return (
@@ -297,43 +284,6 @@ export function OrderPanel({ isMobile = false }: OrderPanelProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 md:h-8 text-[8px] md:text-[10px] uppercase tracking-widest font-black bg-primary/5 text-primary hover:bg-primary/10 rounded-md md:rounded-lg gap-1 md:gap-1.5 px-2 md:px-3"
-                        onClick={() => handleAISuggestions(item.name)}
-                      >
-                        <Wand2 className="h-3 w-3 md:h-3.5 md:w-3.5" /> AI
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-3 rounded-xl shadow-2xl border-none" align="start">
-                      <div className="flex flex-col gap-2">
-                        <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Kustomisasi:</p>
-                        {suggestions.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {suggestions.map((s, idx) => (
-                              <Badge
-                                key={idx}
-                                variant="outline"
-                                className="cursor-pointer hover:bg-primary hover:text-white border-muted rounded-md py-0.5 px-1.5 text-[8px] font-bold"
-                                onClick={() => updateNote(item.id, item.note ? `${item.note}, ${s}` : s)}
-                              >
-                                {s}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="animate-pulse space-y-1.5">
-                             <div className="h-3 bg-muted rounded w-3/4"></div>
-                             <div className="h-3 bg-muted rounded w-1/2"></div>
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-
                   {item.note && (
                     <span className="text-[9px] text-muted-foreground font-medium italic truncate flex-1 px-1.5 border-l border-muted">
                       {item.note}
