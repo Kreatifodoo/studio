@@ -96,50 +96,93 @@ export function SessionReportView() {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
 
-  const handleExportAllSessions = () => {
+  const handleExportAllSessions = async () => {
     if (filteredSessions.length === 0) return;
     
-    const headers = ["ID Sesi", "Mulai", "Selesai", "Kasir Pembuka", "Kasir Penutup", "Modal Awal", "Kas Akhir", "Total Transaksi", "Status"];
-    const rows = filteredSessions.map(s => [
-      s.id,
-      format(new Date(s.startTime), 'yyyy-MM-dd HH:mm'),
-      s.endTime ? format(new Date(s.endTime), 'yyyy-MM-dd HH:mm') : "-",
-      s.openedBy || "N/A",
-      s.closedBy || "N/A",
-      s.openingCash.toFixed(0),
-      (s.closingCash || 0).toFixed(0),
-      s.transactionIds.length,
-      s.status
-    ]);
+    // Ambil seluruh data transaksi untuk semua sesi yang difilter agar bisa detail per item
+    const allTrxIds = filteredSessions.flatMap(s => s.transactionIds);
+    const allTransactions = await db.transactions.where('id').anyOf(allTrxIds).toArray();
+    
+    const headers = [
+      "ID Sesi", "Mulai Sesi", "Selesai Sesi", "Kasir Sesi", 
+      "ID Order", "Waktu Order", "Kasir Order", "Pelanggan", 
+      "Item", "Qty", "Harga Satuan", "Total Hemat/Diskon", "Total Item (Subtotal)", 
+      "Metode Pembayaran", "Status"
+    ];
+
+    const rows: string[][] = [];
+
+    filteredSessions.forEach(session => {
+      const sessionTrxs = allTransactions.filter(t => session.transactionIds.includes(t.id));
+      
+      sessionTrxs.forEach(trx => {
+        const customer = customers.find(c => c.id === trx.customerId);
+        
+        trx.items.forEach(item => {
+          rows.push([
+            session.id,
+            format(new Date(session.startTime), 'yyyy-MM-dd HH:mm'),
+            session.endTime ? format(new Date(session.endTime), 'yyyy-MM-dd HH:mm') : "-",
+            session.openedBy || "N/A",
+            trx.id,
+            format(new Date(trx.date), 'yyyy-MM-dd HH:mm'),
+            trx.staffName || "Admin",
+            `"${customer?.name || 'Walk-in'}"`,
+            `"${item.name}"`,
+            item.quantity.toString(),
+            item.price.toString(),
+            (item.promoSavings * item.quantity).toString(),
+            (item.price * item.quantity).toString(),
+            trx.paymentMethod || "N/A",
+            trx.status
+          ]);
+        });
+      });
+    });
     
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Rekap_Semua_Sesi_${startDate}_to_${endDate}.csv`;
+    link.download = `Rekap_Detail_Transaksi_Sesi_${startDate}_to_${endDate}.csv`;
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleExportCSV = () => {
     if (!selectedSession || sessionTransactions.length === 0) return;
-    const headers = ["ID", "Tanggal", "Jam", "Kasir", "Pelanggan", "Total", "Metode"];
-    const rows = sessionTransactions.map(t => [
-      t.id,
-      format(new Date(t.date), 'yyyy-MM-dd'),
-      format(new Date(t.date), 'HH:mm'),
-      t.staffName || "Admin",
-      customers.find(c => c.id === t.customerId)?.name || "Umum",
-      t.total.toFixed(0),
-      t.paymentMethod || "N/A"
-    ]);
+    
+    // Detail item untuk satu sesi spesifik
+    const headers = ["ID Order", "Waktu", "Kasir", "Pelanggan", "Item", "Qty", "Harga", "Total", "Metode", "Status"];
+    const rows: string[][] = [];
+    
+    sessionTransactions.forEach(t => {
+      const customer = customers.find(c => c.id === t.customerId);
+      t.items.forEach(item => {
+        rows.push([
+          t.id,
+          format(new Date(t.date), 'HH:mm'),
+          t.staffName || "Admin",
+          `"${customer?.name || 'Walk-in'}"`,
+          `"${item.name}"`,
+          item.quantity.toString(),
+          item.price.toString(),
+          (item.price * item.quantity).toString(),
+          t.paymentMethod || "N/A",
+          t.status
+        ]);
+      });
+    });
+
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Laporan_Sesi_${selectedSession.id}.csv`;
+    link.download = `Laporan_Detail_Sesi_${selectedSession.id}.csv`;
     link.click();
+    URL.revokeObjectURL(url);
   };
 
   const stats = useMemo(() => {
@@ -181,7 +224,7 @@ export function SessionReportView() {
               disabled={filteredSessions.length === 0}
               className="h-10 px-6 rounded-xl bg-green-600 hover:bg-green-700 font-black gap-2 shadow-lg shadow-green-600/20 ml-auto"
             >
-              <FileSpreadsheet className="h-4 w-4" /> Ekspor Excel (CSV)
+              <FileSpreadsheet className="h-4 w-4" /> Ekspor Detail Excel (CSV)
             </Button>
           </div>
         </div>
@@ -281,7 +324,7 @@ export function SessionReportView() {
               <Printer className="h-4 w-4" /> Cetak Ringkasan
             </Button>
             <Button onClick={handleExportCSV} variant="outline" size="sm" className="flex-1 md:flex-none h-12 rounded-xl font-black gap-2 border-2">
-              <Download className="h-4 w-4" /> Unduh CSV Sesi
+              <Download className="h-4 w-4" /> Unduh Detail CSV
             </Button>
           </div>
         </div>
