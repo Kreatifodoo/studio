@@ -44,12 +44,12 @@ export function SessionReportView() {
   const [sessionTransactions, setSessionTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Filter States - Initialize empty to avoid hydration mismatch
+  // Filter States
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
-    // Set initial dates only on client
+    // Set initial dates only on client to prevent hydration mismatch
     const today = format(new Date(), 'yyyy-MM-dd');
     setStartDate(today);
     setEndDate(today);
@@ -320,7 +320,7 @@ export function SessionReportView() {
     return null;
   }
 
-  const cashDifference = (selectedSession?.closingCash || 0) - (selectedSession?.openingCash || 0 + (stats.paymentsByMethod['Tunai'] || 0));
+  const cashDifference = (selectedSession?.closingCash || 0) - ((selectedSession?.openingCash || 0) + (stats.paymentsByMethod['Tunai'] || 0));
 
   return (
     <div className="flex flex-col gap-4 md:gap-8 pb-24">
