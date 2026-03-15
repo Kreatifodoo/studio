@@ -2,8 +2,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.nextpos.order',
-  appName: 'NextPOS Order',
+  appId: 'com.nextpos.app',
+  appName: 'NextPOS',
   webDir: 'out',
   bundledWebRuntime: false,
   server: {

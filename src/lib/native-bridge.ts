@@ -1,13 +1,14 @@
 
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Haptics, ImpactStyle } from '@capacitor-haptics';
 import { Capacitor } from '@capacitor/core';
+import { connectBluetoothPrinter, printReceipt } from './printer';
+import { Transaction } from '@/types/pos';
 
 export const isNative = () => Capacitor.isNativePlatform();
 
 /**
  * Memulai pemindaian barcode menggunakan kamera perangkat.
- * Mengembalikan string konten barcode atau null jika dibatalkan.
  */
 export async function startScan(): Promise<string | null> {
   if (!isNative()) {
@@ -19,11 +20,9 @@ export async function startScan(): Promise<string | null> {
     const isSupported = await BarcodeScanner.isSupported();
     if (!isSupported.supported) return null;
 
-    // Minta izin kamera
     const status = await BarcodeScanner.requestPermissions();
     if (status.camera !== 'granted') return null;
 
-    // Mulai proses scan
     const { barcodes } = await BarcodeScanner.scan({
       formats: [BarcodeFormat.Ean13, BarcodeFormat.Ean8, BarcodeFormat.Code128, BarcodeFormat.QrCode],
     });
@@ -41,15 +40,14 @@ export async function startScan(): Promise<string | null> {
 }
 
 /**
- * Logika Pencetakan via Bluetooth (Native Bridge)
- * Menangani deteksi printer dan pengiriman data ESC/POS
+ * Logika Pencetakan via Bluetooth Native
  */
-export async function printReceiptNative(data: string): Promise<boolean> {
+export async function printReceiptNative(transaction: Transaction, storeName: string): Promise<boolean> {
   if (!isNative()) return false;
-  
-  // Catatan: Implementasi sesungguhnya memerlukan plugin Bluetooth Serial 
-  // seperti @kduma-autoid/capacitor-bluetooth-printer
-  // Kode ini bertindak sebagai placeholder untuk memicu dialog native.
-  console.log("Mengirim data ke printer native...");
-  return true;
+  return await printReceipt(transaction, storeName);
+}
+
+export async function initPrinterNative(): Promise<string | null> {
+  if (!isNative()) return null;
+  return await connectBluetoothPrinter();
 }
