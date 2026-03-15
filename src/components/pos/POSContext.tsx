@@ -114,10 +114,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   const [printer, setPrinter] = useState<PrinterConfig>({ name: null, status: 'disconnected', type: 'system' });
   const [lastClosedSession, setLastClosedSession] = useState<Session | null>(null);
 
-  // Dexie Reactive Queries
+  // Dexie Reactive Queries - Limited history to prevent memory freeze
   const products = useLiveQuery(() => db.products.toArray()) || [];
-  const history = useLiveQuery(() => db.transactions.orderBy('date').reverse().toArray()) || [];
-  const sessions = useLiveQuery(() => db.sessions.orderBy('startTime').reverse().toArray()) || [];
+  const history = useLiveQuery(() => db.transactions.orderBy('date').reverse().limit(50).toArray()) || [];
+  const sessions = useLiveQuery(() => db.sessions.orderBy('startTime').reverse().limit(20).toArray()) || [];
   const customers = useLiveQuery(() => db.customers.toArray()) || [];
   const paymentMethods = useLiveQuery(() => db.paymentMethods.toArray()) || [];
   const fees = useLiveQuery(() => db.fees.toArray()) || [];
@@ -270,7 +270,10 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     const closed: Session = { ...currentSession, endTime: new Date().toISOString(), closingCash, status: 'Closed' };
     await db.sessions.put(closed);
     setLastClosedSession(closed);
-    setView('reports');
+    // Explicitly set view to reports after a slight delay to ensure DB update is reactive
+    setTimeout(() => {
+      setView('reports');
+    }, 100);
   };
 
   const getTieredPrice = useCallback((productId: string, quantity: number, basePrice: number) => {
