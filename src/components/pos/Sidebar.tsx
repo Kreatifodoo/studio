@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -24,19 +23,28 @@ import { Permission, Session } from '@/types/pos';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
-const KompakLogo = ({ className }: { className?: string }) => (
+export const KompakLogo = ({ className }: { className?: string }) => (
   <svg 
-    viewBox="0 0 24 24" 
+    viewBox="0 0 100 100" 
     fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2.5" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
+    xmlns="http://www.w3.org/2000/svg"
     className={className}
   >
-    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 2 7 0 5-4 9-7 11z" />
-    <path d="M9 20l-5-5" />
-    <path d="M17 14l4-4" />
+    {/* Vertical Column */}
+    <path 
+      d="M25 20C25 17.2386 27.2386 15 30 15H38C40.7614 15 43 17.2386 43 20V80C43 82.7614 40.7614 85 38 85H30C27.2386 85 25 82.7614 25 80V20Z" 
+      fill="currentColor" 
+    />
+    {/* Top Leaf Piece */}
+    <path 
+      d="M48 50C48 30.67 63.67 15 83 15V50H48Z" 
+      fill="currentColor" 
+    />
+    {/* Bottom Leaf Piece */}
+    <path 
+      d="M48 50H83V85C63.67 85 48 69.33 48 50Z" 
+      fill="currentColor" 
+    />
   </svg>
 );
 
