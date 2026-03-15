@@ -35,7 +35,8 @@ import {
   MapPin,
   History,
   Calendar,
-  CreditCard
+  CreditCard,
+  Package
 } from 'lucide-react';
 import { usePOS } from './POSContext';
 import { 
@@ -242,7 +243,7 @@ export function SettingsView() {
                 </div>
                 <div>
                   <h3 className="text-xl font-black">{printer.name || 'Printer Belum Terhubung'}</h3>
-                  <Badge variant="outline" className={cn("mt-2 font-black tracking-widest text-[9px]", printer.status === 'connected' ? "bg-green-500/10 text-green-600 border-green-200" : "bg-muted text-muted-foreground border-transparent")}>
+                  <Badge variant="outline" className={cn("mt-2 font-black tracking-widest text-[9px]", printer.status === 'connected' ? "bg-green-50/10 text-green-600 border-green-200" : "bg-muted text-muted-foreground border-transparent")}>
                     {printer.status === 'connected' ? 'TERHUBUNG' : 'TERPUTUS'}
                   </Badge>
                 </div>
@@ -631,7 +632,7 @@ export function SettingsView() {
                   <div className="space-y-3 pr-2">
                     {customerTransactions.length === 0 ? (
                       <div className="py-20 text-center opacity-30 flex flex-col items-center">
-                        <Package className="h-10 w-10 mb-2" />
+                        <PackageIcon className="h-10 w-10 mb-2" />
                         <p className="font-bold text-xs uppercase tracking-widest">Belum ada transaksi</p>
                       </div>
                     ) : (
