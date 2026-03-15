@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SessionSummaryReceipt } from './SessionSummaryReceipt';
 import { Permission, Session } from '@/types/pos';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function Sidebar() {
   const { 
@@ -95,83 +96,89 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-14 md:w-20 bg-[#1a1f2b] flex flex-col items-center py-4 md:py-6 justify-between h-screen fixed left-0 top-0 z-50">
-      <div className="flex flex-col items-center gap-4 md:gap-8 w-full">
+    <aside className="w-16 md:w-24 bg-[#1a1f2b] flex flex-col items-center py-6 md:py-10 justify-between h-screen fixed left-0 top-0 z-50 border-r border-white/5">
+      <div className="flex flex-col items-center gap-10 md:gap-14 w-full">
         <div 
           onClick={() => setView('pos')}
-          className="bg-primary p-2 md:p-2.5 rounded-lg md:rounded-xl shadow-lg shadow-primary/20 cursor-pointer hover:scale-105 active:scale-95 transition-all"
+          className="bg-primary p-3 md:p-4 rounded-2xl md:rounded-[1.5rem] shadow-2xl shadow-primary/30 cursor-pointer hover:scale-110 active:scale-90 transition-all duration-300"
         >
-          <UtensilsCrossed className="text-white h-4 w-4 md:h-5 md:w-5" />
+          <UtensilsCrossed className="text-white h-5 w-5 md:h-7 md:w-7" />
         </div>
 
-        <nav className="flex flex-col gap-1 md:gap-2 w-full px-1">
-          {navItems.map((item) => {
-            const isActive = view === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setView(item.id as any)}
-                className={cn(
-                  "relative p-2 md:p-3 rounded-lg md:rounded-xl transition-all duration-300 flex flex-col items-center gap-0.5 group w-full",
-                  isActive 
-                    ? "bg-primary text-white shadow-lg shadow-primary/30" 
-                    : "text-white/30 hover:bg-white/5 hover:text-white"
-                )}
-              >
-                <item.icon className={cn("h-4 w-4 md:h-5 md:w-5", isActive ? "stroke-[2.5px]" : "stroke-[2px]")} />
-                <span className={cn(
-                  "text-[6px] md:text-[8px] font-black uppercase tracking-tighter mt-0.5 hidden md:block",
-                  isActive ? "text-white" : "text-white/20"
-                )}>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav className="flex flex-col gap-4 md:gap-6 w-full px-2">
+          <TooltipProvider delayDuration={0}>
+            {navItems.map((item) => {
+              const isActive = view === item.id;
+              return (
+                <Tooltip key={item.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setView(item.id as any)}
+                      className={cn(
+                        "relative p-3.5 md:p-5 rounded-2xl md:rounded-[1.5rem] transition-all duration-500 flex items-center justify-center group w-full",
+                        isActive 
+                          ? "bg-primary text-white shadow-xl shadow-primary/40 scale-105" 
+                          : "text-white/20 hover:bg-white/5 hover:text-white/60"
+                      )}
+                    >
+                      <item.icon className={cn("h-5 w-5 md:h-7 md:w-7", isActive ? "stroke-[2.5px]" : "stroke-[2px]")} />
+                      {isActive && (
+                        <div className="absolute left-0 w-1.5 h-8 bg-white rounded-r-full animate-in slide-in-from-left duration-300" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-white text-[#1a1f2b] font-black uppercase tracking-widest text-[10px] border-none shadow-2xl rounded-lg">
+                    {item.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </TooltipProvider>
         </nav>
       </div>
 
-      <div className="flex flex-col items-center gap-1 md:gap-2 w-full px-1">
+      <div className="flex flex-col items-center gap-4 w-full px-2">
         {currentSession && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <button className="p-2 md:p-3 rounded-lg md:rounded-xl bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 w-full flex flex-col items-center group">
-                <XCircle className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-[6px] md:text-[8px] font-black uppercase tracking-tighter mt-0.5 hidden md:block text-orange-500/50 group-hover:text-white">Tutup</span>
+              <button className="p-3.5 md:p-5 rounded-2xl md:rounded-[1.5rem] bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300 w-full flex items-center justify-center group">
+                <XCircle className="h-5 w-5 md:h-7 md:w-7" />
               </button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-[2rem] p-6 border-none max-w-[95vw] md:max-w-md shadow-2xl">
+            <AlertDialogContent className="rounded-[2.5rem] p-8 border-none max-w-[95vw] md:max-w-md shadow-2xl bg-white">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-xl font-black">Tutup Sesi Kasir</AlertDialogTitle>
-                <AlertDialogDescription className="text-xs font-medium">
-                  Harap hitung semua uang tunai di laci dengan teliti sebelum menutup sesi.
+                <AlertDialogTitle className="text-2xl font-black">Tutup Sesi Kasir</AlertDialogTitle>
+                <AlertDialogDescription className="text-sm font-medium text-muted-foreground leading-relaxed">
+                  Harap hitung semua uang tunai di laci dengan teliti sebelum menutup sesi operasional hari ini.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               
-              <div className="py-4 space-y-6">
-                 <div className="grid grid-cols-2 gap-3">
-                   <div className="bg-muted/30 p-3 rounded-2xl">
-                     <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Modal Awal</p>
-                     <p className="text-xs font-black">{formatCurrency(currentSession.openingCash)}</p>
+              <div className="py-6 space-y-6">
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="bg-muted/30 p-4 rounded-2xl">
+                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1.5">Modal Awal</p>
+                     <p className="text-sm font-black">{formatCurrency(currentSession.openingCash)}</p>
                    </div>
-                   <div className="bg-muted/30 p-3 rounded-2xl">
-                     <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Tunai</p>
-                     <p className="text-xs font-black">{formatCurrency(sessionStats.sales)}</p>
+                   <div className="bg-muted/30 p-4 rounded-2xl">
+                     <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1.5">Sales Tunai</p>
+                     <p className="text-sm font-black">{formatCurrency(sessionStats.sales)}</p>
                    </div>
                  </div>
 
-                 <div className="bg-primary/5 p-4 rounded-2xl border-2 border-primary/10 flex flex-col items-center">
-                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Ekspektasi Saldo Akhir</p>
-                   <p className="text-2xl font-black text-primary">{formatCurrency(sessionStats.expected)}</p>
+                 <div className="bg-primary/5 p-6 rounded-[2rem] border-2 border-primary/10 flex flex-col items-center">
+                   <p className="text-[11px] font-black text-primary uppercase tracking-widest mb-1">Ekspektasi Kas</p>
+                   <p className="text-3xl font-black text-primary tracking-tight">{formatCurrency(sessionStats.expected)}</p>
                  </div>
 
-                 <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Saldo Kas Aktual (Fisik)</Label>
+                 <div className="space-y-3">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Kas Aktual di Laci (Fisik)</Label>
                     <div className="relative">
-                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30" />
+                      <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground/30" />
                       <Input 
                         type="number" 
                         value={closingCash}
                         onChange={(e) => setClosingCash(e.target.value)}
-                        className="h-14 rounded-2xl text-xl font-black border-2 focus-visible:ring-primary/20 pl-12"
+                        className="h-16 rounded-2xl text-2xl font-black border-2 focus-visible:ring-primary/20 pl-14"
                         placeholder="0"
                         autoFocus
                       />
@@ -179,26 +186,26 @@ export function Sidebar() {
                  </div>
 
                  <div className={cn(
-                   "p-4 rounded-2xl border-2 flex items-center justify-between transition-all duration-300",
+                   "p-5 rounded-[1.5rem] border-2 flex items-center justify-between transition-all duration-500",
                    isBalanced ? "bg-green-50 border-green-100" : "bg-orange-50 border-orange-100"
                  )}>
-                   <div className="flex items-center gap-3">
+                   <div className="flex items-center gap-4">
                      {isBalanced ? (
-                       <CheckCircle2 className="h-6 w-6 text-green-500" />
+                       <CheckCircle2 className="h-7 w-7 text-green-500" />
                      ) : (
-                       <AlertCircle className="h-6 w-6 text-orange-500" />
+                       <AlertCircle className="h-7 w-7 text-orange-500" />
                      )}
                      <div>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", isBalanced ? "text-green-700" : "text-orange-700")}>
+                        <p className={cn("text-[11px] font-black uppercase tracking-widest", isBalanced ? "text-green-700" : "text-orange-700")}>
                           {isBalanced ? "Saldo Sesuai" : "Selisih Terdeteksi"}
                         </p>
-                        <p className={cn("text-[8px] font-bold", isBalanced ? "text-green-600" : "text-orange-600")}>
-                          {isBalanced ? "Uang di laci cocok dengan sistem." : `Selisih: ${formatCurrency(cashDiff)}`}
+                        <p className={cn("text-[9px] font-bold leading-tight", isBalanced ? "text-green-600" : "text-orange-600")}>
+                          {isBalanced ? "Uang di laci cocok dengan sistem." : `Terdapat selisih: ${formatCurrency(cashDiff)}`}
                         </p>
                      </div>
                    </div>
                    {!isBalanced && (
-                     <Badge variant="outline" className="bg-white border-orange-200 text-orange-700 font-black text-[10px]">
+                     <Badge variant="outline" className="bg-white border-orange-200 text-orange-700 font-black text-[10px] px-2 py-1">
                         {cashDiff > 0 ? 'Surplus' : 'Minus'}
                      </Badge>
                    )}
@@ -206,13 +213,13 @@ export function Sidebar() {
               </div>
 
               <AlertDialogFooter className="gap-3 sm:flex-col sm:gap-3">
-                <AlertDialogCancel className="rounded-xl h-12 font-bold border-2 text-sm mt-0">Kembali</AlertDialogCancel>
+                <AlertDialogCancel className="rounded-xl h-14 font-bold border-2 text-sm mt-0 border-muted-foreground/10 hover:bg-muted/50 transition-all">Kembali</AlertDialogCancel>
                 <AlertDialogAction 
                   onClick={handleCloseSession}
-                  className="rounded-xl h-14 bg-primary hover:bg-primary/90 font-black px-6 shadow-xl shadow-primary/20 text-sm gap-2"
+                  className="rounded-xl h-16 bg-primary hover:bg-primary/90 font-black px-8 shadow-2xl shadow-primary/30 text-base gap-3 transition-all active:scale-95"
                 >
                   Tutup & Cetak Laporan
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-5 w-5" />
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -221,10 +228,9 @@ export function Sidebar() {
         
         <button 
           onClick={logout}
-          className="p-2 md:p-3 rounded-lg md:rounded-xl text-white/20 hover:bg-destructive/10 hover:text-destructive transition-all duration-300 w-full flex flex-col items-center"
+          className="p-3.5 md:p-5 rounded-2xl md:rounded-[1.5rem] text-white/10 hover:bg-destructive/10 hover:text-destructive transition-all duration-300 w-full flex items-center justify-center"
         >
-          <LogOut className="h-4 w-4 md:h-5 md:w-5" />
-          <span className="text-[6px] md:text-[8px] font-black uppercase tracking-tighter mt-0.5 hidden md:block">Keluar</span>
+          <LogOut className="h-5 w-5 md:h-7 md:w-7" />
         </button>
       </div>
 

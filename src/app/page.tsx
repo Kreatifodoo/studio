@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -89,15 +90,15 @@ function POSLayout() {
         <Sheet>
           <SheetTrigger asChild>
             <Button 
-              className="fixed bottom-4 right-4 h-12 w-12 md:h-16 md:w-16 rounded-full shadow-2xl bg-primary hover:bg-primary/90 z-50 flex items-center justify-center group active:scale-90 transition-all"
+              className="fixed bottom-4 right-4 h-14 w-14 md:h-16 md:w-16 rounded-2xl shadow-2xl bg-primary hover:bg-primary/90 z-50 flex items-center justify-center group active:scale-90 transition-all"
             >
-              <ShoppingBag className="h-5 w-5 md:h-7 md:w-7 text-white" />
-              <div className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] md:text-[10px] font-black h-5 w-5 md:h-6 md:w-6 rounded-full flex items-center justify-center border-2 border-white">
+              <ShoppingBag className="h-6 w-6 md:h-7 md:w-7 text-white" />
+              <div className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] md:text-[10px] font-black h-6 w-6 md:h-7 md:w-7 rounded-full flex items-center justify-center border-4 border-[#F9FBFF]">
                 {cart.reduce((a, b) => a + b.quantity, 0)}
               </div>
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[85vh] p-0 border-none rounded-t-[2rem] md:rounded-t-[3rem] overflow-hidden">
+          <SheetContent side="bottom" className="h-[85vh] p-0 border-none rounded-t-[2.5rem] md:rounded-t-[3rem] overflow-hidden bg-white shadow-2xl">
             <SheetHeader className="sr-only">
               <SheetTitle>Detail Pesanan</SheetTitle>
             </SheetHeader>
