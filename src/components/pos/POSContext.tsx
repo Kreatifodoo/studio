@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
@@ -82,7 +83,7 @@ const INITIAL_ROLES: Role[] = [
 ];
 
 const INITIAL_USERS: User[] = [
-  { id: 'u1', username: 'admin', name: 'Admin Utama', email: 'admin@kompakpos.id', roleId: 'admin', status: 'Active', avatarUrl: 'https://picsum.photos/seed/admin/100/100', password: 'password' },
+  { id: 'u1', username: 'admin', name: 'Admin Utama', roleId: 'admin', status: 'Active', password: 'password' },
 ];
 
 const INITIAL_PAYMENT_METHODS: PaymentMethod[] = [
@@ -258,7 +259,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!writeChar) {
-        throw new Error("Tidak dapat menemukan jalur tulis (write characteristic) pada printer ini.");
+        throw new Error("Tidak dapat menemukan jalur tulis pada printer ini.");
       }
 
       setBtDevice(device);
@@ -579,29 +580,6 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     return role?.permissions.includes(permission) || false;
   }, [currentUser]);
 
-  const getEffectivePriceInfo = useCallback((productId: string, quantity: number) => {
-    const product = products.find(p => p.id === productId);
-    if (!product) return { price: 0, originalPrice: 0, savings: 0, priceListId: undefined, promoId: undefined };
-    const now = new Date();
-    let basePrice = product.price;
-    let priceListId: string | undefined = undefined;
-    const activeList = priceLists.find(pl => pl.enabled && pl.productId === productId && new Date(pl.startDate) <= now && new Date(pl.endDate) >= now);
-    if (activeList) {
-      const tier = activeList.tiers.find(t => quantity >= t.minQty && quantity <= (t.maxQty || Infinity));
-      if (tier) { basePrice = tier.price; priceListId = activeList.id; }
-    }
-    let finalPrice = basePrice;
-    let promoId: string | undefined = undefined;
-    let savings = 0;
-    const activePromo = promoDiscounts.find(pd => pd.enabled && pd.productId === productId && new Date(pd.startDate) <= now && new Date(pd.endDate) >= now);
-    if (activePromo) {
-      promoId = activePromo.id;
-      savings = activePromo.type === 'Percentage' ? (basePrice * activePromo.value) / 100 : activePromo.value;
-      finalPrice = Math.max(0, basePrice - savings);
-    }
-    return { price: finalPrice, originalPrice: basePrice, savings, priceListId, promoId };
-  }, [products, priceLists, promoDiscounts]);
-
   const openSession = (openingCash: number) => {
     const newSession: Session = {
       id: Math.random().toString(36).substr(2, 9).toUpperCase(),
@@ -628,13 +606,8 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
     if (!product.available || !currentSession) return;
     setCart(prev => {
       const existing = prev.find(item => item.productId === product.id && !item.isPackage && !item.isCombo);
-      if (existing) {
-        const newQty = existing.quantity + 1;
-        const { price, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(product.id, newQty);
-        return prev.map(item => (item.productId === product.id && !item.isPackage && !item.isCombo) ? { ...item, quantity: newQty, price, originalPrice, promoSavings: savings, priceListId, promoId } : item);
-      }
-      const { price, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(product.id, 1);
-      return [...prev, { id: Math.random().toString(36).substr(2, 9), productId: product.id, name: product.name, price, originalPrice, promoSavings: savings, quantity: 1, priceListId, promoId, isPackage: false, isCombo: false }];
+      if (existing) return prev.map(item => (item.productId === product.id && !item.isPackage && !item.isCombo) ? { ...item, quantity: item.quantity + 1 } : item);
+      return [...prev, { id: Math.random().toString(36).substr(2, 9), productId: product.id, name: product.name, price: product.price, originalPrice: product.price, promoSavings: 0, quantity: 1, isPackage: false, isCombo: false }];
     });
   };
 
@@ -655,19 +628,7 @@ export function POSProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeFromCart = (itemId: string) => setCart(prev => prev.filter(item => item.id !== itemId));
-
-  const updateQuantity = (itemId: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.id === itemId) {
-        const newQty = Math.max(1, item.quantity + delta);
-        if (item.isPackage || item.isCombo) return { ...item, quantity: newQty };
-        const { price, originalPrice, savings, priceListId, promoId } = getEffectivePriceInfo(item.productId, newQty);
-        return { ...item, quantity: newQty, price, originalPrice, promoSavings: savings, priceListId, promoId };
-      }
-      return item;
-    }));
-  };
-
+  const updateQuantity = (itemId: string, delta: number) => setCart(prev => prev.map(item => item.id === itemId ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
   const updateNote = (itemId: string, note: string) => setCart(prev => prev.map(item => item.id === itemId ? { ...item, note } : item));
   const clearCart = () => { setCart([]); setSelectedCustomerId(null); };
 

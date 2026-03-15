@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -17,15 +18,12 @@ import {
   Package as PackageIcon,
   Users,
   Layers,
-  Box,
-  LayoutGrid,
   Upload,
   ImageIcon,
   Printer,
   Barcode as BarcodeIcon,
   Bluetooth,
   MapPin,
-  Smartphone,
   Info,
   Settings2
 } from 'lucide-react';
@@ -283,7 +281,7 @@ export function SettingsView() {
           <div className="space-y-6">
             <div className="flex flex-col gap-6">
               <div className="bg-primary/5 p-6 rounded-[2rem] border-2 border-primary/10 flex flex-col items-center text-center gap-4">
-                <div className={cn("p-4 rounded-full", printer.status === 'connected' ? "bg-green-500 text-white" : "bg-primary/20 text-primary")}>
+                <div className={cn("p-4 rounded-full", printer.status === 'connected' ? "bg-green-50 text-white" : "bg-primary/20 text-primary")}>
                   <Bluetooth className="h-8 w-8" />
                 </div>
                 <h3 className="font-black text-lg">
