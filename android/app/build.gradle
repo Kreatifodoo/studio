@@ -2,16 +2,16 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.nextpos.app"
-    compileSdk rootProject.ext.compileSdkVersion
+    compileSdk 34
     defaultConfig {
         applicationId "com.nextpos.app"
-        minSdk rootProject.ext.minSdkVersion
-        targetSdk rootProject.ext.targetSdkVersion
+        minSdk 22
+        targetSdk 34
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:f~:bak:cvs:thumbs.db:tthumbs.db'
+             dashkb: ['--no-version-vectors']
         }
     }
     buildTypes {
@@ -27,16 +27,15 @@ android {
 }
 
 repositories {
-    flatDir{
+    flatDir {
         dirs 'libs'
     }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "androidx.appcompat:appcompat:$rootProject.ext.androidxAppCompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$rootProject.ext.androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core:$rootProject.ext.androidxCoreVersion"
+    implementation 'androidx.appcompat:androidx.appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
 }
@@ -49,5 +48,5 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    // google-services.json not found
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
