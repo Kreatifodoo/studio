@@ -36,7 +36,11 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export function SessionReportView() {
-  const { sessions, customers, lastClosedSession } = usePOS();
+  const { 
+    sessions, customers, lastClosedSession, 
+    priceLists, promoDiscounts, packages, combos 
+  } = usePOS();
+  
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [sessionTransactions, setSessionTransactions] = useState<Transaction[]>([]);
@@ -46,7 +50,6 @@ export function SessionReportView() {
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  // Jika ada sesi yang baru saja ditutup, langsung buka detailnya
   useEffect(() => {
     if (lastClosedSession && !selectedSessionId) {
       setSelectedSessionId(lastClosedSession.id);
@@ -69,7 +72,6 @@ export function SessionReportView() {
     return sessions.find(s => s.id === selectedSessionId) || null;
   }, [sessions, selectedSessionId]);
 
-  // Fetch session transactions directly from DB
   useEffect(() => {
     async function fetchSessionData() {
       if (!selectedSession) {
@@ -99,15 +101,14 @@ export function SessionReportView() {
   const handleExportAllSessions = async () => {
     if (filteredSessions.length === 0) return;
     
-    // Ambil seluruh data transaksi untuk semua sesi yang difilter agar bisa detail per item
     const allTrxIds = filteredSessions.flatMap(s => s.transactionIds);
     const allTransactions = await db.transactions.where('id').anyOf(allTrxIds).toArray();
     
     const headers = [
       "ID Sesi", "Mulai Sesi", "Selesai Sesi", "Kasir Sesi", 
       "ID Order", "Waktu Order", "Kasir Order", "Pelanggan", 
-      "Item", "Qty", "Harga Satuan", "Total Hemat/Diskon", "Total Item (Subtotal)", 
-      "Metode Pembayaran", "Status"
+      "Item", "Qty", "Harga Satuan", "Hemat/Diskon", "Total Item", 
+      "Metode Pembayaran", "Pricelist", "Paket", "Promo", "Combo", "Status"
     ];
 
     const rows: string[][] = [];
@@ -119,6 +120,9 @@ export function SessionReportView() {
         const customer = customers.find(c => c.id === trx.customerId);
         
         trx.items.forEach(item => {
+          const plName = priceLists.find(pl => pl.id === item.priceListId)?.name || "-";
+          const promoName = promoDiscounts.find(pd => pd.id === item.promoId)?.name || "-";
+
           rows.push([
             session.id,
             format(new Date(session.startTime), 'yyyy-MM-dd HH:mm'),
@@ -134,6 +138,10 @@ export function SessionReportView() {
             (item.promoSavings * item.quantity).toString(),
             (item.price * item.quantity).toString(),
             trx.paymentMethod || "N/A",
+            `"${plName}"`,
+            item.isPackage ? "Ya" : "Tidak",
+            `"${promoName}"`,
+            item.isCombo ? "Ya" : "Tidak",
             trx.status
           ]);
         });
@@ -145,7 +153,7 @@ export function SessionReportView() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Rekap_Detail_Transaksi_Sesi_${startDate}_to_${endDate}.csv`;
+    link.download = `Rekap_KompakPOS_Detail_${startDate}_to_${endDate}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -153,13 +161,15 @@ export function SessionReportView() {
   const handleExportCSV = () => {
     if (!selectedSession || sessionTransactions.length === 0) return;
     
-    // Detail item untuk satu sesi spesifik
-    const headers = ["ID Order", "Waktu", "Kasir", "Pelanggan", "Item", "Qty", "Harga", "Total", "Metode", "Status"];
+    const headers = ["ID Order", "Waktu", "Kasir", "Pelanggan", "Item", "Qty", "Harga", "Total", "Metode", "Pricelist", "Paket", "Promo", "Combo", "Status"];
     const rows: string[][] = [];
     
     sessionTransactions.forEach(t => {
       const customer = customers.find(c => c.id === t.customerId);
       t.items.forEach(item => {
+        const plName = priceLists.find(pl => pl.id === item.priceListId)?.name || "-";
+        const promoName = promoDiscounts.find(pd => pd.id === item.promoId)?.name || "-";
+
         rows.push([
           t.id,
           format(new Date(t.date), 'HH:mm'),
@@ -170,6 +180,10 @@ export function SessionReportView() {
           item.price.toString(),
           (item.price * item.quantity).toString(),
           t.paymentMethod || "N/A",
+          `"${plName}"`,
+          item.isPackage ? "Ya" : "Tidak",
+          `"${promoName}"`,
+          item.isCombo ? "Ya" : "Tidak",
           t.status
         ]);
       });
@@ -180,7 +194,7 @@ export function SessionReportView() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Laporan_Detail_Sesi_${selectedSession.id}.csv`;
+    link.download = `Laporan_Sesi_${selectedSession.id}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -407,39 +421,44 @@ export function SessionReportView() {
         </div>
         
         <ScrollArea className="h-[500px] -mx-4 px-4">
-          <Table className="min-w-[600px]">
+          <Table className="min-w-[800px]">
             <TableHeader className="bg-muted/30">
               <TableRow className="border-none hover:bg-transparent">
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Jam</TableHead>
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">ID Order</TableHead>
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Kasir</TableHead>
+                <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Pelanggan</TableHead>
                 <TableHead className="font-black text-[10px] uppercase tracking-widest h-12">Metode</TableHead>
                 <TableHead className="text-right font-black text-[10px] uppercase tracking-widest h-12">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessionTransactions.map((t) => (
-                <TableRow key={t.id} className="border-b border-dashed last:border-none">
-                  <TableCell className="text-xs font-bold py-5">{format(new Date(t.date), 'HH:mm')}</TableCell>
-                  <TableCell className="font-mono text-[10px] font-bold text-primary py-5">#{t.id}</TableCell>
-                  <TableCell className="text-[10px] font-black uppercase py-5">{t.staffName || 'Admin'}</TableCell>
-                  <TableCell className="py-5">
-                    <Badge variant="outline" className={cn(
-                      "rounded-lg text-[9px] font-black px-2 py-0.5 border-primary/20 text-primary",
-                      t.status === 'Returned' && "border-destructive text-destructive"
-                    )}>
-                      {t.status === 'Returned' ? 'RETUR' : t.paymentMethod}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className={cn(
-                    "text-right font-black text-sm py-5",
-                    t.status === 'Returned' ? "text-muted-foreground line-through" : "text-foreground"
-                  )}>{formatCurrency(t.total)}</TableCell>
-                </TableRow>
-              ))}
+              {sessionTransactions.map((t) => {
+                const customer = customers.find(c => c.id === t.customerId);
+                return (
+                  <TableRow key={t.id} className="border-b border-dashed last:border-none">
+                    <TableCell className="text-xs font-bold py-5">{format(new Date(t.date), 'HH:mm')}</TableCell>
+                    <TableCell className="font-mono text-[10px] font-bold text-primary py-5">#{t.id}</TableCell>
+                    <TableCell className="text-[10px] font-black uppercase py-5">{t.staffName || 'Admin'}</TableCell>
+                    <TableCell className="text-[10px] font-bold py-5 truncate max-w-[150px]">{customer?.name || 'Umum (Walk-in)'}</TableCell>
+                    <TableCell className="py-5">
+                      <Badge variant="outline" className={cn(
+                        "rounded-lg text-[9px] font-black px-2 py-0.5 border-primary/20 text-primary",
+                        t.status === 'Returned' && "border-destructive text-destructive"
+                      )}>
+                        {t.status === 'Returned' ? 'RETUR' : t.paymentMethod}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={cn(
+                      "text-right font-black text-sm py-5",
+                      t.status === 'Returned' ? "text-muted-foreground line-through" : "text-foreground"
+                    )}>{formatCurrency(t.total)}</TableCell>
+                  </TableRow>
+                );
+              })}
               {!isLoading && sessionTransactions.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-20 opacity-30">
+                  <TableCell colSpan={6} className="text-center py-20 opacity-30">
                     <History className="h-10 w-10 mx-auto mb-2" />
                     <p className="font-black text-[10px] uppercase tracking-widest">Tidak ada transaksi dalam sesi ini.</p>
                   </TableCell>

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { usePOS } from './POSContext';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, ShoppingBag, Calendar, RotateCcw, User, CreditCard, ShieldCheck, XCircle } from 'lucide-react';
+import { CheckCircle2, ShoppingBag, Calendar, RotateCcw, User, CreditCard, ShieldCheck, XCircle, Tag, Ticket, Box, LayoutGrid } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export function HistoryView() {
-  const { history, returnTransaction, customers, currentUser } = usePOS();
+  const { history, returnTransaction, customers, currentUser, priceLists, promoDiscounts } = usePOS();
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
 
@@ -162,11 +162,52 @@ export function HistoryView() {
                   </div>
 
                   <div className="mt-6 pt-6 border-t border-solid border-muted/20 flex flex-wrap gap-2">
-                     {t.items.map((item, idx) => (
-                        <Badge key={idx} variant="outline" className="rounded-xl px-3 py-1 font-bold bg-background border-none text-muted-foreground/60 text-[10px]">
-                          {item.quantity}x {item.name}
-                        </Badge>
-                     ))}
+                     {t.items.map((item, idx) => {
+                        const pl = priceLists.find(p => p.id === item.priceListId);
+                        const pr = promoDiscounts.find(p => p.id === item.promoId);
+                        return (
+                          <div key={idx} className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 bg-muted/30 px-3 py-1.5 rounded-xl border border-transparent hover:border-primary/10 transition-all">
+                              <span className="font-black text-[10px] text-primary">{item.quantity}x</span>
+                              <span className="font-bold text-[10px] text-muted-foreground">{item.name}</span>
+                              <div className="flex items-center gap-1 ml-1">
+                                {item.isPackage && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger><Box className="h-3 w-3 text-accent" /></TooltipTrigger>
+                                      <TooltipContent className="text-[8px] font-black uppercase">Paket Bundling</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                {item.isCombo && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger><LayoutGrid className="h-3 w-3 text-primary" /></TooltipTrigger>
+                                      <TooltipContent className="text-[8px] font-black uppercase">Pilihan Combo</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                {pl && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger><Tag className="h-3 w-3 text-green-500" /></TooltipTrigger>
+                                      <TooltipContent className="text-[8px] font-black uppercase">Pricelist: {pl.name}</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                {pr && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger><Ticket className="h-3 w-3 text-rose-500" /></TooltipTrigger>
+                                      <TooltipContent className="text-[8px] font-black uppercase">Promo: {pr.name}</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                     })}
                   </div>
                 </Card>
               );
@@ -177,3 +218,5 @@ export function HistoryView() {
     </div>
   );
 }
+
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
