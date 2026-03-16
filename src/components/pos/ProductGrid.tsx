@@ -26,6 +26,12 @@ export function ProductGrid() {
   useEffect(() => { 
     setMounted(true);
     setNow(new Date());
+    
+    // Update 'now' every minute to keep promo logic fresh
+    const interval = setInterval(() => {
+      setNow(new Date());
+    }, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const formatCurrency = (val: number) => {

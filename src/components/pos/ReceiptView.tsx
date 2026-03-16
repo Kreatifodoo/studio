@@ -34,7 +34,13 @@ export function ReceiptView({ transaction }: ReceiptViewProps) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
 
-  const transactionDate = new Date(transaction.date);
+  // Safe date parsing
+  let transactionDate: Date;
+  try {
+    transactionDate = new Date(transaction.date);
+  } catch (e) {
+    transactionDate = new Date();
+  }
 
   return (
     <div id="pos-receipt" className="w-[80mm] bg-white text-black p-4 font-mono text-[11px] leading-relaxed">

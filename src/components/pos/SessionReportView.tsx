@@ -27,11 +27,13 @@ export function SessionReportView() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [sessionTransactions, setSessionTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
+    setMounted(true);
     // Client-side initialization to avoid hydration mismatch
     const today = format(new Date(), 'yyyy-MM-dd');
     setStartDate(today);
@@ -45,16 +47,20 @@ export function SessionReportView() {
   }, [lastClosedSession, selectedSessionId]);
 
   const filteredSessions = useMemo(() => {
-    if (!startDate || !endDate) return sessions;
+    if (!mounted || !startDate || !endDate) return sessions;
     
     return sessions.filter(s => {
-      const sDate = parseISO(s.startTime);
-      return isWithinInterval(sDate, {
-        start: startOfDay(parseISO(startDate)),
-        end: endOfDay(parseISO(endDate))
-      });
+      try {
+        const sDate = parseISO(s.startTime);
+        return isWithinInterval(sDate, {
+          start: startOfDay(parseISO(startDate)),
+          end: endOfDay(parseISO(endDate))
+        });
+      } catch (e) {
+        return true;
+      }
     });
-  }, [sessions, startDate, endDate]);
+  }, [sessions, startDate, endDate, mounted]);
 
   const selectedSession = useMemo(() => {
     return sessions.find(s => s.id === selectedSessionId) || null;
@@ -100,6 +106,8 @@ export function SessionReportView() {
     }, { totalSales: 0, totalTax: 0, totalSubtotal: 0, paymentsByMethod: {} as Record<string, number> });
   }, [sessionTransactions]);
 
+  if (!mounted) return null;
+
   if (!selectedSessionId) {
     return (
       <div className="flex flex-col gap-8 pb-24">
@@ -138,7 +146,7 @@ export function SessionReportView() {
                 <div className="grid grid-cols-2 gap-4 border-y border-dashed py-4">
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Mulai</p>
-                    <p className="text-11px] font-bold">{format(new Date(session.startTime), 'dd MMM, HH:mm')}</p>
+                    <p className="text-[11px] font-bold">{format(new Date(session.startTime), 'dd MMM, HH:mm')}</p>
                   </div>
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground mb-1">Selesai</p>
