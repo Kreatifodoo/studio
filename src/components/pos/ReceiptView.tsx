@@ -16,6 +16,7 @@ export function ReceiptView({ transaction }: ReceiptViewProps) {
   
   useEffect(() => {
     setMounted(true);
+    // Move random logic inside useEffect to avoid hydration mismatch
     const bars = [...Array(24)].map(() => ({
       width: Math.random() > 0.5 ? 'w-0.5' : 'w-1',
       show: Math.random() > 0.3
