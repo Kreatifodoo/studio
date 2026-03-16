@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -124,7 +123,7 @@ export function ProductGrid() {
           return (
             <Card key={product.id} onClick={() => stockLeft > 0 && addToCart(product)} className={cn("group overflow-hidden rounded-xl md:rounded-2xl border-none shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-300 bg-white flex flex-col h-full cursor-pointer", stockLeft <= 0 && "opacity-80 grayscale-[0.5] cursor-not-allowed")}>
               <div className="relative aspect-video w-full overflow-hidden">
-                <Image src={product.image} alt={product.name} fill className="object-cover transition-transform group-hover:scale-105" data-ai-hint="food item" />
+                <Image src={product.image} alt={product.name} width={400} height={300} className="object-cover transition-transform group-hover:scale-105" data-ai-hint="food item" />
                 {activePromo && <div className="absolute top-1 right-1"><Ticket className="h-3 w-3 text-rose-500 fill-rose-500" /></div>}
               </div>
               <div className="p-2 md:p-4 flex flex-col flex-1">

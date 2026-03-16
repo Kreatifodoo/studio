@@ -2,18 +2,17 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.nextpos.app"
-    compileSdk project.ext.compileSdkVersion
+    compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.nextpos.app"
-        minSdk project.ext.minSdkVersion
-        targetSdk project.ext.targetSdkVersion
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Strings and resources settings for library dependencies.
-             // Can be removed if not needed.
-             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:fsa:bak:!*.o:!*.obj'
+             // Capacitor fixes error with compression of some files
+             noCompress 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'
         }
     }
     buildTypes {
@@ -26,24 +25,24 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    androidResources {
-        noCompress 'png'
-    }
 }
 
 repositories {
-    google()
-    mavenCentral()
+    flatDir{
+        dirs 'libs'
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "androidx.appcompat:appcompat:$project.ext.androidxAppCompatVersion"
-    implementation "androidx.core:core-ktx:$project.ext.androidxCoreVersion"
+    implementation "androidx.appcompat:appcompat:$rootProject.ext.androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$rootProject.ext.androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core:$rootProject.ext.androidxCoreVersion"
     implementation project(':capacitor-android')
-    testImplementation "junit:junit:$project.ext.junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$project.ext.androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$project.ext.androidxEspressoCoreVersion"
+    testImplementation "junit:junit:$rootProject.ext.junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$rootProject.ext.androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$rootProject.ext.androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
 }
 
 apply from: 'capacitor.build.gradle'
@@ -54,5 +53,5 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info("google-services.json not found, google-services plugin not applied. This is fine.")
 }
