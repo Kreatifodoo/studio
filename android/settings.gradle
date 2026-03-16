@@ -1,5 +1,13 @@
 include ':app'
 
-// Note: Capacitor plugins are automatically added by capacitor.settings.gradle
-// which is applied by the Capacitor CLI during sync.
-// DO NOT manually apply build scripts here as it causes scope errors.
+project(':capacitor-android').projectDir = new File(rootProject.projectDir, '../node_modules/@capacitor/android/android')
+include ':capacitor-android'
+
+project(':capacitor-cordova-android-plugins').projectDir = new File(rootProject.projectDir, 'capacitor-cordova-android-plugins')
+include ':capacitor-cordova-android-plugins'
+
+try {
+    apply from: 'capacitor.settings.gradle'
+} catch (Exception e) {
+    logger.warn("capacitor.settings.gradle not found, skipping auto-plugin inclusion")
+}
