@@ -11,8 +11,8 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Strings and resources settings for capacitor
-             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:gdb:help:!cvs:!thumbs.db:!desktop.ini:!*.gz'
+             // Strings and resources settings
+             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
     buildTypes {
@@ -28,9 +28,8 @@ android {
 }
 
 repositories {
-    flatDir{
-        dirs 'libs'
-    }
+    google()
+    mavenCentral()
 }
 
 dependencies {
@@ -38,13 +37,8 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$rootProject.ext.androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$rootProject.ext.androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core:$rootProject.ext.androidxCoreVersion"
-    implementation "androidx.activity:activity:$rootProject.ext.androidxActivityVersion"
-    implementation "androidx.fragment:fragment:$rootProject.ext.androidxFragmentVersion"
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
-    testImplementation "junit:junit:$rootProject.ext.junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$rootProject.ext.androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$rootProject.ext.androidxEspressoCoreVersion"
 }
 
 apply from: 'capacitor.build.gradle'
@@ -55,5 +49,5 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info("google-services.json not found, google-services plugin not applied. This is normal.")
 }
