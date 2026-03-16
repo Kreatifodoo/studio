@@ -2,17 +2,17 @@ apply plugin: 'com.android.application'
 
 android {
     namespace "com.nextpos.app"
-    compileSdk project.ext.compileSdkVersion
+    compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.nextpos.app"
-        minSdk project.ext.minSdkVersion
-        targetSdk project.ext.targetSdkVersion
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Fragments allowed to have more than one dot in name for SDK 21
-             noCompress 'foo', 'bar'
+             // Strings highlighting causes an issue with certain languages
+             nocompress 'png'
         }
     }
     buildTypes {
@@ -21,27 +21,23 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
 }
 
 repositories {
-    flatDir{
-        dirs 'libs'
-    }
+    google()
+    mavenCentral()
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core-ktx:$androidxCoreVersion"
-    testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation "androidx.appcompat:appcompat:$rootProject.ext.androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$rootProject.ext.androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core:$rootProject.ext.androidxCoreVersion"
+    implementation project(':capacitor-android')
+    implementation project(':capacitor-cordova-android-plugins')
 }
+
+apply from: 'capacitor.build.gradle'
 
 try {
     def servicesJSON = file('google-services.json')
@@ -49,5 +45,5 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    // google-services.json not found
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }

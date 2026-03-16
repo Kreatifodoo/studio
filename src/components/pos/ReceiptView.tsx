@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -17,7 +16,6 @@ export function ReceiptView({ transaction }: ReceiptViewProps) {
   
   useEffect(() => {
     setMounted(true);
-    // Generate random barcode bars only on the client to avoid hydration mismatch
     const bars = [...Array(24)].map(() => ({
       width: Math.random() > 0.5 ? 'w-0.5' : 'w-1',
       show: Math.random() > 0.3

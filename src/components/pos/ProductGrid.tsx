@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -114,7 +113,6 @@ export function ProductGrid() {
           const inCart = cart.find(i => i.productId === product.id && !i.isPackage);
           const stockLeft = product.onHandQty - (inCart?.quantity || 0);
           
-          // Hydration safe check for active promo
           const activePromo = now ? promoDiscounts.find(pd => 
             pd.enabled && 
             pd.productId === product.id && 
