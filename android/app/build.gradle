@@ -10,29 +10,35 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {
-             // Strings highlighting causes an issue with certain languages
-             nocompress 'png'
-        }
     }
+    
+    androidResources {
+        noCompress 'png'
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
 }
 
 repositories {
-    google()
-    mavenCentral()
+    flatDir{
+        dirs 'libs'
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "androidx.appcompat:appcompat:$rootProject.ext.androidxAppCompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$rootProject.ext.androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core:$rootProject.ext.androidxCoreVersion"
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core:$androidxCoreVersion"
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
 }
@@ -40,10 +46,10 @@ dependencies {
 apply from: 'capacitor.build.gradle'
 
 try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
+    def servicesConfig = file('google-services.json')
+    if (servicesConfig.exists()) {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info("google-services.json not found, plugin not applied.")
 }
