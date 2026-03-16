@@ -54,7 +54,7 @@ export function ReceiptView({ transaction }: ReceiptViewProps) {
           {storeSettings.name}
         </h2>
         {storeSettings.address && (
-          <p className="opacity-80 whitespace-pre-line">{storeSettings.address}</p>
+          <p className="opacity-80 whitespace-pre-line text-[10px]">{storeSettings.address}</p>
         )}
         {storeSettings.headerNote && (
           <p className="font-bold border-y border-black/10 py-1 mt-2">{storeSettings.headerNote}</p>

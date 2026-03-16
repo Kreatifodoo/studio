@@ -6,7 +6,6 @@ import { Plus, Box, LayoutGrid, CheckCircle2, Circle, Ticket } from 'lucide-reac
 import { usePOS } from './POSContext';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -67,7 +66,11 @@ export function ProductGrid() {
     setSelectedCombo(null);
   };
 
-  if (!mounted) return null;
+  if (!mounted) return (
+    <div className="flex items-center justify-center h-full opacity-50">
+      <p className="text-xs font-black uppercase tracking-widest">Memuat Menu...</p>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-3 md:gap-6 h-full">

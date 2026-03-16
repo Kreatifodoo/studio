@@ -1,32 +1,18 @@
 include ':app'
 
-// Capacitor auto-inclusion logic
-def nodeModulesDir = new File(settingsDir, '../node_modules')
+// Capacitor Auto-Discovery Logic
+def capacitorAndroidPath = '../node_modules/@capacitor/android/capacitor'
+def cordovaPluginsPath = 'capacitor-cordova-android-plugins'
 
-// Capacitor Android Core
-include ':capacitor-android'
-project(':capacitor-android').projectDir = new File(nodeModulesDir, '@capacitor/android/capacitor')
+if (new File(rootProject.projectDir, capacitorAndroidPath).exists()) {
+    include ':capacitor-android'
+    project(':capacitor-android').projectDir = new File(rootProject.projectDir, capacitorAndroidPath)
+}
 
-// Plugins Inclusion
-def pluginsDir = new File(settingsDir, 'capacitor-cordova-android-plugins')
-if (pluginsDir.exists()) {
+if (new File(rootProject.projectDir, cordovaPluginsPath).exists()) {
     include ':capacitor-cordova-android-plugins'
-    project(':capacitor-cordova-android-plugins').projectDir = pluginsDir
+    project(':capacitor-cordova-android-plugins').projectDir = new File(rootProject.projectDir, cordovaPluginsPath)
 }
 
-// Find and include native plugins
-def plugins = [
-    'capacitor-mlkit-barcode-scanning': '@capacitor-mlkit/barcode-scanning/android',
-    'capacitor-app': '@capacitor/app/android',
-    'capacitor-haptics': '@capacitor/haptics/android',
-    'capacitor-keyboard': '@capacitor/keyboard/android',
-    'capacitor-status-bar': '@capacitor/status-bar/android'
-]
-
-plugins.each { name, path ->
-    def pluginDir = new File(nodeModulesDir, path)
-    if (pluginDir.exists()) {
-        include ":${name}"
-        project(":${name}").projectDir = pluginDir
-    }
-}
+// Auto-include Capacitor Plugins
+apply from: 'app/capacitor.build.gradle'

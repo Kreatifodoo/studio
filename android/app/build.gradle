@@ -11,7 +11,8 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Standard aapt options
+             // Capacitor handles resource compression
+             noCompress 'png'
         }
     }
     buildTypes {
@@ -24,9 +25,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    androidResources {
-        noCompress 'png'
-    }
 }
 
 repositories {
@@ -37,34 +35,24 @@ repositories {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "androidx.appcompat:appcompat:$rootProject.ext.appcompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$rootProject.ext.coordinatorLayoutVersion"
-    implementation "androidx.core:core:$rootProject.ext.coreVersion"
+    implementation "androidx.appcompat:appcompat:${rootProject.ext.appcompatVersion}"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:${rootProject.ext.androidxCoordinatorLayoutVersion}"
+    implementation "androidx.core:core-splashscreen:${rootProject.ext.coreSplashScreenVersion}"
     
-    // Connect to capacitor projects with safety checks
+    // Core Capacitor
     if (findProject(':capacitor-android')) {
         implementation project(':capacitor-android')
     }
     
-    implementation project(':app')
-    
-    // Auto-implementation of plugins if they exist
-    [
-        ':capacitor-mlkit-barcode-scanning',
-        ':capacitor-app',
-        ':capacitor-haptics',
-        ':capacitor-keyboard',
-        ':capacitor-status-bar',
-        ':capacitor-cordova-android-plugins'
-    ].each { plugin ->
-        if (findProject(plugin)) {
-            implementation project(plugin)
-        }
-    }
+    // Testing
+    testImplementation "junit:junit:${rootProject.ext.junitVersion}"
+    androidTestImplementation "androidx.test.ext:junit:${rootProject.ext.androidxJunitVersion}"
+    androidTestImplementation "androidx.test.espresso:espresso-core:${rootProject.ext.androidxEspressoCoreVersion}"
 
-    testImplementation "junit:junit:$rootProject.ext.junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$rootProject.ext.androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$rootProject.ext.espressoCoreVersion"
+    // Plugins
+    if (findProject(':capacitor-cordova-android-plugins')) {
+        implementation project(':capacitor-cordova-android-plugins')
+    }
 }
 
 apply from: 'capacitor.build.gradle'
