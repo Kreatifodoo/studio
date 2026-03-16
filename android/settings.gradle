@@ -1,18 +1,5 @@
 include ':app'
 
-// Capacitor Auto-Discovery Logic
-def capacitorAndroidPath = '../node_modules/@capacitor/android/capacitor'
-def cordovaPluginsPath = 'capacitor-cordova-android-plugins'
-
-if (new File(rootProject.projectDir, capacitorAndroidPath).exists()) {
-    include ':capacitor-android'
-    project(':capacitor-android').projectDir = new File(rootProject.projectDir, capacitorAndroidPath)
-}
-
-if (new File(rootProject.projectDir, cordovaPluginsPath).exists()) {
-    include ':capacitor-cordova-android-plugins'
-    project(':capacitor-cordova-android-plugins').projectDir = new File(rootProject.projectDir, cordovaPluginsPath)
-}
-
-// Auto-include Capacitor Plugins
-apply from: 'app/capacitor.build.gradle'
+// Note: Capacitor plugins are automatically added by capacitor.settings.gradle
+// which is applied by the Capacitor CLI during sync.
+// DO NOT manually apply build scripts here as it causes scope errors.
